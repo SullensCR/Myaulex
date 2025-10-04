@@ -1,3 +1,5 @@
+# DONT TRUST ANY MYAU CRACK DOWNLOAD SOURCE! THE ONLY SAFE MYAU UNLICENSED DOWNLOAD SOURCE IS THIS REPO!
+
 # Myau
 
 French dogshit 1.8.9 Forge Client Source code eclipse ready (run/build able)
