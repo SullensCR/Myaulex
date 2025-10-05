@@ -13,6 +13,7 @@ import myau.module.Module;
 import myau.util.KeyBindUtil;
 import myau.util.PacketUtil;
 import myau.property.properties.ModeProperty;
+import myau.property.properties.BooleanProperty;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.gui.inventory.GuiContainerCreative;
@@ -28,11 +29,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class InvWalk extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    private final Queue<C0EPacketClickWindow> clickQueue = new ConcurrentLinkedQueue<C0EPacketClickWindow>();
+    private final Queue<C0EPacketClickWindow> clickQueue = new ConcurrentLinkedQueue<>();
     private boolean keysPressed = false;
     private C16PacketClientStatus pendingStatus = null;
     private int delayTicks = 0;
+
     public final ModeProperty mode = new ModeProperty("mode", 1, new String[]{"VANILLA", "LEGIT", "HYPIXEL"});
+    public final BooleanProperty guiEnabled = new BooleanProperty("ClickGUI", true);
 
     public InvWalk() {
         super("InvWalk", false);
@@ -57,22 +60,17 @@ public class InvWalk extends Module {
     }
 
     public boolean canInvWalk() {
-        if (!(mc.currentScreen instanceof GuiContainer)) {
-            return false;
-        } else if (mc.currentScreen instanceof GuiContainerCreative) {
-            return false;
-        } else {
-            switch (this.mode.getValue()) {
-                case 1:
-                    if (!(mc.currentScreen instanceof GuiInventory)) {
-                        return false;
-                    }
-                    return this.pendingStatus != null && this.clickQueue.isEmpty();
-                case 2:
-                    return this.clickQueue.isEmpty();
-                default:
-                    return true;
-            }
+        if (!(mc.currentScreen instanceof GuiContainer)) return false;
+        if (mc.currentScreen instanceof GuiContainerCreative) return false;
+
+        switch (this.mode.getValue()) {
+            case 1: // Vanilla
+                if (!(mc.currentScreen instanceof GuiInventory)) return false;
+                return this.pendingStatus != null && this.clickQueue.isEmpty();
+            case 2: // Legit
+                return this.clickQueue.isEmpty();
+            default: // Hypixel
+                return true;
         }
     }
 
@@ -87,76 +85,81 @@ public class InvWalk extends Module {
 
     @EventTarget(Priority.LOWEST)
     public void onUpdate(UpdateEvent event) {
-        if (this.isEnabled() && event.getType() == EventType.PRE) {
-            if (this.canInvWalk() && this.delayTicks == 0) {
-                this.pressMovementKeys();
-            } else {
-                if (this.keysPressed) {
-                    if (mc.currentScreen != null) {
-                        KeyBinding.unPressAllKeys();
-                    }
-                    this.keysPressed = false;
+        if (!this.isEnabled() || event.getType() != EventType.PRE) return;
+
+        if (mc.currentScreen instanceof myau.ui.ClickGui && this.guiEnabled.getValue()) {
+            pressMovementKeys();
+            return;
+        }
+
+        if (this.canInvWalk() && this.delayTicks == 0) {
+            this.pressMovementKeys();
+        } else {
+            if (this.keysPressed) {
+                if (mc.currentScreen != null) {
+                    KeyBinding.unPressAllKeys();
                 }
-                if (this.pendingStatus != null) {
-                    PacketUtil.sendPacketNoEvent(this.pendingStatus);
-                    this.pendingStatus = null;
-                }
-                if (this.delayTicks > 0) {
-                    this.delayTicks--;
-                }
+                this.keysPressed = false;
+            }
+            if (this.pendingStatus != null) {
+                PacketUtil.sendPacketNoEvent(this.pendingStatus);
+                this.pendingStatus = null;
+            }
+            if (this.delayTicks > 0) {
+                this.delayTicks--;
             }
         }
     }
 
     @EventTarget
     public void onPacket(PacketEvent event) {
-        if (this.isEnabled() && event.getType() == EventType.SEND) {
-            if (event.getPacket() instanceof C16PacketClientStatus) {
-                if (this.mode.getValue() == 1) {
-                    C16PacketClientStatus packet = (C16PacketClientStatus) event.getPacket();
-                    if (packet.getStatus() == EnumState.OPEN_INVENTORY_ACHIEVEMENT) {
-                        event.setCancelled(true);
-                        this.pendingStatus = packet;
-                    }
+        if (!this.isEnabled() || event.getType() != EventType.SEND) return;
+
+        if (event.getPacket() instanceof C16PacketClientStatus) {
+            if (this.mode.getValue() == 1) {
+                C16PacketClientStatus packet = (C16PacketClientStatus) event.getPacket();
+                if (packet.getStatus() == EnumState.OPEN_INVENTORY_ACHIEVEMENT) {
+                    event.setCancelled(true);
+                    this.pendingStatus = packet;
                 }
-            } else if (!(event.getPacket() instanceof C0EPacketClickWindow)) {
-                if (event.getPacket() instanceof C0DPacketCloseWindow) {
-                    C0DPacketCloseWindow packet = (C0DPacketCloseWindow) event.getPacket();
-                    if (this.pendingStatus != null && ((IAccessorC0DPacketCloseWindow) packet).getWindowId() == 0) {
-                        this.pendingStatus = null;
-                        event.setCancelled(true);
-                    }
+            }
+        } else if (!(event.getPacket() instanceof C0EPacketClickWindow)) {
+            if (event.getPacket() instanceof C0DPacketCloseWindow) {
+                C0DPacketCloseWindow packet = (C0DPacketCloseWindow) event.getPacket();
+                if (this.pendingStatus != null && ((IAccessorC0DPacketCloseWindow) packet).getWindowId() == 0) {
+                    this.pendingStatus = null;
+                    event.setCancelled(true);
                 }
-            } else {
-                C0EPacketClickWindow packet = (C0EPacketClickWindow) event.getPacket();
-                switch (this.mode.getValue()) {
-                    case 1:
-                        if (packet.getWindowId() == 0) {
-                            if ((packet.getMode() == 3 || packet.getMode() == 4) && packet.getSlotId() == -999) {
-                                event.setCancelled(true);
-                                return;
-                            }
-                            if (this.pendingStatus != null) {
-                                KeyBinding.unPressAllKeys();
-                                event.setCancelled(true);
-                                this.clickQueue.offer(packet);
-                            }
-                        }
-                        break;
-                    case 2:
+            }
+        } else {
+            C0EPacketClickWindow packet = (C0EPacketClickWindow) event.getPacket();
+            switch (this.mode.getValue()) {
+                case 1:
+                    if (packet.getWindowId() == 0) {
                         if ((packet.getMode() == 3 || packet.getMode() == 4) && packet.getSlotId() == -999) {
                             event.setCancelled(true);
-                        } else {
+                            return;
+                        }
+                        if (this.pendingStatus != null) {
                             KeyBinding.unPressAllKeys();
                             event.setCancelled(true);
                             this.clickQueue.offer(packet);
-                            this.delayTicks = 8;
                         }
-                }
-                if (this.pendingStatus != null) {
-                    PacketUtil.sendPacketNoEvent(this.pendingStatus);
-                    this.pendingStatus = null;
-                }
+                    }
+                    break;
+                case 2:
+                    if ((packet.getMode() == 3 || packet.getMode() == 4) && packet.getSlotId() == -999) {
+                        event.setCancelled(true);
+                    } else {
+                        KeyBinding.unPressAllKeys();
+                        event.setCancelled(true);
+                        this.clickQueue.offer(packet);
+                        this.delayTicks = 8;
+                    }
+            }
+            if (this.pendingStatus != null) {
+                PacketUtil.sendPacketNoEvent(this.pendingStatus);
+                this.pendingStatus = null;
             }
         }
     }
