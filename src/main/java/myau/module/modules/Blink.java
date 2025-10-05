@@ -13,7 +13,7 @@ import myau.property.properties.ModeProperty;
 
 public class Blink extends Module {
     public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"DEFAULT", "PULSE"});
-    public final IntProperty ticks = new IntProperty("ticks", 200, 0, 12000);
+    public final IntProperty ticks = new IntProperty("ticks", 20, 0, 1200);
 
     public Blink() {
         super("Blink", false);
