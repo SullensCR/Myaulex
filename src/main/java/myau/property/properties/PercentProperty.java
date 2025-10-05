@@ -47,4 +47,12 @@ public class PercentProperty extends Property<Integer> {
     public void write(JsonObject jsonObject) {
         jsonObject.addProperty(this.getName(), this.getValue());
     }
+
+    public Integer getMaximum() {
+        return maximum;
+    }
+
+    public Integer getMinimum() {
+        return minimum;
+    }
 }

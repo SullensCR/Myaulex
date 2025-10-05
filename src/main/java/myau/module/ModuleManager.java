@@ -5,6 +5,7 @@ import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.events.KeyEvent;
 import myau.events.TickEvent;
+import myau.module.modules.GuiModule;
 import myau.module.modules.HUD;
 import myau.util.ChatUtil;
 import myau.util.SoundUtil;
@@ -17,6 +18,10 @@ public class ModuleManager {
 
     public Module getModule(String string) {
         return this.modules.values().stream().filter(mD -> mD.getName().equalsIgnoreCase(string)).findFirst().orElse(null);
+    }
+
+    public Module getModule(Class<?> clazz){
+        return this.modules.get(clazz);
     }
 
     public void playSound() {
@@ -34,6 +39,9 @@ public class ModuleManager {
                 HUD hud = (HUD) this.modules.get(HUD.class);
                 if (hud != null) {
                     shouldNotify = hud.toggleAlerts.getValue();
+                }
+                if(module instanceof GuiModule){
+                    shouldNotify = false;
                 }
             }
             if (shouldNotify) {

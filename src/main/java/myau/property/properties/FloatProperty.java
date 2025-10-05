@@ -43,4 +43,12 @@ public class FloatProperty extends Property<Float> {
     public void write(JsonObject jsonObject) {
         jsonObject.addProperty(this.getName(), this.getValue());
     }
+
+    public Float getMinimum() {
+        return minimum;
+    }
+
+    public Float getMaximum() {
+        return maximum;
+    }
 }

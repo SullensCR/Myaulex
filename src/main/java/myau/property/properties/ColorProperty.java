@@ -12,7 +12,7 @@ public class ColorProperty extends Property<Integer> {
     }
 
     public ColorProperty(String string, Integer color, BooleanSupplier check) {
-        super(string, color, rgb -> rgb >= 0 && rgb <= 16777215, check);
+        super(string, color, rgb -> rgb <= 16777215, check);
     }
 
     @Override

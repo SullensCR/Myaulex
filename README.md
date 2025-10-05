@@ -5,6 +5,7 @@
 French dogshit 1.8.9 Forge Client Source code eclipse ready (run/build able)
 
 ![1](/images/image.png)
+![2](/images/image2.png)
 
 Deobfuscated by [DeepSeek-R1](https://github.com/deepseek-ai/DeepSeek-R1) in less than 1 hours with ASM Model Context Protocol.
 

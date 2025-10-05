@@ -53,4 +53,22 @@ public class ModeProperty extends Property<Integer> {
     public void write(JsonObject jsonObject) {
         jsonObject.addProperty(this.getName(), this.getModeString());
     }
+
+    public void nextMode() {
+        int current = this.getValue();
+        int next = current + 1;
+        if (next >= this.modes.length) {
+            next = 0;
+        }
+        this.setValue(next);
+    }
+
+    public void previousMode() {
+        int current = this.getValue();
+        int prev = current - 1;
+        if (prev < 0) {
+            prev = this.modes.length - 1;
+        }
+        this.setValue(prev);
+    }
 }
