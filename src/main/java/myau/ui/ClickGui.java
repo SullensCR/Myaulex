@@ -9,6 +9,7 @@ import myau.module.Module;
 import myau.module.modules.*;
 import myau.ui.components.CategoryComponent;
 import net.minecraft.client.gui.*;
+import org.lwjgl.input.Mouse;
 
 import java.awt.*;
 import java.io.File;
@@ -167,6 +168,14 @@ public class ClickGui extends GuiScreen {
                 module.update(x, y);
             }
         }
+
+        int wheel = Mouse.getDWheel();
+        if (wheel != 0) {
+            int scrollDir = wheel > 0 ? 1 : -1;
+            for (CategoryComponent category : categoryList) {
+                category.onScroll(x, y, scrollDir);
+            }
+        }
     }
 
     public void mouseClicked(int x, int y, int mouseButton) {
@@ -191,7 +200,7 @@ public class ClickGui extends GuiScreen {
                     }
 
                     if (category.isHovered(x, y) && mouseButton == 0) {
-                        category.cv(!category.isPin());
+                        category.setPin(!category.isPin());
                     }
                 } while (!category.isOpened());
             } while (category.getModules().isEmpty());
@@ -200,6 +209,7 @@ public class ClickGui extends GuiScreen {
                 c.mouseDown(x, y, mouseButton);
             }
         }
+
     }
 
     public void mouseReleased(int x, int y, int s) {
