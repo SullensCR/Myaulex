@@ -1,5 +1,8 @@
 package myau;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import myau.command.CommandManager;
 import myau.command.commands.*;
 import myau.config.Config;
@@ -11,11 +14,15 @@ import myau.module.modules.*;
 import myau.property.Property;
 import myau.property.PropertyManager;
 
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class Myau {
     public static String clientName = "&7[&cM&6y&ea&au&7]&r ";
+    public static String version;
     public static RotationManager rotationManager;
     public static FloatManager floatManager;
     public static BlinkManager blinkManager;
@@ -153,5 +160,13 @@ public class Myau {
             targetManager.load();
         }
         Runtime.getRuntime().addShutdownHook(new Thread(config::save));
+
+        try (InputStreamReader reader = new InputStreamReader(Objects.requireNonNull(Myau.class.getResourceAsStream("/mcmod.info")), StandardCharsets.UTF_8)) {
+            JsonArray arr = new JsonParser().parse(reader).getAsJsonArray();
+            JsonObject modInfo = arr.get(0).getAsJsonObject();
+            version = modInfo.get("version").getAsString();
+        } catch (Exception e) {
+            version = "dev";
+        }
     }
 }
