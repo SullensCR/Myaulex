@@ -82,12 +82,14 @@ public class Myau {
         moduleManager.modules.put(GhostHand.class, new GhostHand());
         moduleManager.modules.put(GuiModule.class, new GuiModule());
         moduleManager.modules.put(HUD.class, new HUD());
+        moduleManager.modules.put(MoreKB.class, new MoreKB());
         moduleManager.modules.put(Indicators.class, new Indicators());
         moduleManager.modules.put(InvManager.class, new InvManager());
         moduleManager.modules.put(InvWalk.class, new InvWalk());
         moduleManager.modules.put(ItemESP.class, new ItemESP());
         moduleManager.modules.put(Jesus.class, new Jesus());
         moduleManager.modules.put(KeepSprint.class, new KeepSprint());
+        moduleManager.modules.put(HitBox.class, new HitBox());
         moduleManager.modules.put(KillAura.class, new KillAura());
         moduleManager.modules.put(LagRange.class, new LagRange());
         moduleManager.modules.put(LightningTracker.class, new LightningTracker());

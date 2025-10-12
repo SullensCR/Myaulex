@@ -38,6 +38,8 @@ public class ClickGui extends GuiScreen {
         combatModules.add(Myau.moduleManager.getModule(NoHitDelay.class));
         combatModules.add(Myau.moduleManager.getModule(AntiFireball.class));
         combatModules.add(Myau.moduleManager.getModule(LagRange.class));
+        combatModules.add(Myau.moduleManager.getModule(HitBox.class));
+        combatModules.add(Myau.moduleManager.getModule(MoreKB.class));
 
         List<Module> movementModules = new ArrayList<>();
         movementModules.add(Myau.moduleManager.getModule(Fly.class));
