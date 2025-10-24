@@ -64,12 +64,12 @@ public class InvWalk extends Module {
         if (mc.currentScreen instanceof GuiContainerCreative) return false;
 
         switch (this.mode.getValue()) {
-            case 1: // Vanilla
+            case 1: // Legit
                 if (!(mc.currentScreen instanceof GuiInventory)) return false;
                 return this.pendingStatus != null && this.clickQueue.isEmpty();
-            case 2: // Legit
+            case 2: // Hypixel
                 return this.clickQueue.isEmpty();
-            default: // Hypixel
+            default: // Vanilla
                 return true;
         }
     }
@@ -134,7 +134,7 @@ public class InvWalk extends Module {
         } else {
             C0EPacketClickWindow packet = (C0EPacketClickWindow) event.getPacket();
             switch (this.mode.getValue()) {
-                case 1:
+                case 1: // Legit
                     if (packet.getWindowId() == 0) {
                         if ((packet.getMode() == 3 || packet.getMode() == 4) && packet.getSlotId() == -999) {
                             event.setCancelled(true);
@@ -147,7 +147,7 @@ public class InvWalk extends Module {
                         }
                     }
                     break;
-                case 2:
+                case 2: // Hypixel
                     if ((packet.getMode() == 3 || packet.getMode() == 4) && packet.getSlotId() == -999) {
                         event.setCancelled(true);
                     } else {
