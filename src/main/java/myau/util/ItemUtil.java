@@ -33,6 +33,8 @@ public class ItemUtil {
         if (item instanceof ItemFood) {
             if (item != Items.spider_eye) return false;
         }
+        if (isProjectile(itemStack)) return false;
+        // if (isFishingRod(itemStack)) return false;
         return item != Items.nether_star;
     }
 
@@ -44,6 +46,16 @@ public class ItemUtil {
         if (item instanceof ItemBlock) {
             return ItemUtil.isContainerBlock((ItemBlock) item);
         }
+        return false;
+    }
+
+    public static boolean isProjectile(ItemStack itemStack) {
+        if (itemStack == null || itemStack.stackSize < 1) {
+            return false;
+        }
+        Item item = itemStack.getItem();
+        if (item instanceof ItemEgg) return true;
+        if (item instanceof ItemSnowball) return true;
         return false;
     }
 
@@ -186,14 +198,14 @@ public class ItemUtil {
         return bestSlot;
     }
 
-    public static int findInventorySlot(int startSlot) {
+    public static int findInventorySlot(int startSlot, ItemType itemType) {
         int bestSlot = -1;
         int maxStackSize = 0;
         for (int i = 0; i < 36; ++i) {
             int currentSlot = ((startSlot + i) % 36 + 36) % 36;
             ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(currentSlot);
             if (itemStack == null) continue;
-            if (!ItemUtil.isBlock(itemStack)) continue;
+            if (!itemType.contains(itemStack)) continue;
             if (maxStackSize >= itemStack.stackSize) continue;
             bestSlot = currentSlot;
             maxStackSize = itemStack.stackSize;
@@ -301,5 +313,25 @@ public class ItemUtil {
             this.add(21);
             this.add(22);
         }
+    }
+
+    public static enum ItemType {
+        Block {
+            boolean contains(ItemStack itemStack) {
+                return isBlock(itemStack);
+            }
+        },
+        Projectile {
+            boolean contains(ItemStack itemStack) {
+                return isProjectile(itemStack);
+            }
+        },
+        GoldApple {
+            boolean contains(ItemStack itemStack) {
+                Item item = itemStack.getItem();
+                return item instanceof ItemAppleGold;
+            }
+        };
+        abstract boolean contains(ItemStack itemStack);
     }
 }

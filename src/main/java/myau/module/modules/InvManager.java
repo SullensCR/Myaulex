@@ -35,6 +35,9 @@ public class InvManager extends Module {
     public final IntProperty axeSlot = new IntProperty("axe-slot", 5, 0, 9);
     public final IntProperty blocksSlot = new IntProperty("blocks-slot", 2, 0, 9);
     public final IntProperty blocks = new IntProperty("blocks", 128, 64, 2304);
+    public final IntProperty projectileSlot = new IntProperty("projectile-slot", 7, 0, 9);
+    public final IntProperty projectiles = new IntProperty("projectiles", 64, 16, 2304);
+    public final IntProperty goldAppleSlot = new IntProperty("gold-apple-slot", 9, 0, 9);
 
     private boolean isValidGameMode() {
         GameType gameType = mc.playerController.getCurrentGameType();
@@ -105,7 +108,11 @@ public class InvManager extends Module {
                         int equippedAxeSlot = ItemUtil.findInventorySlot("axe", preferredAxeHotbarSlot, true);
                         int inventoryAxeSlot = ItemUtil.findInventorySlot("axe", preferredAxeHotbarSlot, false);
                         int preferredBlocksHotbarSlot = this.blocksSlot.getValue() - 1;
-                        int inventoryBlocksSlot = ItemUtil.findInventorySlot(preferredBlocksHotbarSlot);
+                        int inventoryBlocksSlot = ItemUtil.findInventorySlot(preferredBlocksHotbarSlot, ItemUtil.ItemType.Block);
+                        int preferredProjectileHotbarSlot = this.projectileSlot.getValue() - 1;
+                        int inventoryProjectileSlot = ItemUtil.findInventorySlot(preferredProjectileHotbarSlot, ItemUtil.ItemType.Projectile);
+                        int preferredGoldAppleHotbarSlot = this.goldAppleSlot.getValue() - 1;
+                        int inventoryGoldAppleSlot = ItemUtil.findInventorySlot(preferredGoldAppleHotbarSlot, ItemUtil.ItemType.GoldApple);
                         if (this.autoArmor.getValue()) {
                             for (int i = 0; i < 4; i++) {
                                 int equippedSlot = equippedArmorSlots.get(i);
@@ -168,8 +175,23 @@ public class InvManager extends Module {
                                 return;
                             }
                         }
+                        if (preferredProjectileHotbarSlot >= 0 && preferredProjectileHotbarSlot <= 8 && !usedHotbarSlots.contains(preferredProjectileHotbarSlot) && inventoryProjectileSlot != -1) {
+                            usedHotbarSlots.add(preferredProjectileHotbarSlot);
+                            if (inventoryProjectileSlot != preferredProjectileHotbarSlot) {
+                                this.clickSlot(mc.thePlayer.inventoryContainer.windowId, this.convertSlotIndex(inventoryProjectileSlot), preferredProjectileHotbarSlot, 2);
+                                return;
+                            }
+                        }
+                        if (preferredGoldAppleHotbarSlot >= 0 && preferredGoldAppleHotbarSlot <= 8 && !usedHotbarSlots.contains(preferredGoldAppleHotbarSlot) && inventoryGoldAppleSlot != -1) {
+                            usedHotbarSlots.add(preferredGoldAppleHotbarSlot);
+                            if (inventoryGoldAppleSlot != preferredGoldAppleHotbarSlot) {
+                                this.clickSlot(mc.thePlayer.inventoryContainer.windowId, this.convertSlotIndex(inventoryGoldAppleSlot), preferredGoldAppleHotbarSlot, 2);
+                                return;
+                            }
+                        }
                         if (this.dropTrash.getValue()) {
                             int currentBlockCount = this.getStackSize(inventoryBlocksSlot);
+                            int currentProjectileCount = this.getStackSize(inventoryProjectileSlot);
                             for (int i = 0; i < 36; i++) {
                                 if (!equippedArmorSlots.contains(i)
                                         && !inventoryArmorSlots.contains(i)
@@ -181,16 +203,22 @@ public class InvManager extends Module {
                                         && inventoryShovelSlot != i
                                         && equippedAxeSlot != i
                                         && inventoryAxeSlot != i
-                                        && inventoryBlocksSlot != i) {
+                                        && inventoryBlocksSlot != i
+                                        && inventoryProjectileSlot != i
+                                        && inventoryGoldAppleSlot != i) {
                                     ItemStack stack = mc.thePlayer.inventory.getStackInSlot(i);
                                     if (stack != null) {
                                         boolean isBlock = ItemUtil.isBlock(stack);
-                                        if (ItemUtil.isNotSpecialItem(stack) || isBlock && currentBlockCount >= this.blocks.getValue()) {
+                                        boolean isProjectile = ItemUtil.isProjectile(stack);
+                                        if (ItemUtil.isNotSpecialItem(stack) || isBlock && currentBlockCount >= this.blocks.getValue() || isProjectile && currentProjectileCount >= this.projectiles.getValue()) {
                                             this.clickSlot(mc.thePlayer.inventoryContainer.windowId, this.convertSlotIndex(i), 1, 4);
                                             return;
                                         }
                                         if (isBlock) {
                                             currentBlockCount += stack.stackSize;
+                                        }
+                                        if (isProjectile) {
+                                            currentProjectileCount += stack.stackSize;
                                         }
                                     }
                                 }
