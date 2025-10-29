@@ -85,14 +85,14 @@ public class InvWalk extends Module {
         for (Map.Entry<KeyBinding, Boolean> keyBinding : movementKeys.entrySet()) {
             keyBinding.setValue(KeyBindUtil.isKeyDown(keyBinding.getKey().getKeyCode()));
         }
-        if (Myau.moduleManager.modules.get(Sprint.class).isEnabled()) {
-            movementKeys.put(mc.gameSettings.keyBindSprint, true);
-        }
     }
 
     public void restoreMovementKeys() {
         for (Map.Entry<KeyBinding, Boolean> keyBinding : movementKeys.entrySet()) {
             KeyBindUtil.setKeyBindState(keyBinding.getKey().getKeyCode(), keyBinding.getValue());
+        }
+        if (Myau.moduleManager.modules.get(Sprint.class).isEnabled()) {
+            KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
         }
         this.keysPressed = true;
     }
