@@ -11,6 +11,7 @@ import myau.events.UpdateEvent;
 import myau.mixin.IAccessorC0DPacketCloseWindow;
 import myau.module.Module;
 import myau.property.properties.IntProperty;
+import myau.util.ChatUtil;
 import myau.util.KeyBindUtil;
 import myau.util.PacketUtil;
 import myau.property.properties.ModeProperty;
@@ -24,6 +25,8 @@ import net.minecraft.network.play.client.C0DPacketCloseWindow;
 import net.minecraft.network.play.client.C0EPacketClickWindow;
 import net.minecraft.network.play.client.C16PacketClientStatus;
 import net.minecraft.network.play.client.C16PacketClientStatus.EnumState;
+import net.minecraft.network.play.server.S2DPacketOpenWindow;
+import net.minecraft.network.play.server.S2EPacketCloseWindow;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -52,7 +55,7 @@ public class InvWalk extends Module {
     public final BooleanProperty guiEnabled = new BooleanProperty("ClickGUI", true);
     public final IntProperty openDelay = new IntProperty("openDelay", 6, 0, 20, () -> mode.getValue() == 3);
     public final IntProperty closeDelay = new IntProperty("closeDelay", 4, 0, 20, () -> mode.getValue() == 3);
-    public final BooleanProperty lockMoveKey = new BooleanProperty("lockMoveKey", true, () -> mode.getValue() == 3);
+    public final BooleanProperty lockMoveKey = new BooleanProperty("lockMoveKey", false);
 
     public InvWalk() {
         super("InvWalk", false);
@@ -126,15 +129,17 @@ public class InvWalk extends Module {
             }
             while (!this.clickQueue.isEmpty()) {
                 PacketUtil.sendPacketNoEvent(this.clickQueue.poll());
+                ChatUtil.sendFormatted(String.format("%s%s: &csend clickQueue&r", Myau.clientName, this.getName()));
             }
             if (this.closeDelayTicks > 0) {
                 if (mc.thePlayer.inventory.getItemStack() == null) {
                     this.closeDelayTicks--;
                 }
             } else if (this.closeDelayTicks == 0) {
-                PacketUtil.sendPacketNoEvent(new C0DPacketCloseWindow(0));
+                if (mc.currentScreen instanceof GuiInventory)
+                    PacketUtil.sendPacketNoEvent(new C0DPacketCloseWindow(0));
                 this.closeDelayTicks = -1;
-                System.out.print("close inv\n");
+                ChatUtil.sendFormatted(String.format("%s%s: &cclose inv&r", Myau.clientName, this.getName()));
             }
         }
     }
@@ -167,7 +172,7 @@ public class InvWalk extends Module {
             if (this.pendingStatus != null) {
                 PacketUtil.sendPacketNoEvent(this.pendingStatus);
                 this.pendingStatus = null;
-                System.out.print("open inv\n");
+                ChatUtil.sendFormatted(String.format("%s%s: &copen inv&r", Myau.clientName, this.getName()));
             }
             if (this.delayTicks > 0) {
                 this.delayTicks--;
@@ -180,46 +185,52 @@ public class InvWalk extends Module {
         if (!this.isEnabled() || event.getType() != EventType.SEND) return;
 
         if (event.getPacket() instanceof C16PacketClientStatus) {
+            this.storeMovementKeys();
             if (this.mode.getValue() == 1 || this.mode.getValue() == 3) {
                 C16PacketClientStatus packet = (C16PacketClientStatus) event.getPacket();
                 if (packet.getStatus() == EnumState.OPEN_INVENTORY_ACHIEVEMENT) {
                     event.setCancelled(true);
                     if (this.mode.getValue() == 1){
                         this.pendingStatus = packet;
-                    } else {
-                        this.storeMovementKeys();
                     }
                 }
             } else if (((C16PacketClientStatus) event.getPacket()).getStatus() == EnumState.OPEN_INVENTORY_ACHIEVEMENT) {
-                System.out.print("open inv native2\n");
+                ChatUtil.sendFormatted(String.format("%s%s: &copen inv native2&r", Myau.clientName, this.getName()));
             }
         } else if (!(event.getPacket() instanceof C0EPacketClickWindow)) {
             if (event.getPacket() instanceof C0DPacketCloseWindow) {
                 C0DPacketCloseWindow packet = (C0DPacketCloseWindow) event.getPacket();
                 if (((IAccessorC0DPacketCloseWindow) packet).getWindowId() == 0) {
                     if (this.mode.getValue() == 3) {
-                        if (this.openDelayTicks != -1) {
+                        if (!this.clickQueue.isEmpty()) {
+                            this.clickQueue.clear();
+                        }
+                        if (this.openDelayTicks >= 0) {
                             this.openDelayTicks = -1;
                         }
-                        if (this.clickQueue.isEmpty()) {
-                            if (this.closeDelayTicks != -1) {
-                                System.out.print("close inv native 1\n");
-                                this.closeDelayTicks = -1;
-                            } else {
-                                event.setCancelled(true);
-                            }
+                        if (this.closeDelayTicks >= 0) {
+                            ChatUtil.sendFormatted(String.format("%s%s: &cclose inv native 1&r", Myau.clientName, this.getName()));
+                            this.closeDelayTicks = -1;
                         } else {
-                            this.openDelayTicks = 0;
                             event.setCancelled(true);
                         }
                     } else if (this.pendingStatus != null) {
                         this.pendingStatus = null;
                         event.setCancelled(true);
                     } else {
-                        System.out.print("close inv native 2\n");
+                        ChatUtil.sendFormatted(String.format("%s%s: &cclose inv native 2&r", Myau.clientName, this.getName()));
                     }
                 } else {
-                    System.out.printf("C0DPacketCloseWindow %d\n", ((IAccessorC0DPacketCloseWindow) packet).getWindowId());
+                    if (!this.clickQueue.isEmpty()) {
+                        this.clickQueue.clear();
+                    }
+                    if (this.openDelayTicks >= 0) {
+                        this.openDelayTicks = -1;
+                    }
+                    if (this.closeDelayTicks >= 0) {
+                        this.closeDelayTicks = -1;
+                    }
+                    ChatUtil.sendFormatted(String.format("%s%s: &cC0DPacketCloseWindow %d&r", Myau.clientName, this.getName(), ((IAccessorC0DPacketCloseWindow) packet).getWindowId()));
                 }
             }
         } else {
@@ -251,14 +262,13 @@ public class InvWalk extends Module {
                 case 3: // KeepMove
                     if (packet.getWindowId() == 0) { // inventory
                         if ((packet.getMode() == 3 || packet.getMode() == 4) && packet.getSlotId() == -999) {
-                            System.out.printf("skip %d\n", packet.getMode());
                             event.setCancelled(true);
                             return;
                         }
                         KeyBinding.unPressAllKeys();
                         event.setCancelled(true);
                         this.clickQueue.offer(packet);
-                        if (this.closeDelayTicks == -1 && this.openDelayTicks == -1){
+                        if (this.closeDelayTicks < 0 && this.openDelayTicks < 0){
                             this.pendingStatus = new C16PacketClientStatus(EnumState.OPEN_INVENTORY_ACHIEVEMENT);
                             this.openDelayTicks = openDelay.getValue();
                         }
@@ -269,7 +279,7 @@ public class InvWalk extends Module {
             if (this.pendingStatus != null) {
                 PacketUtil.sendPacketNoEvent(this.pendingStatus);
                 this.pendingStatus = null;
-                System.out.print("open inv native1\n");
+                ChatUtil.sendFormatted(String.format("%s%s: &copen inv native1&r", Myau.clientName, this.getName()));
             }
         }
     }
