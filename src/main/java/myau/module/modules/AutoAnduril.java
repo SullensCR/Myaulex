@@ -5,9 +5,12 @@ import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.events.TickEvent;
 import myau.module.Module;
+import myau.property.properties.BooleanProperty;
 import myau.property.properties.IntProperty;
 import myau.util.ItemUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.potion.Potion;
+import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.MovingObjectPosition;
 
 public class AutoAnduril extends Module {
@@ -18,6 +21,7 @@ public class AutoAnduril extends Module {
     private int holdTick = -1;
     public final IntProperty interval = new IntProperty("interval", 40, 0, 100);
     public final IntProperty hold = new IntProperty("hold", 1, 0, 20);
+    public final BooleanProperty speedCheck = new BooleanProperty("speedCheck", false);
 
     public AutoAnduril() {
         super("AutoAnduril", false);
@@ -33,6 +37,13 @@ public class AutoAnduril extends Module {
         return true;
     }
 
+    public boolean hasSpeed() {
+        if (!speedCheck.getValue()) return false;
+        PotionEffect potionEffect = mc.thePlayer.getActivePotionEffect(Potion.moveSpeed);
+        if (potionEffect == null) return false;
+        return (potionEffect.getAmplifier() > 0);
+    }
+
     @EventTarget
     public void onTick(TickEvent event) {
         if (this.isEnabled() && event.getType() == EventType.PRE) {
@@ -46,7 +57,7 @@ public class AutoAnduril extends Module {
             if (this.intervalTick > 0) {
                 this.intervalTick--;
             } else if (intervalTick == 0) {
-                if (!mc.thePlayer.isUsingItem() && canSwap()) {
+                if (!mc.thePlayer.isUsingItem() && canSwap() && !hasSpeed()) {
                     int slot = ItemUtil.findAndurilHotbarSlot(mc.thePlayer.inventory.currentItem);
                     if (slot != -1 && slot != mc.thePlayer.inventory.currentItem) {
                         this.previousSlot = mc.thePlayer.inventory.currentItem;
