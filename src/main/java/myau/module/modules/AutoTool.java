@@ -1,5 +1,6 @@
 package myau.module.modules;
 
+import myau.Myau;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.events.TickEvent;
@@ -31,10 +32,12 @@ public class AutoTool extends Module {
                 this.currentToolSlot = -1;
                 this.previousSlot = -1;
             }
+            KillAura killAura = (KillAura) Myau.moduleManager.modules.get(KillAura.class);
             if (mc.objectMouseOver != null
                     && mc.objectMouseOver.typeOfHit == MovingObjectType.BLOCK
                     && mc.gameSettings.keyBindAttack.isKeyDown()
-                    && !mc.thePlayer.isUsingItem()) {
+                    && !mc.thePlayer.isUsingItem()
+                    && (!killAura.isEnabled() || killAura.getTarget() == null)) {
                 if (this.tickDelayCounter >= this.switchDelay.getValue()
                         && (!(Boolean) this.sneakOnly.getValue() || KeyBindUtil.isKeyDown(mc.gameSettings.keyBindSneak.getKeyCode()))) {
                     int slot = ItemUtil.findInventorySlot(
