@@ -111,7 +111,7 @@ public class InvWalk extends Module {
                 if (!(mc.currentScreen instanceof GuiInventory)) return false;
                 return this.pendingStatus != null && this.clickQueue.isEmpty();
             case 2: // Hypixel
-                return this.clickQueue.isEmpty();
+                return this.delayTicks == 0 && this.clickQueue.isEmpty();
             case 3: // KeepMove
                 if (!(mc.currentScreen instanceof GuiInventory)) return false;
                 return this.closeDelayTicks == -1 && this.clickQueue.isEmpty();
@@ -153,7 +153,7 @@ public class InvWalk extends Module {
             return;
         }
 
-        if (this.canInvWalk() && this.delayTicks == 0) {
+        if (this.canInvWalk()) {
             if (this.isSetMovementKeys() && this.lockMoveKey.getValue()) {
                 this.restoreMovementKeys();
             } else {

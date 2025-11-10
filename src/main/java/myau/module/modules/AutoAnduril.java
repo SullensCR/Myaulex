@@ -1,0 +1,91 @@
+package myau.module.modules;
+
+import myau.Myau;
+import myau.event.EventTarget;
+import myau.event.types.EventType;
+import myau.events.TickEvent;
+import myau.module.Module;
+import myau.property.properties.IntProperty;
+import myau.util.ItemUtil;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.MovingObjectPosition;
+
+public class AutoAnduril extends Module {
+    private static final Minecraft mc = Minecraft.getMinecraft();
+    private int previousSlot = -1;
+    private int currentSlot = -1;
+    private int intervalTick = -1;
+    private int holdTick = -1;
+    public final IntProperty interval = new IntProperty("interval", 40, 0, 100);
+    public final IntProperty hold = new IntProperty("hold", 1, 0, 20);
+
+    public AutoAnduril() {
+        super("AutoAnduril", false);
+    }
+
+    public boolean canSwap() {
+        if (mc.objectMouseOver != null
+                && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK
+                && mc.gameSettings.keyBindAttack.isKeyDown()) return false;
+        InvWalk invWalk = (InvWalk) Myau.moduleManager.modules.get(InvWalk.class);
+        if (mc.currentScreen != null && !(mc.currentScreen instanceof myau.ui.ClickGui)
+                && !(invWalk.isEnabled() && invWalk.canInvWalk())) return false;
+        return true;
+    }
+
+    @EventTarget
+    public void onTick(TickEvent event) {
+        if (this.isEnabled() && event.getType() == EventType.PRE) {
+            if (this.currentSlot != -1 && this.currentSlot != mc.thePlayer.inventory.currentItem) {
+                this.currentSlot = -1;
+                this.previousSlot = -1;
+                this.intervalTick = interval.getValue();
+                this.holdTick = -1;
+            }
+
+            if (this.intervalTick > 0) {
+                this.intervalTick--;
+            } else if (intervalTick == 0) {
+                if (!mc.thePlayer.isUsingItem() && canSwap()) {
+                    int slot = ItemUtil.findAndurilHotbarSlot(mc.thePlayer.inventory.currentItem);
+                    if (slot != -1 && slot != mc.thePlayer.inventory.currentItem) {
+                        this.previousSlot = mc.thePlayer.inventory.currentItem;
+                        this.currentSlot = mc.thePlayer.inventory.currentItem = slot;
+                        this.intervalTick = -1;
+                        this.holdTick = hold.getValue();
+                        return;
+                    } else {
+                        this.intervalTick = interval.getValue();
+                        this.holdTick = -1;
+                    }
+                }
+            }
+            if (this.holdTick > 0) {
+                this.holdTick--;
+            } else if (holdTick == 0) {
+                if (this.previousSlot != -1 && this.previousSlot != mc.thePlayer.inventory.currentItem && canSwap()) {
+                    mc.thePlayer.inventory.currentItem = this.previousSlot;
+                    this.previousSlot = -1;
+                }
+                this.holdTick = -1;
+                this.intervalTick = interval.getValue();
+            }
+        }
+    }
+
+    @Override
+    public void onEnabled() {
+        this.previousSlot = -1;
+        this.currentSlot = -1;
+        this.intervalTick = this.interval.getValue();
+        this.holdTick = -1;
+    }
+
+    @Override
+    public void onDisabled() {
+        this.previousSlot = -1;
+        this.currentSlot = -1;
+        this.intervalTick = -1;
+        this.holdTick = -1;
+    }
+}

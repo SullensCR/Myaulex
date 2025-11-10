@@ -1,6 +1,7 @@
 package myau.util;
 
 import com.google.common.collect.Multimap;
+import myau.mixin.IAccessorItemSword;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.enchantment.Enchantment;
@@ -9,6 +10,7 @@ import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.init.Items;
 import net.minecraft.item.*;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.potion.PotionEffect;
 
 import java.util.ArrayList;
@@ -171,6 +173,26 @@ public class ItemUtil {
             bestStrength = strength;
         }
         return bestSlot;
+    }
+
+    public static int findAndurilHotbarSlot(int currentSlot) {
+        for (int i = currentSlot; i < currentSlot + 9; ++i) {
+            ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(i % 9);
+            if (itemStack == null) continue;
+
+            if (itemStack.getItem() instanceof ItemSword && itemStack.hasTagCompound()) {
+                IAccessorItemSword itemSword = (IAccessorItemSword) itemStack.getItem();
+                if (itemSword.getMaterial() == Item.ToolMaterial.IRON && itemStack.getTagCompound().hasKey("display", 10)) {
+                    NBTTagList nbttaglist = itemStack.getTagCompound().getCompoundTag("display").getTagList("Lore", 8);
+                    for (int j = 0; j < nbttaglist.tagCount(); ++j) {
+                        if (nbttaglist.getStringTagAt(j).contains("§9Justice")) {
+                            return i % 9;
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
     }
 
     public static int findArmorInventorySlot(int armorType, boolean checkDurability) {
