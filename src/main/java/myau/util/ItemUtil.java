@@ -163,7 +163,7 @@ public class ItemUtil {
     public static int findInventorySlot(int currentSlot, Block block) {
         ItemStack currentItem = ItemUtil.mc.thePlayer.inventory.getStackInSlot(currentSlot);
         int bestSlot = currentSlot;
-        float bestStrength = currentItem != null ? currentItem.getStrVsBlock(block) : 1.0f;
+        float bestStrength = currentItem != null ? currentItem.getStrVsBlock(block) * getToolEfficiency(currentItem) : 1.0f;
         for (int i = 0; i < 9; ++i) {
             ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(i);
             if (itemStack == null) continue;
