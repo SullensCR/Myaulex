@@ -9,6 +9,8 @@ import myau.property.properties.BooleanProperty;
 import myau.property.properties.IntProperty;
 import myau.util.ItemUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.ItemSword;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.MovingObjectPosition;
@@ -31,6 +33,10 @@ public class AutoAnduril extends Module {
         if (mc.objectMouseOver != null
                 && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK
                 && mc.gameSettings.keyBindAttack.isKeyDown()) return false;
+        ItemStack currentItem = mc.thePlayer.inventory.getStackInSlot(mc.thePlayer.inventory.currentItem);
+        if (currentItem != null
+                && !(currentItem.getItem() instanceof ItemSword)
+                && mc.thePlayer.isUsingItem()) return false;
         InvWalk invWalk = (InvWalk) Myau.moduleManager.modules.get(InvWalk.class);
         if (mc.currentScreen != null && !(mc.currentScreen instanceof myau.ui.ClickGui)
                 && !(invWalk.isEnabled() && invWalk.canInvWalk())) return false;
@@ -57,7 +63,7 @@ public class AutoAnduril extends Module {
             if (this.intervalTick > 0) {
                 this.intervalTick--;
             } else if (intervalTick == 0) {
-                if (!mc.thePlayer.isUsingItem() && canSwap() && !hasSpeed()) {
+                if (canSwap() && !hasSpeed()) {
                     int slot = ItemUtil.findAndurilHotbarSlot(mc.thePlayer.inventory.currentItem);
                     if (slot != -1 && slot != mc.thePlayer.inventory.currentItem) {
                         this.previousSlot = mc.thePlayer.inventory.currentItem;
@@ -77,9 +83,9 @@ public class AutoAnduril extends Module {
                 if (this.previousSlot != -1 && this.previousSlot != mc.thePlayer.inventory.currentItem && canSwap()) {
                     mc.thePlayer.inventory.currentItem = this.previousSlot;
                     this.previousSlot = -1;
+                    this.holdTick = -1;
+                    this.intervalTick = interval.getValue();
                 }
-                this.holdTick = -1;
-                this.intervalTick = interval.getValue();
             }
         }
     }

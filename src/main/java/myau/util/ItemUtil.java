@@ -167,7 +167,7 @@ public class ItemUtil {
         for (int i = 0; i < 9; ++i) {
             ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(i);
             if (itemStack == null) continue;
-            float strength = itemStack.getStrVsBlock(block);
+            float strength = itemStack.getStrVsBlock(block) * getToolEfficiency(itemStack);
             if (!(strength > bestStrength)) continue;
             bestSlot = i;
             bestStrength = strength;
