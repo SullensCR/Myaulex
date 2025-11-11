@@ -100,6 +100,21 @@ public class ItemUtil {
         return efficiency;
     }
 
+    public static float getToolEfficiency(ItemStack itemStack, Block block) {
+        float efficiency = 1.0f;
+        if (itemStack != null) {
+            efficiency = itemStack.canHarvestBlock(block) || itemStack.getItem() instanceof ItemSword
+                    ? itemStack.getStrVsBlock(block) : 1.0f;
+            if (itemStack.getItem() instanceof ItemTool) {
+                int enchantLevel;
+                if (efficiency > 1.0f && (enchantLevel = EnchantmentHelper.getEnchantmentLevel(Enchantment.efficiency.effectId, itemStack)) > 0) {
+                    efficiency += (float) (enchantLevel * enchantLevel + 1);
+                }
+            }
+        }
+        return efficiency;
+    }
+
     public static double getArmorProtection(ItemStack itemStack) {
         double protection = 0.0;
         if (itemStack != null) {
@@ -163,11 +178,11 @@ public class ItemUtil {
     public static int findInventorySlot(int currentSlot, Block block) {
         ItemStack currentItem = ItemUtil.mc.thePlayer.inventory.getStackInSlot(currentSlot);
         int bestSlot = currentSlot;
-        float bestStrength = currentItem != null ? currentItem.getStrVsBlock(block) * getToolEfficiency(currentItem) : 1.0f;
+        float bestStrength = getToolEfficiency(currentItem, block);
         for (int i = 0; i < 9; ++i) {
             ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(i);
             if (itemStack == null) continue;
-            float strength = itemStack.getStrVsBlock(block) * getToolEfficiency(itemStack);
+            float strength = getToolEfficiency(itemStack, block);
             if (!(strength > bestStrength)) continue;
             bestSlot = i;
             bestStrength = strength;
