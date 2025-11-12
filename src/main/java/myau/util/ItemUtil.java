@@ -121,7 +121,9 @@ public class ItemUtil {
             if (itemStack.getItem() instanceof ItemArmor) {
                 protection = 0.0 + (double) ((ItemArmor) itemStack.getItem()).damageReduceAmount;
                 if (itemStack.isItemEnchanted()) {
-                    protection += (double) EnchantmentHelper.getEnchantmentLevel(Enchantment.protection.effectId, itemStack) * 0.25;
+                    protection += (double) EnchantmentHelper.getEnchantmentLevel(Enchantment.protection.effectId, itemStack) * 0.8;
+                    protection += (double) EnchantmentHelper.getEnchantmentLevel(Enchantment.featherFalling.effectId, itemStack) * 0.05;
+                    protection += (double) EnchantmentHelper.getEnchantmentLevel(Enchantment.projectileProtection.effectId, itemStack) * 0.01;
                 }
             }
         }
@@ -204,6 +206,21 @@ public class ItemUtil {
                             return i % 9;
                         }
                     }
+                }
+            }
+        }
+        return -1;
+    }
+
+    public static int findWoodSwordHotbarSlot(int currentSlot) {
+        for (int i = currentSlot; i < currentSlot + 9; ++i) {
+            ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(i % 9);
+            if (itemStack == null) continue;
+
+            if (itemStack.getItem() instanceof ItemSword) {
+                IAccessorItemSword itemSword = (IAccessorItemSword) itemStack.getItem();
+                if (itemSword.getMaterial() == Item.ToolMaterial.WOOD) {
+                    return i % 9;
                 }
             }
         }

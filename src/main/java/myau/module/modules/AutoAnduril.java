@@ -3,6 +3,7 @@ package myau.module.modules;
 import myau.Myau;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
+import myau.event.types.Priority;
 import myau.events.TickEvent;
 import myau.module.Module;
 import myau.property.properties.BooleanProperty;
@@ -24,6 +25,7 @@ public class AutoAnduril extends Module {
     public final IntProperty interval = new IntProperty("interval", 40, 0, 100);
     public final IntProperty hold = new IntProperty("hold", 1, 0, 20);
     public final BooleanProperty speedCheck = new BooleanProperty("speedCheck", false);
+    public final BooleanProperty debug = new BooleanProperty("debug", false);
 
     public AutoAnduril() {
         super("AutoAnduril", false);
@@ -50,7 +52,7 @@ public class AutoAnduril extends Module {
         return (potionEffect.getAmplifier() > 0);
     }
 
-    @EventTarget
+    @EventTarget(Priority.LOWEST)
     public void onTick(TickEvent event) {
         if (this.isEnabled() && event.getType() == EventType.PRE) {
             if (this.currentSlot != -1 && this.currentSlot != mc.thePlayer.inventory.currentItem) {
@@ -65,6 +67,8 @@ public class AutoAnduril extends Module {
             } else if (intervalTick == 0) {
                 if (canSwap() && !hasSpeed()) {
                     int slot = ItemUtil.findAndurilHotbarSlot(mc.thePlayer.inventory.currentItem);
+                    if (debug.getValue() && slot == -1)
+                        slot = ItemUtil.findWoodSwordHotbarSlot(mc.thePlayer.inventory.currentItem);
                     if (slot != -1 && slot != mc.thePlayer.inventory.currentItem) {
                         this.previousSlot = mc.thePlayer.inventory.currentItem;
                         this.currentSlot = mc.thePlayer.inventory.currentItem = slot;
@@ -80,7 +84,7 @@ public class AutoAnduril extends Module {
             if (this.holdTick > 0) {
                 this.holdTick--;
             } else if (holdTick == 0) {
-                if (this.previousSlot != -1 && this.previousSlot != mc.thePlayer.inventory.currentItem && canSwap()) {
+                if (this.previousSlot != -1 && canSwap()) {
                     mc.thePlayer.inventory.currentItem = this.previousSlot;
                     this.previousSlot = -1;
                     this.holdTick = -1;
