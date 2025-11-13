@@ -35,9 +35,24 @@ public class AutoHeal extends Module {
             ItemStack stack = mc.thePlayer.inventory.getStackInSlot(i);
             if (stack != null && stack.hasDisplayName()) {
                 String name = stack.getDisplayName();
-                if (stack.getItem() instanceof ItemSkull && (name.contains("§6") && name.contains("Golden Head") || name.matches("\\S+§c's Head"))) {
+                if (stack.getItem() instanceof ItemSkull && name.contains("§6") && name.contains("Golden Head")) {
                     return i;
                 }
+            }
+        }
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.thePlayer.inventory.getStackInSlot(i);
+            if (stack != null && stack.hasDisplayName()) {
+                String name = stack.getDisplayName();
+                if (stack.getItem() instanceof ItemSkull && name.matches("\\S+§c's Head")) {
+                    return i;
+                }
+            }
+        }
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.thePlayer.inventory.getStackInSlot(i);
+            if (stack != null && stack.hasDisplayName()) {
+                String name = stack.getDisplayName();
                 if (stack.getItem() instanceof ItemFood && name.contains("§6Cornucopia")) {
                     return i;
                 }
