@@ -25,7 +25,7 @@ public class AutoAnduril extends Module {
     public final IntProperty interval = new IntProperty("interval", 40, 0, 100);
     public final IntProperty hold = new IntProperty("hold", 1, 0, 20);
     public final BooleanProperty speedCheck = new BooleanProperty("speedCheck", false);
-    public final BooleanProperty debug = new BooleanProperty("debug", false);
+    public final IntProperty debug = new IntProperty("debug", 0, 0, 9);
 
     public AutoAnduril() {
         super("AutoAnduril", false);
@@ -67,8 +67,7 @@ public class AutoAnduril extends Module {
             } else if (intervalTick == 0) {
                 if (canSwap() && !hasSpeed()) {
                     int slot = ItemUtil.findAndurilHotbarSlot(mc.thePlayer.inventory.currentItem);
-                    if (debug.getValue() && slot == -1)
-                        slot = ItemUtil.findWoodSwordHotbarSlot(mc.thePlayer.inventory.currentItem);
+                    if (debug.getValue() != 0 && slot == -1) slot = debug.getValue() - 1;
                     if (slot != -1 && slot != mc.thePlayer.inventory.currentItem) {
                         this.previousSlot = mc.thePlayer.inventory.currentItem;
                         this.currentSlot = mc.thePlayer.inventory.currentItem = slot;

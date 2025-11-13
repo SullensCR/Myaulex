@@ -212,21 +212,6 @@ public class ItemUtil {
         return -1;
     }
 
-    public static int findWoodSwordHotbarSlot(int currentSlot) {
-        for (int i = currentSlot; i < currentSlot + 9; ++i) {
-            ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(i % 9);
-            if (itemStack == null) continue;
-
-            if (itemStack.getItem() instanceof ItemSword) {
-                IAccessorItemSword itemSword = (IAccessorItemSword) itemStack.getItem();
-                if (itemSword.getMaterial() == Item.ToolMaterial.WOOD) {
-                    return i % 9;
-                }
-            }
-        }
-        return -1;
-    }
-
     public static int findArmorInventorySlot(int armorType, boolean checkDurability) {
         int bestSlot = -1;
         double bestProtection = 0.0;
