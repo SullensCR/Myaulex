@@ -283,6 +283,108 @@ public class RenderUtil {
         GL11.glEnd();
     }
 
+    public static void fillCircle(double x, double y, double radius, int segments, int color) {
+        // Enable blending & disable textures for 2D shape
+        GlStateManager.enableBlend();
+        GlStateManager.disableTexture2D();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+
+        RenderUtil.setColor(color);
+
+        GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+
+        // Center point
+        GL11.glVertex2d(x, y);
+
+        // Circle border
+        for (int i = 0; i <= segments; i++) {
+            double angle = i * (Math.PI * 2.0 / segments);
+            double px = x + Math.cos(angle) * radius;
+            double py = y + Math.sin(angle) * radius;
+            GL11.glVertex2d(px, py);
+        }
+
+        GL11.glEnd();
+
+        // Restore state
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+        GlStateManager.resetColor();
+    }
+    public static void drawRadarCircle(double x, double y, double radius,
+                                       int segments,
+                                       int fillColor,
+                                       int outlineColor,
+                                       int crossColor) {
+
+        //=========================
+        // 1. 填充圆（可选）
+        //=========================
+        if ((fillColor >>> 24) != 0) {  // 透明度为 0 则跳过
+            GlStateManager.enableBlend();
+            GlStateManager.disableTexture2D();
+            GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+
+            RenderUtil.setColor(fillColor);
+
+            GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+            GL11.glVertex2d(x, y); // center
+            for (int i = 0; i <= segments; i++) {
+                double angle = i * (Math.PI * 2 / segments);
+                GL11.glVertex2d(
+                        x + Math.cos(angle) * radius,
+                        y + Math.sin(angle) * radius
+                );
+            }
+            GL11.glEnd();
+        }
+
+        //=========================
+        // 2. 外圈描边
+        //=========================
+        if ((outlineColor >>> 24) != 0) {
+            RenderUtil.setColor(outlineColor);
+            GL11.glLineWidth(2f);
+
+            GL11.glBegin(GL11.GL_LINE_LOOP);
+            for (int i = 0; i <= segments; i++) {
+                double angle = i * (Math.PI * 2 / segments);
+                GL11.glVertex2d(
+                        x + Math.cos(angle) * radius,
+                        y + Math.sin(angle) * radius
+                );
+            }
+            GL11.glEnd();
+        }
+
+        //=========================
+        // 3. 十字架 (Crosshair)
+        //=========================
+        if ((crossColor >>> 24) != 0) {
+            RenderUtil.setColor(crossColor);
+            GL11.glLineWidth(1.5f);
+
+            GL11.glBegin(GL11.GL_LINES);
+
+            // vertical line
+            GL11.glVertex2d(x, y - radius);
+            GL11.glVertex2d(x, y + radius);
+
+            // horizontal line
+            GL11.glVertex2d(x - radius, y);
+            GL11.glVertex2d(x + radius, y);
+
+            GL11.glEnd();
+        }
+
+        //=========================
+        // Reset
+        //=========================
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+        GlStateManager.resetColor();
+    }
+
     public static void drawCircle(double centerX, double centerY, double centerZ, double radius, int segments, int color) {
         RenderUtil.setColor(color);
         GL11.glLineWidth(3.0f);

@@ -83,6 +83,7 @@ public class Config {
                                     property.read(object);
                                 } catch (Exception e) {
                                     ((IAccessorMinecraft) mc).getLogger().warn(String.format("Failed to load property %s for module %s", property.getName(), module.getName()));
+                                    ((IAccessorMinecraft) mc).getLogger().error(e);
                                 }
                             }
                         }
