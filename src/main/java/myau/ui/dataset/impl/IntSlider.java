@@ -67,6 +67,12 @@ public class IntSlider extends Slider {
 
     @Override
     public void stepping(boolean increment) {
-        property.setValue(property.getValue() + (increment ? 1 : -1));
+        if (increment) {
+            if (property.getValue() >= property.getMaximum()) return;
+            property.setValue(property.getValue() + 1);
+        } else {
+            if (property.getValue() <= property.getMinimum()) return;
+            property.setValue(property.getValue() - 1);
+        }
     }
 }

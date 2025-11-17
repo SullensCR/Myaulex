@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.player.EntityPlayer;
+import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
 import java.util.stream.Collectors;
@@ -29,6 +30,7 @@ public class Radar extends Module {
     public final BooleanProperty showFriends = new BooleanProperty("friends", true);
     public final BooleanProperty showEnemies = new BooleanProperty("enemies", true);
     public final BooleanProperty showBots = new BooleanProperty("bots", false);
+    public final BooleanProperty showPVP = new BooleanProperty("showPVP", false);
     public final ColorProperty fillColor = new ColorProperty("fillColor", Color.GRAY.getRGB(), 0x40);
     public final ColorProperty outlineColor = new ColorProperty("outlineColor", Color.DARK_GRAY.getRGB());
     public final ColorProperty crossColor = new ColorProperty("crossColor", Color.LIGHT_GRAY.getRGB(), 0x80);
@@ -121,6 +123,29 @@ public class Radar extends Module {
 
             RenderUtil.fillCircle(px, py, dotRadius.getValue(), 12, getEntityColor(player).getRGB());
 
+        }
+        if (this.showPVP.getValue()) {
+            double dx = - mc.thePlayer.posX;
+            double dz = - mc.thePlayer.posZ;
+
+            double relX = dx * cos + dz * sin;
+            double relY = dz * cos - dx * sin;
+
+            double dist = Math.sqrt(relX * relX + relY * relY);
+            double scale = dist < radarRadius.getValue() * 2 ? 1.0F : radarRadius.getValue() * 2 / dist;
+            double px = relX * scale;
+            double py = relY * scale;
+            GlStateManager.pushMatrix();
+            GlStateManager.disableDepth();
+            GlStateManager.enableBlend();
+            GlStateManager.enableTexture2D();
+            GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GlStateManager.scale(hud.scale.getValue() / 2, hud.scale.getValue() / 2, 1.0f);
+            mc.fontRendererObj.drawString("PVP",
+                    (float) (px - mc.fontRendererObj.getStringWidth("PVP") / 2.0F),
+                    (float) (py - mc.fontRendererObj.FONT_HEIGHT / 2.0F),
+                    Color.WHITE.getRGB(), hud.shadow.getValue());
+            GlStateManager.popMatrix();
         }
         RenderUtil.disableRenderState();
         GlStateManager.popMatrix();

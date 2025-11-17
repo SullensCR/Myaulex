@@ -66,6 +66,12 @@ public class FloatSlider extends Slider {
 
     @Override
     public void stepping(boolean increment) {
-        property.setValue(Math.round(property.getValue() * 10 + (increment ? 1: -1)) / 10.0F);
+        if (increment) {
+            if (property.getValue() >= property.getMaximum()) return;
+            property.setValue(Math.round(property.getValue() * 10 + 1) / 10.0F);
+        } else {
+            if (property.getValue() <= property.getMinimum()) return;
+            property.setValue(Math.round(property.getValue() * 10 - 1) / 10.0F);
+        }
     }
 }
