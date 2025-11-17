@@ -103,7 +103,7 @@ public class ItemUtil {
     public static float getToolEfficiency(ItemStack itemStack, Block block) {
         float efficiency = 1.0f;
         if (itemStack != null) {
-            efficiency = itemStack.canHarvestBlock(block) || itemStack.getItem() instanceof ItemSword
+            efficiency = itemStack.canHarvestBlock(block) || !(itemStack.getItem() instanceof ItemPickaxe)
                     ? itemStack.getStrVsBlock(block) : 1.0f;
             if (itemStack.getItem() instanceof ItemTool) {
                 int enchantLevel;
