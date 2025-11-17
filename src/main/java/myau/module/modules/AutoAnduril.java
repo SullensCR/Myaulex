@@ -9,7 +9,9 @@ import myau.module.Module;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.IntProperty;
 import myau.util.ItemUtil;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
+import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
 import net.minecraft.potion.Potion;
@@ -36,13 +38,13 @@ public class AutoAnduril extends Module {
                 && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK
                 && mc.gameSettings.keyBindAttack.isKeyDown()) return false;
         ItemStack currentItem = mc.thePlayer.inventory.getStackInSlot(mc.thePlayer.inventory.currentItem);
-        if (currentItem != null
-                && !(currentItem.getItem() instanceof ItemSword)
-                && mc.thePlayer.isUsingItem()) return false;
+        if (currentItem != null) {
+            if (currentItem.getItem() instanceof ItemBlock && mc.gameSettings.keyBindUseItem.isKeyDown()) return false;
+            if (!(currentItem.getItem() instanceof ItemSword) && mc.thePlayer.isUsingItem()) return false;
+        }
         InvWalk invWalk = (InvWalk) Myau.moduleManager.modules.get(InvWalk.class);
-        if (mc.currentScreen != null && !(mc.currentScreen instanceof myau.ui.ClickGui)
-                && !(invWalk.isEnabled() && invWalk.canInvWalk())) return false;
-        return true;
+        return mc.currentScreen == null || mc.currentScreen instanceof myau.ui.ClickGui
+                || invWalk.isEnabled() && invWalk.canInvWalk();
     }
 
     public boolean hasSpeed() {
