@@ -3,17 +3,16 @@ package myau.module.modules;
 import myau.Myau;
 import myau.enums.ChatColors;
 import myau.event.EventTarget;
+import myau.event.types.Priority;
 import myau.events.Render2DEvent;
 import myau.module.Module;
 import myau.property.properties.*;
 import myau.util.RenderUtil;
-import myau.util.RotationUtil;
 import myau.util.TeamUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.MathHelper;
 
 import java.awt.*;
 import java.util.stream.Collectors;
@@ -21,10 +20,11 @@ import java.util.stream.Collectors;
 public class Radar extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     public final ModeProperty colorMode = new ModeProperty("color", 0, new String[]{"DEFAULT", "TEAMS", "HUD"});
-    public final IntProperty position = new IntProperty("position", 0, 0, 3);
-    public final IntProperty offsetX = new IntProperty("offsetX", 60, 0, 1000);
-    public final IntProperty offsetY = new IntProperty("offsetY", 60, 0, 1000);
-    public final PercentProperty opacity = new PercentProperty("opacity", 100);
+    public final IntProperty position = new IntProperty("position", 0, 0, 4);
+    public final IntProperty offsetX = new IntProperty("offsetX", 60, 0, 1000, () -> position.getValue() != 4);
+    public final IntProperty offsetY = new IntProperty("offsetY", 60, 0, 1000, () -> position.getValue() != 4);
+    public final IntProperty radarRadius = new IntProperty("radarRadius", 55, 10, 200);
+    public final FloatProperty dotRadius = new FloatProperty("dotRadius", 1.5F, 0.1F, 5.0F);
     public final BooleanProperty showPlayers = new BooleanProperty("players", true);
     public final BooleanProperty showFriends = new BooleanProperty("friends", true);
     public final BooleanProperty showEnemies = new BooleanProperty("enemies", true);
@@ -54,75 +54,72 @@ public class Radar extends Module {
         }
     }
 
-    private Color getEntityColor(EntityPlayer entityPlayer, float alpha) {
+    private Color getEntityColor(EntityPlayer entityPlayer) {
         if (TeamUtil.isFriend(entityPlayer)) {
             Color color = Myau.friendManager.getColor();
-            return new Color((float) color.getRed() / 255.0F, (float) color.getGreen() / 255.0F, (float) color.getBlue() / 255.0F, alpha);
+            return new Color(color.getRed(), color.getGreen(), color.getBlue(), 255);
         } else if (TeamUtil.isTarget(entityPlayer)) {
             Color color = Myau.targetManager.getColor();
-            return new Color((float) color.getRed() / 255.0F, (float) color.getGreen() / 255.0F, (float) color.getBlue() / 255.0F, alpha);
+            return new Color(color.getRed(), color.getGreen(), color.getBlue(), 255);
         } else {
             switch (this.colorMode.getValue()) {
                 case 0:
-                    return TeamUtil.getTeamColor(entityPlayer, alpha);
+                    return TeamUtil.getTeamColor(entityPlayer, 1.0F);
                 case 1:
                     int teamColor = TeamUtil.isSameTeam(entityPlayer) ? ChatColors.BLUE.toAwtColor() : ChatColors.RED.toAwtColor();
-                    return new Color(teamColor & Color.WHITE.getRGB() | (int) (alpha * 255.0F) << 24, true);
+                    return new Color(teamColor | 255 << 24, true);
                 case 2:
                     int color = ((HUD) Myau.moduleManager.modules.get(HUD.class)).getColor(System.currentTimeMillis()).getRGB();
-                    return new Color(color & Color.WHITE.getRGB() | (int) (alpha * 255.0F) << 24, true);
+                    return new Color(color | 255 << 24, true);
                 default:
-                    return new Color(1.0F, 1.0F, 1.0F, alpha);
+                    return Color.WHITE;
             }
         }
     }
 
-    @EventTarget
+    @EventTarget(Priority.LOWEST)
     public void onRender(Render2DEvent event) {
         if (!this.isEnabled()) return;
 
         ScaledResolution sr = new ScaledResolution(mc);
         HUD hud = (HUD) Myau.moduleManager.modules.get(HUD.class);
 
-        // 雷达显示参数
-        double radarRadius = 55.0;           // 雷达半径（像素）
-        double maxRange = 50.0;              // 世界单元（格）对应的检测半径
-        int circleSegments = 64;             // 画圆细分
-        double dotRadius = 2.0;              // 玩家点半径（像素）
-        float partial = event.getPartialTicks();
-
-        double centerX = (position.getValue() & 0x1) == 0x1 ? Math.max(sr.getScaledWidth() - offsetX.getValue(), 0) : Math.min(offsetX.getValue(), sr.getScaledWidth());
-        double centerY = (position.getValue() & 0x2) == 0x2 ? Math.max(sr.getScaledHeight() - offsetY.getValue(), 0) : Math.min(offsetY.getValue(), sr.getScaledHeight());
+        double centerX, centerY;
+        if (position.getValue() == 4) {
+            centerX = sr.getScaledWidth() / 2.0F;
+            centerY = sr.getScaledHeight() / 2.0F;
+        } else {
+            centerX = (position.getValue() & 0x1) == 0x1 ? Math.max(sr.getScaledWidth() - offsetX.getValue(), 0) : Math.min(offsetX.getValue(), sr.getScaledWidth());
+            centerY = (position.getValue() & 0x2) == 0x2 ? Math.max(sr.getScaledHeight() - offsetY.getValue(), 0) : Math.min(offsetY.getValue(), sr.getScaledHeight());
+        }
 
         GlStateManager.pushMatrix();
         GlStateManager.scale(hud.scale.getValue(), hud.scale.getValue(), 1.0f);
         GlStateManager.translate(centerX, centerY, 0.0f);
 
         RenderUtil.enableRenderState();
-        RenderUtil.drawRadarCircle(0.0, 0, radarRadius, circleSegments, fillColor.getValue(), outlineColor.getValue(), crossColor.getValue());
+
+        float yaw = (float)Math.toRadians(mc.thePlayer.rotationYaw);
+        if (mc.gameSettings.thirdPersonView != 2) {
+            yaw += (float)Math.toRadians(180.0F);
+        }
+        double cos = Math.cos(yaw);
+        double sin = Math.sin(yaw);
+
+        RenderUtil.drawRadarCircle(0.0, 0, yaw, radarRadius.getValue(), 64, fillColor.getValue(), outlineColor.getValue(), crossColor.getValue());
         for (EntityPlayer player : TeamUtil.getLoadedEntitiesSorted().stream().filter(entity -> entity instanceof EntityPlayer && this.shouldRender((EntityPlayer) entity)).map(EntityPlayer.class::cast).collect(Collectors.toList())) {
-            // 插值位置
             double dx = (player.lastTickPosX + (player.posX - player.lastTickPosX) * event.getPartialTicks()) - mc.thePlayer.posX;
             double dz = (player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * event.getPartialTicks()) - mc.thePlayer.posZ;
-
-            // 旋转以匹配玩家朝向
-            float yaw = (float)Math.toRadians(mc.thePlayer.rotationYaw);
-            if (mc.gameSettings.thirdPersonView != 2) {
-                yaw += (float)Math.toRadians(180.0F);
-            }
-            double cos = Math.cos(yaw);
-            double sin = Math.sin(yaw);
 
             double relX = dx * cos + dz * sin;
             double relY = dz * cos - dx * sin;
 
-            // 距离缩
             double dist = Math.sqrt(relX * relX + relY * relY);
-            double scale = dist < radarRadius ? 1.0F : radarRadius / dist;
+            double scale = dist < radarRadius.getValue() ? 1.0F : radarRadius.getValue() / dist;
             double px = relX * scale;
             double py = relY * scale;
 
-            RenderUtil.fillCircle(px, py, dotRadius, 12, getEntityColor(player, opacity.getValue().floatValue() / 100.0F).getRGB());
+            RenderUtil.fillCircle(px, py, dotRadius.getValue(), 12, getEntityColor(player).getRGB());
 
         }
         RenderUtil.disableRenderState();

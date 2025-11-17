@@ -1,9 +1,11 @@
 package myau.util;
 
+import myau.Myau;
 import myau.enums.ChatColors;
 import myau.mixin.IAccessorEntityRenderer;
 import myau.mixin.IAccessorMinecraft;
 import myau.mixin.IAccessorRenderManager;
+import myau.module.modules.HUD;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.ScaledResolution;
@@ -284,7 +286,6 @@ public class RenderUtil {
     }
 
     public static void fillCircle(double x, double y, double radius, int segments, int color) {
-        // Enable blending & disable textures for 2D shape
         GlStateManager.enableBlend();
         GlStateManager.disableTexture2D();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
@@ -293,10 +294,8 @@ public class RenderUtil {
 
         GL11.glBegin(GL11.GL_TRIANGLE_FAN);
 
-        // Center point
         GL11.glVertex2d(x, y);
 
-        // Circle border
         for (int i = 0; i <= segments; i++) {
             double angle = i * (Math.PI * 2.0 / segments);
             double px = x + Math.cos(angle) * radius;
@@ -306,80 +305,95 @@ public class RenderUtil {
 
         GL11.glEnd();
 
-        // Restore state
         GlStateManager.enableTexture2D();
         GlStateManager.disableBlend();
         GlStateManager.resetColor();
     }
-    public static void drawRadarCircle(double x, double y, double radius,
+
+    public static void drawRadarCircle(double x, double y, double angle, double radius,
                                        int segments,
                                        int fillColor,
                                        int outlineColor,
                                        int crossColor) {
 
-        //=========================
-        // 1. 填充圆（可选）
-        //=========================
-        if ((fillColor >>> 24) != 0) {  // 透明度为 0 则跳过
-            GlStateManager.enableBlend();
-            GlStateManager.disableTexture2D();
-            GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
-
+        GlStateManager.enableBlend();
+        GlStateManager.disableTexture2D();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        if ((fillColor >>> 24) != 0) {
             RenderUtil.setColor(fillColor);
-
             GL11.glBegin(GL11.GL_TRIANGLE_FAN);
-            GL11.glVertex2d(x, y); // center
+            GL11.glVertex2d(x, y);
             for (int i = 0; i <= segments; i++) {
-                double angle = i * (Math.PI * 2 / segments);
+                double angle1 = i * (Math.PI * 2 / segments);
                 GL11.glVertex2d(
-                        x + Math.cos(angle) * radius,
-                        y + Math.sin(angle) * radius
+                        x + Math.cos(angle1) * radius,
+                        y + Math.sin(angle1) * radius
                 );
             }
             GL11.glEnd();
         }
 
-        //=========================
-        // 2. 外圈描边
-        //=========================
         if ((outlineColor >>> 24) != 0) {
             RenderUtil.setColor(outlineColor);
             GL11.glLineWidth(2f);
 
             GL11.glBegin(GL11.GL_LINE_LOOP);
             for (int i = 0; i <= segments; i++) {
-                double angle = i * (Math.PI * 2 / segments);
+                double angle1 = i * (Math.PI * 2 / segments);
                 GL11.glVertex2d(
-                        x + Math.cos(angle) * radius,
-                        y + Math.sin(angle) * radius
+                        x + Math.cos(angle1) * radius,
+                        y + Math.sin(angle1) * radius
                 );
             }
             GL11.glEnd();
         }
 
-        //=========================
-        // 3. 十字架 (Crosshair)
-        //=========================
         if ((crossColor >>> 24) != 0) {
             RenderUtil.setColor(crossColor);
             GL11.glLineWidth(1.5f);
-
             GL11.glBegin(GL11.GL_LINES);
 
-            // vertical line
-            GL11.glVertex2d(x, y - radius);
-            GL11.glVertex2d(x, y + radius);
+            double dx1 = Math.sin(angle);
+            double dy1 = Math.cos(angle);
 
-            // horizontal line
-            GL11.glVertex2d(x - radius, y);
-            GL11.glVertex2d(x + radius, y);
+            double dx2 = Math.sin(angle + Math.PI / 2);
+            double dy2 = Math.cos(angle + Math.PI / 2);
+
+            GL11.glVertex2d(x - dx1 * radius, y - dy1 * radius);
+            GL11.glVertex2d(x + dx1 * radius, y + dy1 * radius);
+
+            GL11.glVertex2d(x - dx2 * radius, y - dy2 * radius);
+            GL11.glVertex2d(x + dx2 * radius, y + dy2 * radius);
 
             GL11.glEnd();
+
+            GlStateManager.disableDepth();
+            GlStateManager.enableBlend();
+            GlStateManager.enableTexture2D();
+            GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            HUD hud = (HUD) Myau.moduleManager.modules.get(HUD.class);
+            int color = hud.getColor(System.currentTimeMillis()).getRGB();
+            mc.fontRendererObj.drawString("N",
+                    (float) (x - dx1 * (radius + 5)) - mc.fontRendererObj.getStringWidth("N") / 2.0F,
+                    (float) (y - dy1 * (radius + 5)) - mc.fontRendererObj.FONT_HEIGHT / 2.0F,
+                    color, hud.shadow.getValue());
+            mc.fontRendererObj.drawString("E",
+                    (float) (x + dx2 * (radius + 5)) - mc.fontRendererObj.getStringWidth("E") / 2.0F,
+                    (float) (y + dy2 * (radius + 5)) - mc.fontRendererObj.FONT_HEIGHT / 2.0F,
+                    color, hud.shadow.getValue());
+            mc.fontRendererObj.drawString("S",
+                    (float) (x + dx1 * (radius + 5)) - mc.fontRendererObj.getStringWidth("S") / 2.0F,
+                    (float) (y + dy1 * (radius + 5)) - mc.fontRendererObj.FONT_HEIGHT / 2.0F,
+                    color, hud.shadow.getValue());
+            mc.fontRendererObj.drawString("W",
+                    (float) (x - dx2 * (radius + 5)) - mc.fontRendererObj.getStringWidth("W") / 2.0F,
+                    (float) (y - dy2 * (radius + 5)) - mc.fontRendererObj.FONT_HEIGHT / 2.0F,
+                    color, hud.shadow.getValue());
+            GlStateManager.disableTexture2D();
+            GlStateManager.disableBlend();
+            GlStateManager.enableDepth();
         }
 
-        //=========================
-        // Reset
-        //=========================
         GlStateManager.enableTexture2D();
         GlStateManager.disableBlend();
         GlStateManager.resetColor();
