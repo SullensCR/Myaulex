@@ -25,7 +25,7 @@ public class Eagle extends Module {
     public final BooleanProperty directionCheck = new BooleanProperty("direction-check", true);
     public final BooleanProperty pitchCheck = new BooleanProperty("pitch-check", true);
     public final BooleanProperty blocksOnly = new BooleanProperty("blocks-only", true);
-    public final BooleanProperty sneakOnly = new BooleanProperty("sneaking-only", true);
+    public final BooleanProperty sneakOnly = new BooleanProperty("sneaking-only", false);
 
     private boolean canMoveSafely() {
         double[] offset = MoveUtil.predictMovement();
