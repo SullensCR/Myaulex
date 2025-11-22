@@ -96,6 +96,7 @@ public class ClickGui extends GuiScreen {
         miscModules.add(Myau.moduleManager.getModule(NickHider.class));
         miscModules.add(Myau.moduleManager.getModule(AntiObbyTrap.class));
         miscModules.add(Myau.moduleManager.getModule(AntiObfuscate.class));
+        miscModules.add(Myau.moduleManager.getModule(InventoryClicker.class));
 
         Comparator<Module> comparator = Comparator.comparing(m -> m.getName().toLowerCase());
         combatModules.sort(comparator);
