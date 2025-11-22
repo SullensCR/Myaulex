@@ -108,7 +108,7 @@ public class Velocity extends Module {
                     && (
                     this.canDelay()
                             || this.isInLiquidOrWeb()
-                            || Myau.delayManager.isDelay() >= (long) this.delayTicks.getValue()
+                            || Myau.delayManager.getDelay() >= (long) this.delayTicks.getValue()
             )) {
                 Myau.delayManager.setDelayState(false, DelayModules.VELOCITY);
                 this.reverseFlag = false;

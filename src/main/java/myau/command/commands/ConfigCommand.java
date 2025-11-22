@@ -56,7 +56,7 @@ public class ConfigCommand extends Command {
                 case "s":
                 case "save":
                     if (args.size() < 3) {
-                        new Config("default", true).save();
+                        new Config(Config.lastConfig, true).save();
                         return;
                     }
                     new Config(args.get(2), true).save();

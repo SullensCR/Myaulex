@@ -17,8 +17,11 @@ public class Config {
     public String name;
     public File file;
 
+    public static String lastConfig;
+
     public Config(String name, boolean newConfig) {
         this.name = name;
+        lastConfig = name;
         if (name.equals("!") || name.equals("default")) {
             this.name = "default";
         }
