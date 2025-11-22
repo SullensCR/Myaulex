@@ -163,9 +163,8 @@ public class Myau {
         }
         Runtime.getRuntime().addShutdownHook(new Thread(config::save));
 
-        try (InputStreamReader reader = new InputStreamReader(Objects.requireNonNull(Myau.class.getResourceAsStream("/mcmod.info")), StandardCharsets.UTF_8)) {
-            JsonArray arr = new JsonParser().parse(reader).getAsJsonArray();
-            JsonObject modInfo = arr.get(0).getAsJsonObject();
+        try (InputStreamReader reader = new InputStreamReader(Objects.requireNonNull(Myau.class.getResourceAsStream("/version.json")), StandardCharsets.UTF_8)) {
+            JsonObject modInfo = new JsonParser().parse(reader).getAsJsonObject();
             version = modInfo.get("version").getAsString();
         } catch (Exception e) {
             version = "dev";
