@@ -1,6 +1,7 @@
 package myau.module.modules;
 
 import myau.event.EventTarget;
+import myau.event.types.EventType;
 import myau.events.TickEvent;
 import myau.mixin.IAccessorGuiScreen;
 import myau.module.Module;
@@ -25,7 +26,7 @@ public class InventoryClicker extends Module {
 
     @EventTarget
     public void onTick(TickEvent event) {
-        if (this.isEnabled() && mc.thePlayer != null) {
+        if (this.isEnabled() && mc.thePlayer != null && event.getType() == EventType.PRE) {
             if (mc.currentScreen instanceof GuiContainer) {
                 GuiContainer screen = ((GuiContainer) mc.currentScreen);
                 final int mouseX = Mouse.getEventX() * screen.width / mc.displayWidth;
