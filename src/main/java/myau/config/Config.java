@@ -57,6 +57,19 @@ public class Config {
                 if (moduleObj != null && moduleObj.isJsonObject()) {
                     JsonObject object = moduleObj.getAsJsonObject();
 
+                    ArrayList<Property<?>> list = Myau.propertyManager.properties.get(module.getClass());
+                    if (list != null) {
+                        for (Property<?> property : list) {
+                            if (object.has(property.getName())) {
+                                try {
+                                    property.read(object);
+                                } catch (Exception e) {
+                                    ((IAccessorMinecraft) mc).getLogger().warn(String.format("Failed to load property %s for module %s", property.getName(), module.getName()));
+                                }
+                            }
+                        }
+                    }
+
                     if (object.has("toggled")) {
                         JsonElement toggled = object.get("toggled");
                         if (toggled != null && toggled.isJsonPrimitive()) {
@@ -75,19 +88,6 @@ public class Config {
                         JsonElement hidden = object.get("hidden");
                         if (hidden != null && hidden.isJsonPrimitive()) {
                             module.setHidden(hidden.getAsBoolean());
-                        }
-                    }
-
-                    ArrayList<Property<?>> list = Myau.propertyManager.properties.get(module.getClass());
-                    if (list != null) {
-                        for (Property<?> property : list) {
-                            if (object.has(property.getName())) {
-                                try {
-                                    property.read(object);
-                                } catch (Exception e) {
-                                    ((IAccessorMinecraft) mc).getLogger().warn(String.format("Failed to load property %s for module %s", property.getName(), module.getName()));
-                                }
-                            }
                         }
                     }
                 }
