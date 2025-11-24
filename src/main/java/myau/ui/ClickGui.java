@@ -8,7 +8,7 @@ import myau.Myau;
 import myau.module.Module;
 import myau.module.modules.*;
 import myau.ui.components.CategoryComponent;
-import net.minecraft.client.gui.*;
+import net.minecraft.client.gui.GuiScreen;
 import org.lwjgl.input.Mouse;
 
 import java.awt.*;
@@ -42,6 +42,7 @@ public class ClickGui extends GuiScreen {
         combatModules.add(Myau.moduleManager.getModule(MoreKB.class));
 
         List<Module> movementModules = new ArrayList<>();
+        movementModules.add(Myau.moduleManager.getModule(AntiAFK.class));
         movementModules.add(Myau.moduleManager.getModule(Fly.class));
         movementModules.add(Myau.moduleManager.getModule(Speed.class));
         movementModules.add(Myau.moduleManager.getModule(LongJump.class));
