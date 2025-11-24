@@ -2,59 +2,60 @@ package myau.module.modules;
 
 import myau.event.EventTarget;
 import myau.event.types.EventType;
+import myau.event.types.Priority;
 import myau.events.*;
 import myau.module.Module;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.FloatProperty;
 import myau.property.properties.IntProperty;
-import myau.util.BlockUtil;
-import myau.util.ItemUtil;
-import myau.util.RandomUtil;
-import myau.util.RotationUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.play.client.C03PacketPlayer;
 import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.Vec3;
+import org.lwjgl.opengl.GL11;
 
+import java.awt.Color;
 import java.util.*;
 
 public class AutoBlockIn extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     private final Map<String, Integer> BLOCK_SCORE = new HashMap<>();
-    private final Set<String> placeThrough = new HashSet<>();
+    private long lastPlaceTime = 0;
     
-    public FloatProperty range;
-    public IntProperty speed;
-    public IntProperty tolerance;
-    public BooleanProperty itemSpoof;
+    public final FloatProperty range;
+    public final IntProperty speed;
+    public final IntProperty placeDelay;
+    public final IntProperty rotationTolerance;
+    public final IntProperty rotationPriority;
+    public final BooleanProperty itemSpoof;
+    public final BooleanProperty showProgress;
     
     private float serverYaw;
     private float serverPitch;
-    private double filled;
-    private Vec3 placePos;
-    private Vec3 hitPos;
-    private String face = "";
-    private boolean pendingPlace;
-    private boolean placingActive;
-    private boolean skipTick;
-    public int origSlot = -1;
-    private int plannedPlaceSlot = -1;
-    private int leftUnpressed;
-    private int rightUnpressed;
-    private boolean swapped;
-    public boolean active;
+    private float progress;
+    private float aimYaw;
+    private float aimPitch;
+    private BlockPos targetBlock;
+    private EnumFacing targetFacing;
+    private Vec3 targetHitVec;
+    private int lastSlot = -1;
+    
+    private static final int[][] DIRS = {{1,0,0}, {0,0,1}, {-1,0,0}, {0,0,-1}};
+    private static final double INSET = 0.05;
+    private static final double STEP = 0.2;
+    private static final double JIT = STEP * 0.1;
     
     public AutoBlockIn() {
         super("AutoBlockIn", false);
         
-        // Initialize block scores (lower is better)
         BLOCK_SCORE.put("obsidian", 0);
         BLOCK_SCORE.put("end_stone", 1);
         BLOCK_SCORE.put("planks", 2);
@@ -65,17 +66,13 @@ public class AutoBlockIn extends Module {
         BLOCK_SCORE.put("stained_hardened_clay", 4);
         BLOCK_SCORE.put("wool", 5);
         
-        // Initialize blocks we can place through
-        placeThrough.add("air");
-        placeThrough.add("water");
-        placeThrough.add("lava");
-        placeThrough.add("fire");
-        
-        // Register properties
-        this.range = new FloatProperty("Range", 4.5f, 0.5f, 4.5f);
-        this.speed = new IntProperty("Speed", 8, 0, 100);
-        this.tolerance = new IntProperty("Rotation-Tolerance", 25, 20, 100);
-        this.itemSpoof = new BooleanProperty("Spoof-Item", false);
+        this.range = new FloatProperty("Range", 4.5f, 3.0f, 6.0f);
+        this.speed = new IntProperty("Speed", 20, 5, 100);
+        this.placeDelay = new IntProperty("Place-Delay", 50, 0, 200);
+        this.rotationTolerance = new IntProperty("Rot-Tolerance", 25, 5, 100); 
+        this.rotationPriority = new IntProperty("Rot-Priority", 3, 1, 10);
+        this.itemSpoof = new BooleanProperty("Item-Spoof", true);
+        this.showProgress = new BooleanProperty("Show-Progress", true);
     }
 
     @Override
@@ -83,266 +80,232 @@ public class AutoBlockIn extends Module {
         if (mc.thePlayer != null) {
             serverYaw = mc.thePlayer.rotationYaw;
             serverPitch = mc.thePlayer.rotationPitch;
+            aimYaw = serverYaw;
+            aimPitch = serverPitch;
+            progress = 0;
+            lastSlot = mc.thePlayer.inventory.currentItem;
+            targetBlock = null;
+            targetFacing = null;
+            targetHitVec = null;
+            lastPlaceTime = 0;
         }
     }
 
     @Override
     public void onDisabled() {
-        disablePlacing(true);
+        if (lastSlot != -1 && mc.thePlayer != null && mc.thePlayer.inventory.currentItem != lastSlot) {
+            mc.thePlayer.inventory.currentItem = lastSlot;
+        }
+        progress = 0;
+        targetBlock = null;
+        targetFacing = null;
+        targetHitVec = null;
     }
 
-    @EventTarget
+    @EventTarget(Priority.HIGH)
     public void onUpdate(UpdateEvent event) {
+        if (!isEnabled()) return;
         if (event.getType() != EventType.PRE) return;
+        if (mc.thePlayer == null || mc.theWorld == null) return;
         
-        // Track server rotations from packets
-        serverYaw = event.getNewYaw();
-        serverPitch = event.getNewPitch();
-        
-        // Track mouse button states
-        leftUnpressed = mc.gameSettings.keyBindAttack.isPressed() ? 0 : leftUnpressed + 1;
-        rightUnpressed = mc.gameSettings.keyBindUseItem.isPressed() ? 0 : rightUnpressed + 1;
-        
-        // Check if keybind is pressed (using sneak as the keybind)
-        boolean pressed = mc.gameSettings.keyBindSneak.isKeyDown();
-        
-        // Disable if NoFall or Scaffold is active
-        if (pressed && mc.currentScreen == null) {
-            // Find best block slot
-            plannedPlaceSlot = -1;
-            int bestScore = Integer.MAX_VALUE;
-            int currentSlot = mc.thePlayer.inventory.currentItem;
-            
-            for (int slot = 8; slot >= 0; --slot) {
-                ItemStack stack = mc.thePlayer.inventory.getStackInSlot(slot);
-                if (stack == null || stack.stackSize == 0) continue;
-                
-                if (stack.getItem() instanceof ItemBlock) {
-                    Block block = ((ItemBlock) stack.getItem()).getBlock();
-                    String blockName = block.getUnlocalizedName().replace("tile.", "");
-                    
-                    Integer score = BLOCK_SCORE.get(blockName);
-                    if (score != null && score < bestScore) {
-                        bestScore = score;
-                        plannedPlaceSlot = slot;
-                        if (score == 0) break; // Obsidian found, can't get better
-                    }
-                }
-            }
-            
-            if (plannedPlaceSlot == -1) {
-                disablePlacing(true);
-                return;
-            }
-            
-            // Try to aim at roof or sides
-            Object[] res = roofAim();
-            if (res == null) res = sidesAim();
-            
-            if (res == null) {
-                disablePlacing(true);
-                return;
-            }
-            
-            // Enable placing mode
-            if (!placingActive) {
-                if (enablePlacing()) return;
-            }
-            
-            if (skipTick) {
-                skipTick = false;
-                return;
-            }
-            
-            // Switch to the planned slot
-            if (plannedPlaceSlot != -1 && plannedPlaceSlot != currentSlot) {
-                mc.thePlayer.inventory.currentItem = plannedPlaceSlot;
-                swapped = true;
-            }
-            
-            // Extract rotation data
-            Object[] ray = (Object[]) res[0];
-            Vec3 hit0 = (Vec3) ray[0];
-            String face0 = (String) ray[1];
-            
-            float aimYaw = (float) res[1];
-            float aimPitch = (float) res[2];
-            
-            // Smooth the rotations
-            Float[] sm = getRotationsSmoothed(aimYaw, aimPitch);
-            
-            // Verify we can actually place at this rotation
-            double reach = range.getValue();
-            MovingObjectPosition mop = RotationUtil.rayTrace(sm[0], sm[1], reach, 1.0f);
-            
-            if (mop != null && mop.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-                Vec3 hit1 = mop.hitVec;
-                String face1 = mop.sideHit.getName();
-                
-                BlockPos hitBlock = mop.getBlockPos();
-                BlockPos targetBlock = new BlockPos((int)Math.floor(hit0.xCoord), (int)Math.floor(hit0.yCoord), (int)Math.floor(hit0.zCoord));
-                
-                if (hitBlock.equals(targetBlock) && face1.equals(face0)) {
-                    double tol = tolerance.getValue();
-                    if (Math.abs(sm[0] - serverYaw) <= tol && Math.abs(sm[1] - serverPitch) <= tol) {
-                        hitPos = hit1;
-                        face = face1;
-                        placePos = new Vec3(hitBlock.getX() + hit1.xCoord - Math.floor(hit1.xCoord),
-                                          hitBlock.getY() + hit1.yCoord - Math.floor(hit1.yCoord),
-                                          hitBlock.getZ() + hit1.zCoord - Math.floor(hit1.zCoord));
-                        pendingPlace = true;
-                    }
-                }
-            }
-            
-            // Set the rotation
-            event.setRotation(sm[0], sm[1], 3);
-        } else {
-            disablePlacing(true);
+        if (mc.currentScreen != null) {
+            return;
         }
         
-        // Calculate fill percentage for display
-        filled = 0;
-        if (pressed && mc.currentScreen == null) {
-            Vec3 feet = mc.thePlayer.getPositionVector();
-            BlockPos feetPos = new BlockPos(Math.floor(feet.xCoord), Math.floor(feet.yCoord), Math.floor(feet.zCoord));
-            
-            // Check block above head
-            if (!canPlaceThrough(mc.theWorld.getBlockState(feetPos.up(2)).getBlock())) filled++;
-            
-            // Check 4 sides at feet and head level
-            int[][] dirs = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}};
-            for (int[] d : dirs) {
-                BlockPos posFeet = feetPos.add(d[0], 0, d[2]);
-                if (!canPlaceThrough(mc.theWorld.getBlockState(posFeet).getBlock())) filled++;
-                
-                BlockPos posHead = feetPos.add(d[0], 1, d[2]);
-                if (!canPlaceThrough(mc.theWorld.getBlockState(posHead).getBlock())) filled++;
+        serverYaw = event.getYaw();
+        serverPitch = event.getPitch();
+        
+        updateProgress();
+        
+        // Find best block slot
+        int blockSlot = findBestBlockSlot();
+        
+        if (itemSpoof.getValue()) {
+            if (blockSlot != -1) {
+                if (mc.thePlayer.inventory.currentItem != blockSlot) {
+                    mc.thePlayer.inventory.currentItem = blockSlot;
+                }
             }
+        }
+        
+        ItemStack currentHeld = mc.thePlayer.inventory.getCurrentItem();
+        boolean holdingBlock = currentHeld != null && currentHeld.getItem() instanceof ItemBlock;
+        if (!holdingBlock) {
+            targetBlock = null;
+            targetFacing = null;
+            targetHitVec = null;
+            return;
+        }
+        
+        findBestPlacement();
+        
+        if (targetBlock != null && targetFacing != null && targetHitVec != null) {
+            Vec3 eyes = mc.thePlayer.getPositionEyes(1.0f);
+            double dx = targetHitVec.xCoord - eyes.xCoord;
+            double dy = targetHitVec.yCoord - eyes.yCoord;
+            double dz = targetHitVec.zCoord - eyes.zCoord;
+            double dist = Math.sqrt(dx * dx + dz * dz);
+            
+            float targetYaw = (float)Math.toDegrees(Math.atan2(dz, dx)) - 90.0f;
+            float targetPitch = (float)-Math.toDegrees(Math.atan2(dy, dist));
+            
+            targetYaw = MathHelper.wrapAngleTo180_float(targetYaw);
+            
+            float yawDiff = MathHelper.wrapAngleTo180_float(targetYaw - serverYaw);
+            float pitchDiff = targetPitch - serverPitch;
+            
+            float maxTurn = speed.getValue().floatValue();
+            float yawStep = MathHelper.clamp_float(yawDiff, -maxTurn, maxTurn);
+            float pitchStep = MathHelper.clamp_float(pitchDiff, -maxTurn, maxTurn);
+            
+            aimYaw = serverYaw + yawStep;
+            aimPitch = MathHelper.clamp_float(serverPitch + pitchStep, -90.0f, 90.0f);
+            
+            event.setRotation(aimYaw, aimPitch, rotationPriority.getValue());
         }
     }
     
-    @EventTarget
+    @EventTarget(Priority.HIGH)
     public void onTick(TickEvent event) {
+        if (!isEnabled()) return;
         if (event.getType() != EventType.PRE) return;
+        if (mc.thePlayer == null || mc.theWorld == null) return;
         
-        if (pendingPlace && hitPos != null && face != null) {
-            pendingPlace = false;
+        if (mc.currentScreen != null) {
+            return;
+        }
+        
+        if (targetBlock != null && targetFacing != null && targetHitVec != null) {
+            if (!withinRotationTolerance(aimYaw, aimPitch)) {
+                return;
+            }
             
-            // Place the block
-            BlockPos blockPos = new BlockPos(Math.floor(hitPos.xCoord), Math.floor(hitPos.yCoord), Math.floor(hitPos.zCoord));
-            
-            if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, 
-                    mc.thePlayer.inventory.getCurrentItem(), blockPos, 
-                    getEnumFacing(face), hitPos)) {
-                mc.thePlayer.swingItem();
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastPlaceTime >= placeDelay.getValue()) {
+                lastPlaceTime = currentTime;
+                
+                MovingObjectPosition mop = rayTraceBlock(aimYaw, aimPitch, range.getValue());
+                
+                if (mop != null 
+                        && mop.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK
+                        && mop.getBlockPos().equals(targetBlock)
+                        && mop.sideHit == targetFacing) {
+                    
+                    ItemStack heldStack = mc.thePlayer.inventory.getCurrentItem();
+                    if (heldStack != null && heldStack.getItem() instanceof ItemBlock) {
+                        mc.playerController.onPlayerRightClick(
+                            mc.thePlayer,
+                            mc.theWorld,
+                            heldStack,
+                            targetBlock,
+                            targetFacing,
+                            mop.hitVec);
+                        mc.thePlayer.swingItem();
+                        
+                        targetBlock = null;
+                        targetFacing = null;
+                        targetHitVec = null;
+                    }
+                }
             }
         }
     }
     
     @EventTarget
-    public void onLeftClick(LeftClickMouseEvent event) {
-        if (placingActive) {
+    public void onSwap(SwapItemEvent event) {
+        if (this.isEnabled()) {
+            lastSlot = event.setSlot(lastSlot);
             event.setCancelled(true);
         }
     }
     
     @EventTarget
-    public void onRightClick(RightClickMouseEvent event) {
-        if (placingActive) {
-            event.setCancelled(true);
-        }
+    public void onRender2D(Render2DEvent event) {
+        if (!isEnabled() || mc.currentScreen != null) return;
+        if (!showProgress.getValue()) return;
+        if (mc.fontRendererObj == null) return;
+        
+        float scale = 1.0f;
+        String text = String.format("Blocking: %.0f%%", progress * 100.0F);
+        
+        GL11.glPushMatrix();
+        GL11.glScaled((double)scale, (double)scale, 0.0);
+        GlStateManager.disableDepth();
+        GlStateManager.enableBlend();
+        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        
+        ScaledResolution sr = new ScaledResolution(mc);
+        int width = mc.fontRendererObj.getStringWidth(text);
+        
+        Color color = getProgressColor();
+        
+        mc.fontRendererObj.drawString(
+            text,
+            (float) sr.getScaledWidth() / 2.0F / scale - (float) width / 2.0F,
+            (float) sr.getScaledHeight() / 5.0F * 2.0F / scale,
+            color.getRGB() & 16777215 | -1090519040,
+            true
+        );
+        
+        GlStateManager.disableBlend();
+        GlStateManager.enableDepth();
+        GL11.glPopMatrix();
     }
 
-    private boolean enablePlacing() {
-        if (placingActive) return false;
+    private int findBestBlockSlot() {
+        int bestSlot = -1;
+        int bestScore = Integer.MAX_VALUE;
         
-        placingActive = true;
-        if (leftUnpressed < 2 || rightUnpressed < 2) skipTick = true;
+        for (int slot = 0; slot <= 8; slot++) {
+            ItemStack stack = mc.thePlayer.inventory.getStackInSlot(slot);
+            if (stack == null || stack.stackSize == 0) continue;
+            
+            if (stack.getItem() instanceof ItemBlock) {
+                Block block = ((ItemBlock) stack.getItem()).getBlock();
+                String blockName = block.getUnlocalizedName().replace("tile.", "");
+                
+                Integer score = BLOCK_SCORE.get(blockName);
+                if (score != null && score < bestScore) {
+                    bestScore = score;
+                    bestSlot = slot;
+                    if (score == 0) break;
+                }
+            }
+        }
         
-        swapped = false;
-        active = true;
-        origSlot = mc.thePlayer.inventory.currentItem;
-        
-        KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
-        KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
-        
-        return true;
+        return bestSlot;
     }
 
-    private void disablePlacing(boolean resetSlot) {
-        if (!placingActive) return;
+    private void findBestPlacement() {
+        Vec3 playerPos = mc.thePlayer.getPositionVector();
+        BlockPos feetPos = new BlockPos(playerPos.xCoord, playerPos.yCoord, playerPos.zCoord);
         
-        if (resetSlot && swapped && origSlot != -1 && origSlot != mc.thePlayer.inventory.currentItem) {
-            mc.thePlayer.inventory.currentItem = origSlot;
+        Vec3 eyes = mc.thePlayer.getPositionEyes(1.0f);
+        double reach = range.getValue().doubleValue();
+        
+        if (roofAim(eyes, reach, feetPos)) {
+            return;
         }
         
-        placingActive = false;
-        swapped = false;
-        skipTick = false;
-        origSlot = -1;
-        plannedPlaceSlot = -1;
-        active = false;
+        sidesAim(eyes, reach, feetPos);
     }
 
-    private Float[] getRotationsSmoothed(float targetYaw, float targetPitch) {
-        float curYaw = serverYaw;
-        float curPitch = serverPitch;
+    private boolean roofAim(Vec3 eye, double reach, BlockPos feetPos) {
+        BlockPos roofTarget = feetPos.up(2);
         
-        float dYaw = targetYaw - curYaw;
-        float dPit = targetPitch - curPitch;
+        if (!isAir(roofTarget)) return false;
         
-        // Wrap yaw difference
-        while (dYaw > 180) dYaw -= 360;
-        while (dYaw < -180) dYaw += 360;
-        
-        if (Math.abs(dYaw) < 0.1f) curYaw = targetYaw;
-        if (Math.abs(dPit) < 0.1f) curPitch = targetPitch;
-        
-        if (curYaw == targetYaw && curPitch == targetPitch) {
-            return new Float[] {curYaw, curPitch};
-        }
-        
-        float maxStep = speed.getValue().floatValue();
-        float random = 20;
-        
-        if (random > 0f) {
-            float factor = 1f - (float) RandomUtil.nextDouble(0, random / 100f);
-            maxStep *= factor;
-        }
-        
-        float stepYaw = Math.max(-maxStep, Math.min(maxStep, dYaw));
-        float stepPit = Math.max(-maxStep, Math.min(maxStep, dPit));
-        
-        curYaw += stepYaw;
-        curPitch += stepPit;
-        
-        // Check if we overshot
-        if (Math.signum(targetYaw - curYaw) != Math.signum(dYaw)) curYaw = targetYaw;
-        if (Math.signum(targetPitch - curPitch) != Math.signum(dPit)) curPitch = targetPitch;
-        
-        return new Float[] {curYaw, curPitch};
-    }
-
-    private Object[] roofAim() {
-        Vec3 p = mc.thePlayer.getPositionVector();
-        BlockPos aboveHead = new BlockPos(Math.floor(p.xCoord), Math.floor(p.yCoord) + 2, Math.floor(p.zCoord));
-        
-        if (!canPlaceThrough(mc.theWorld.getBlockState(aboveHead).getBlock())) {
-            return null;
-        }
-        
-        double r = range.getValue();
-        Vec3 eye = new Vec3(p.xCoord, p.yCoord + mc.thePlayer.getEyeHeight(), p.zCoord);
+        double r2 = reach * reach;
+        double rp12 = (reach + 1) * (reach + 1);
         
         int minY = (int) Math.floor(eye.yCoord) + 1;
-        int maxY = (int) Math.floor(eye.yCoord + r);
-        int minX = (int) Math.floor(eye.xCoord - r);
-        int maxX = (int) Math.floor(eye.xCoord + r);
-        int minZ = (int) Math.floor(eye.zCoord - r);
-        int maxZ = (int) Math.floor(eye.zCoord + r);
+        int maxY = (int) Math.floor(eye.yCoord + reach);
+        int minX = (int) Math.floor(eye.xCoord - reach);
+        int maxX = (int) Math.floor(eye.xCoord + reach);
+        int minZ = (int) Math.floor(eye.zCoord - reach);
+        int maxZ = (int) Math.floor(eye.zCoord + reach);
         
-        List<Object[]> candidates = new ArrayList<>();
+        List<BlockData> candidates = new ArrayList<>();
         
         for (int y = minY; y <= maxY; y++) {
             for (int x = minX; x <= maxX; x++) {
@@ -351,177 +314,270 @@ public class AutoBlockIn extends Module {
                     double dy = (y + 0.5) - eye.yCoord;
                     double dz = (z + 0.5) - eye.zCoord;
                     
-                    if (dx*dx + dy*dy + dz*dz > (r + 1) * (r + 1)) continue;
+                    if (dx*dx + dy*dy + dz*dz > rp12) continue;
                     
-                    Block b = mc.theWorld.getBlockState(new BlockPos(x, y, z)).getBlock();
-                    if (canPlaceThrough(b)) continue;
+                    Block block = mc.theWorld.getBlockState(new BlockPos(x, y, z)).getBlock();
+                    if (isAir(new BlockPos(x, y, z))) continue;
                     
-                    double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-                    if (dist > r) continue;
+                    double d2 = dist2PointAABB(eye, x, y, z);
+                    if (d2 > r2) continue;
                     
-                    candidates.add(new Object[]{dist, new BlockPos(x, y, z)});
+                    candidates.add(new BlockData(new BlockPos(x, y, z), d2));
                 }
             }
         }
         
-        // Sort by distance
-        candidates.sort((a, b) -> Double.compare((Double) a[0], (Double) b[0]));
+        candidates.sort((a, b) -> Double.compare(a.distance, b.distance));
         
-        // Try each candidate
-        for (Object[] cand : candidates) {
-            BlockPos blockPos = (BlockPos) cand[1];
-            Object[] res = getBestRotationsToBlock(blockPos, eye, r, minY);
-            if (res != null) return res;
-        }
-        
-        return null;
-    }
-
-    private Object[] getBestRotationsToBlock(BlockPos b, Vec3 eye, double reach, int minY) {
-        float baseYaw = normYaw(serverYaw);
-        float basePit = serverPitch;
-        
-        // Try different points on each face
-        List<Object[]> candidates = new ArrayList<>();
-        candidates.add(new Object[]{0D, baseYaw, basePit});
-        
-        for (double u = 0.1; u < 1.0; u += 0.2) {
-            for (double v = 0.1; v < 1.0; v += 0.2) {
-                // Try each face
-                float[] rots = getRotationsToPoint(eye, b.getX() + u, b.getY() + 0.05, b.getZ() + v);
-                double cost = Math.abs(wrapYawDelta(baseYaw, rots[0])) + Math.abs(rots[1] - basePit);
-                candidates.add(new Object[]{cost, rots[0], rots[1]});
+        for (BlockData cand : candidates) {
+            if (tryPlaceOnBlock(cand.pos, eye, reach, roofTarget)) {
+                return true;
             }
         }
         
-        candidates.sort((a, b1) -> Double.compare((Double) a[0], (Double) b1[0]));
-        
-        for (Object[] cand : candidates) {
-            float yaw = unwrapYaw((Float) cand[1], serverYaw);
-            float pit = (Float) cand[2];
-            
-            MovingObjectPosition ray = RotationUtil.rayTrace(yaw, pit, reach, 1.0f);
-            if (ray == null) continue;
-            
-            if (ray.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-                BlockPos hit = ray.getBlockPos();
-                if (hit.equals(b) && hit.getY() >= minY) {
-                    return new Object[]{new Object[]{ray.hitVec, ray.sideHit.getName()}, yaw, pit};
-                }
-            }
-        }
-        
-        return null;
+        return false;
     }
 
-    private Object[] sidesAim() {
-        Vec3 feet = mc.thePlayer.getPositionVector();
-        BlockPos feetPos = new BlockPos(Math.floor(feet.xCoord), Math.floor(feet.yCoord), Math.floor(feet.zCoord));
-        BlockPos headPos = feetPos.up();
-        
-        List<BlockPos> goals = new ArrayList<>();
-        
-        int[][] dirs = {{1,0,0}, {-1,0,0}, {0,0,1}, {0,0,-1}};
-        for (int[] d : dirs) {
-            BlockPos g1 = feetPos.add(d[0], 0, d[2]);
-            BlockPos g2 = headPos.add(d[0], 0, d[2]);
+    private boolean tryPlaceOnBlock(BlockPos supportBlock, Vec3 eye, double reach, BlockPos targetPos) {
+        // Try all 6 faces of support block
+        for (EnumFacing facing : EnumFacing.values()) {
+            BlockPos placementPos = supportBlock.offset(facing);
             
-            if (canPlaceThrough(mc.theWorld.getBlockState(g1).getBlock())) goals.add(g1);
-            if (canPlaceThrough(mc.theWorld.getBlockState(g2).getBlock())) goals.add(g2);
-        }
-        
-        if (goals.isEmpty()) return null;
-        
-        double reach = range.getValue();
-        Vec3 eye = new Vec3(feet.xCoord, feet.yCoord + mc.thePlayer.getEyeHeight(), feet.zCoord);
-        
-        return findBestForGoals(goals, reach, eye);
-    }
-
-    private Object[] findBestForGoals(List<BlockPos> goals, double reach, Vec3 eye) {
-        if (goals.isEmpty()) return null;
-        
-        float curYaw = normYaw(serverYaw);
-        float curPitch = serverPitch;
-        
-        // Check current rotation first
-        MovingObjectPosition now = RotationUtil.rayTrace(curYaw, curPitch, reach, 1.0f);
-        if (now != null && now.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-            BlockPos hit = now.getBlockPos();
-            if (!canPlaceThrough(mc.theWorld.getBlockState(hit).getBlock())) {
-                BlockPos placeAt = hit.offset(now.sideHit);
-                for (BlockPos g : goals) {
-                    if (placeAt.equals(g)) {
-                        return new Object[]{new Object[]{now.hitVec, now.sideHit.getName()}, serverYaw, serverPitch};
+            // Check if placement would be at target
+            if (!placementPos.equals(targetPos)) continue;
+            
+            // Generate candidate hit points on this face
+            int n = (int) Math.round(1 / STEP);
+            
+            for (int r = 0; r <= n; r++) {
+                double v = r * STEP + (Math.random() * JIT * 2 - JIT);
+                if (v < 0) v = 0; else if (v > 1) v = 1;
+                
+                for (int c = 0; c <= n; c++) {
+                    double u = c * STEP + (Math.random() * JIT * 2 - JIT);
+                    if (u < 0) u = 0; else if (u > 1) u = 1;
+                    
+                    Vec3 hitPos = getHitPosOnFace(supportBlock, facing, u, v);
+                    float[] rot = getRotationsWrapped(eye, hitPos.xCoord, hitPos.yCoord, hitPos.zCoord);
+                    
+                    MovingObjectPosition mop = rayTraceBlock(rot[0], rot[1], reach);
+                    if (mop != null 
+                            && mop.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK
+                            && mop.getBlockPos().equals(supportBlock)
+                            && mop.sideHit == facing) {
+                        
+                        targetBlock = supportBlock;
+                        targetFacing = facing;
+                        targetHitVec = mop.hitVec;
+                        aimYaw = rot[0];
+                        aimPitch = rot[1];
+                        return true;
                     }
                 }
             }
         }
         
-        // Try different rotations
-        List<Object[]> candidates = new ArrayList<>();
+        return false;
+    }
+
+    private void sidesAim(Vec3 eye, double reach, BlockPos feetPos) {
+        List<BlockPos> goals = new ArrayList<>();
         
-        for (BlockPos g : goals) {
-            // Try placing on surrounding blocks
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dz = -1; dz <= 1; dz++) {
-                        if (dx == 0 && dy == 0 && dz == 0) continue;
+        for (int[] d : DIRS) {
+            BlockPos headPos = feetPos.add(d[0], 1, d[2]);
+            if (isAir(headPos)) {
+                goals.add(headPos);
+            }
+        }
+        
+        for (int[] d : DIRS) {
+            BlockPos feetGoal = feetPos.add(d[0], 0, d[2]);
+            if (isAir(feetGoal)) {
+                goals.add(feetGoal);
+            }
+        }
+        
+        findBestForGoals(goals, eye, reach);
+    }
+
+    private void findBestForGoals(List<BlockPos> goals, Vec3 eye, double reach) {
+        for (BlockPos goal : goals) {
+            for (EnumFacing facing : EnumFacing.values()) {
+                BlockPos support = goal.offset(facing);
+                
+                if (isAir(support)) continue;
+                
+                Vec3 center = new Vec3(support.getX() + 0.5, support.getY() + 0.5, support.getZ() + 0.5);
+                if (eye.distanceTo(center) > reach) continue;
+                
+                // Try placement
+                int n = (int) Math.round(1 / STEP);
+                for (int r = 0; r <= n; r++) {
+                    double v = r * STEP + (Math.random() * JIT * 2 - JIT);
+                    if (v < 0) v = 0; else if (v > 1) v = 1;
+                    
+                    for (int c = 0; c <= n; c++) {
+                        double u = c * STEP + (Math.random() * JIT * 2 - JIT);
+                        if (u < 0) u = 0; else if (u > 1) u = 1;
                         
-                        BlockPos support = g.add(dx, dy, dz);
-                        if (canPlaceThrough(mc.theWorld.getBlockState(support).getBlock())) continue;
+                        Vec3 hitPos = getHitPosOnFace(support, facing.getOpposite(), u, v);
+                        float[] rot = getRotationsWrapped(eye, hitPos.xCoord, hitPos.yCoord, hitPos.zCoord);
                         
-                        // Try different points on this support block
-                        for (double u = 0.2; u < 1.0; u += 0.3) {
-                            for (double v = 0.2; v < 1.0; v += 0.3) {
-                                float[] rot = getRotationsToPoint(eye, support.getX() + u, support.getY() + v, support.getZ() + u);
-                                float dYaw = Math.abs(wrapYawDelta(curYaw, rot[0]));
-                                float dPit = Math.abs(rot[1] - curPitch);
-                                
-                                double cost = dYaw + dPit;
-                                candidates.add(new Object[]{cost, rot[0], rot[1], support, g});
-                            }
+                        MovingObjectPosition mop = rayTraceBlock(rot[0], rot[1], reach);
+                        if (mop != null 
+                                && mop.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK
+                                && mop.getBlockPos().equals(support)
+                                && mop.sideHit == facing.getOpposite()) {
+                            
+                            targetBlock = support;
+                            targetFacing = facing.getOpposite();
+                            targetHitVec = mop.hitVec;
+                            aimYaw = rot[0];
+                            aimPitch = rot[1];
+                            return;
                         }
                     }
                 }
             }
         }
+    }
+
+    private Vec3 getHitPosOnFace(BlockPos block, EnumFacing face, double u, double v) {
+        double x = block.getX() + 0.5;
+        double y = block.getY() + 0.5;
+        double z = block.getZ() + 0.5;
         
-        if (candidates.isEmpty()) return null;
+        switch (face) {
+            case DOWN:
+                y = block.getY() + INSET;
+                x = block.getX() + u;
+                z = block.getZ() + v;
+                break;
+            case UP:
+                y = block.getY() + 1.0 - INSET;
+                x = block.getX() + u;
+                z = block.getZ() + v;
+                break;
+            case NORTH:
+                z = block.getZ() + INSET;
+                x = block.getX() + u;
+                y = block.getY() + v;
+                break;
+            case SOUTH:
+                z = block.getZ() + 1.0 - INSET;
+                x = block.getX() + u;
+                y = block.getY() + v;
+                break;
+            case WEST:
+                x = block.getX() + INSET;
+                z = block.getZ() + u;
+                y = block.getY() + v;
+                break;
+            case EAST:
+                x = block.getX() + 1.0 - INSET;
+                z = block.getZ() + u;
+                y = block.getY() + v;
+                break;
+        }
         
-        candidates.sort((a, b) -> Double.compare((Double) a[0], (Double) b[0]));
+        return new Vec3(x, y, z);
+    }
+
+    private boolean isAir(BlockPos pos) {
+        Block block = mc.theWorld.getBlockState(pos).getBlock();
+        return block == Blocks.air 
+            || block == Blocks.water 
+            || block == Blocks.flowing_water
+            || block == Blocks.lava
+            || block == Blocks.flowing_lava
+            || block == Blocks.fire;
+    }
+
+    private void updateProgress() {
+        Vec3 playerPos = mc.thePlayer.getPositionVector();
+        BlockPos feetPos = new BlockPos(playerPos.xCoord, playerPos.yCoord, playerPos.zCoord);
         
-        for (Object[] cand : candidates) {
-            float yaw = unwrapYaw((Float) cand[1], serverYaw);
-            float pit = (Float) cand[2];
-            BlockPos support = (BlockPos) cand[3];
-            BlockPos goal = (BlockPos) cand[4];
-            
-            MovingObjectPosition ray = RotationUtil.rayTrace(yaw, pit, reach, 1.0f);
-            if (ray == null) continue;
-            
-            if (ray.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-                BlockPos hitGrid = ray.getBlockPos();
-                if (!hitGrid.equals(support)) continue;
-                
-                BlockPos placeAt = hitGrid.offset(ray.sideHit);
-                if (placeAt.equals(goal)) {
-                    return new Object[]{new Object[]{ray.hitVec, ray.sideHit.getName()}, yaw, pit};
-                }
+        int filled = 0;
+        int total = 9;
+        
+        if (!isAir(feetPos.up(2))) {
+            filled++;
+        }
+        
+        for (int[] d : DIRS) {
+            if (!isAir(feetPos.add(d[0], 0, d[2]))) {
+                filled++;
+            }
+            if (!isAir(feetPos.add(d[0], 1, d[2]))) {
+                filled++;
             }
         }
         
-        return null;
+        progress = (float) filled / (float) total;
     }
 
-    private boolean canPlaceThrough(Block block) {
-        if (block == Blocks.air) return true;
-        if (block == Blocks.water) return true;
-        if (block == Blocks.flowing_water) return true;
-        if (block == Blocks.lava) return true;
-        if (block == Blocks.flowing_lava) return true;
-        if (block == Blocks.fire) return true;
-        return false;
+    private Color getProgressColor() {
+        if (progress <= 0.33f) {
+            return new Color(255, 85, 85);
+        } else if (progress <= 0.66f) {
+            return new Color(255, 255, 85);
+        } else {
+            return new Color(85, 255, 85);
+        }
+    }
+
+    private MovingObjectPosition rayTraceBlock(float yaw, float pitch, double range) {
+        float yawRad = (float) Math.toRadians(yaw);
+        float pitchRad = (float) Math.toRadians(pitch);
+        
+        double x = -Math.sin(yawRad) * Math.cos(pitchRad);
+        double y = -Math.sin(pitchRad);
+        double z = Math.cos(yawRad) * Math.cos(pitchRad);
+        
+        Vec3 start = mc.thePlayer.getPositionEyes(1.0f);
+        Vec3 end = start.addVector(x * range, y * range, z * range);
+        
+        return mc.theWorld.rayTraceBlocks(start, end);
+    }
+
+    private boolean withinRotationTolerance(float targetYaw, float targetPitch) {
+        float dy = Math.abs(MathHelper.wrapAngleTo180_float(targetYaw - serverYaw));
+        float dp = Math.abs(MathHelper.wrapAngleTo180_float(targetPitch - serverPitch));
+        return dy <= rotationTolerance.getValue() && dp <= rotationTolerance.getValue();
+    }
+
+    private double dist2PointAABB(Vec3 p, int x, int y, int z) {
+        double minX = x, maxX = x + 1;
+        double minY = y, maxY = y + 1;
+        double minZ = z, maxZ = z + 1;
+        
+        double cx = clamp(p.xCoord, minX, maxX);
+        double cy = clamp(p.yCoord, minY, maxY);
+        double cz = clamp(p.zCoord, minZ, maxZ);
+        
+        double dx = p.xCoord - cx;
+        double dy = p.yCoord - cy;
+        double dz = p.zCoord - cz;
+        
+        return dx*dx + dy*dy + dz*dz;
+    }
+
+    private double clamp(double v, double lo, double hi) {
+        return v < lo ? lo : (v > hi ? hi : v);
+    }
+
+    private float[] getRotationsWrapped(Vec3 eye, double tx, double ty, double tz) {
+        double dx = tx - eye.xCoord;
+        double dy = ty - eye.yCoord;
+        double dz = tz - eye.zCoord;
+        double hd = Math.sqrt(dx*dx + dz*dz);
+        
+        float yaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0f;
+        yaw = normYaw(yaw);
+        
+        float pitch = (float) Math.toDegrees(-Math.atan2(dy, hd));
+        
+        return new float[]{yaw, pitch};
     }
 
     private float normYaw(float yaw) {
@@ -529,39 +585,13 @@ public class AutoBlockIn extends Module {
         return (yaw > 180f) ? (yaw - 360f) : yaw;
     }
 
-    private float wrapYawDelta(float base, float target) {
-        float d = target - base;
-        while (d <= -180f) d += 360f;
-        while (d > 180f) d -= 360f;
-        return d;
-    }
-
-    private float unwrapYaw(float yaw, float prevYaw) {
-        return prevYaw + ((((yaw - prevYaw + 180f) % 360f) + 360f) % 360f - 180f);
-    }
-
-    private float[] getRotationsToPoint(Vec3 eye, double tx, double ty, double tz) {
-        double dx = tx - eye.xCoord;
-        double dy = ty - eye.yCoord;
-        double dz = tz - eye.zCoord;
-        double hd = Math.sqrt(dx*dx + dz*dz);
+    private static class BlockData {
+        BlockPos pos;
+        double distance;
         
-        float yaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90f;
-        yaw = normYaw(yaw);
-        float pitch = (float) Math.toDegrees(-Math.atan2(dy, hd));
-        
-        return new float[]{yaw, pitch};
-    }
-    
-    private net.minecraft.util.EnumFacing getEnumFacing(String face) {
-        switch (face.toUpperCase()) {
-            case "UP": return net.minecraft.util.EnumFacing.UP;
-            case "DOWN": return net.minecraft.util.EnumFacing.DOWN;
-            case "NORTH": return net.minecraft.util.EnumFacing.NORTH;
-            case "SOUTH": return net.minecraft.util.EnumFacing.SOUTH;
-            case "EAST": return net.minecraft.util.EnumFacing.EAST;
-            case "WEST": return net.minecraft.util.EnumFacing.WEST;
-            default: return net.minecraft.util.EnumFacing.UP;
+        BlockData(BlockPos pos, double distance) {
+            this.pos = pos;
+            this.distance = distance;
         }
     }
 }
