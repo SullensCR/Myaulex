@@ -34,7 +34,6 @@ public class AutoBlockIn extends Module {
     public final IntProperty speed;
     public final IntProperty placeDelay;
     public final IntProperty rotationTolerance;
-    public final IntProperty rotationPriority;
     public final BooleanProperty itemSpoof;
     public final BooleanProperty showProgress;
     
@@ -64,15 +63,14 @@ public class AutoBlockIn extends Module {
         BLOCK_SCORE.put("stained_glass", 3);
         BLOCK_SCORE.put("hardened_clay", 4);
         BLOCK_SCORE.put("stained_hardened_clay", 4);
-        BLOCK_SCORE.put("wool", 5);
+        BLOCK_SCORE.put("cloth", 5);
         
-        this.range = new FloatProperty("Range", 4.5f, 3.0f, 6.0f);
-        this.speed = new IntProperty("Speed", 20, 5, 100);
-        this.placeDelay = new IntProperty("Place-Delay", 50, 0, 200);
-        this.rotationTolerance = new IntProperty("Rot-Tolerance", 25, 5, 100); 
-        this.rotationPriority = new IntProperty("Rot-Priority", 3, 1, 10);
-        this.itemSpoof = new BooleanProperty("Item-Spoof", true);
-        this.showProgress = new BooleanProperty("Show-Progress", true);
+        this.range = new FloatProperty("range", 4.5f, 3.0f, 6.0f);
+        this.speed = new IntProperty("speed", 20, 5, 100);
+        this.placeDelay = new IntProperty("place-delay", 50, 0, 200);
+        this.rotationTolerance = new IntProperty("rotation-tolerance", 25, 5, 100);
+        this.itemSpoof = new BooleanProperty("item-spoof", true);
+        this.showProgress = new BooleanProperty("show-progress", true);
     }
 
     @Override
@@ -116,15 +114,12 @@ public class AutoBlockIn extends Module {
         serverPitch = event.getPitch();
         
         updateProgress();
-        
-        // Find best block slot
+
         int blockSlot = findBestBlockSlot();
-        
-        if (itemSpoof.getValue()) {
-            if (blockSlot != -1) {
-                if (mc.thePlayer.inventory.currentItem != blockSlot) {
-                    mc.thePlayer.inventory.currentItem = blockSlot;
-                }
+
+        if (blockSlot != -1) {
+            if (mc.thePlayer.inventory.currentItem != blockSlot) {
+                mc.thePlayer.inventory.currentItem = blockSlot;
             }
         }
         
@@ -161,7 +156,7 @@ public class AutoBlockIn extends Module {
             aimYaw = serverYaw + yawStep;
             aimPitch = MathHelper.clamp_float(serverPitch + pitchStep, -90.0f, 90.0f);
             
-            event.setRotation(aimYaw, aimPitch, rotationPriority.getValue());
+            event.setRotation(aimYaw, aimPitch, 6);
         }
     }
     
@@ -210,7 +205,7 @@ public class AutoBlockIn extends Module {
             }
         }
     }
-    
+
     @EventTarget
     public void onSwap(SwapItemEvent event) {
         if (this.isEnabled()) {
@@ -583,6 +578,10 @@ public class AutoBlockIn extends Module {
     private float normYaw(float yaw) {
         yaw = ((yaw % 360f) + 360f) % 360f;
         return (yaw > 180f) ? (yaw - 360f) : yaw;
+    }
+
+    public int getSlot() {
+        return lastSlot;
     }
 
     private static class BlockData {
