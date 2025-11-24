@@ -1,8 +1,9 @@
 package myau.events;
 
+import myau.event.events.Event;
 import net.minecraft.entity.Entity;
 
-public class AttackEvent {
+public class AttackEvent implements Event {
     private final Entity target;
     private boolean cancelled;
 
