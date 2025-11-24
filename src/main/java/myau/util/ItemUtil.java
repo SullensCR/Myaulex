@@ -25,9 +25,9 @@ public class ItemUtil {
             return false;
         }
         Item item = itemStack.getItem();
-        if (item instanceof ItemBlock) {
-            return !ItemUtil.isContainerBlock((ItemBlock) item);
-        }
+//        if (item instanceof ItemBlock) {
+//            return !ItemUtil.isContainerBlock((ItemBlock) item);
+//        }
         if (item instanceof ItemPotion) {
             return ((ItemPotion) item).getEffects(itemStack).stream().map(PotionEffect::getPotionID).noneMatch(specialItems::contains);
         }
@@ -35,8 +35,8 @@ public class ItemUtil {
         if (item instanceof ItemFood) {
             if (item != Items.spider_eye) return false;
         }
-        if (isProjectile(itemStack)) return false;
-        // if (isFishingRod(itemStack)) return false;
+//         if (isProjectile(itemStack)) return false;
+//         if (isFishingRod(itemStack)) return false;
         return item != Items.nether_star;
     }
 
@@ -130,11 +130,30 @@ public class ItemUtil {
         return protection;
     }
 
+    public static double getBowAttackBonus(ItemStack itemStack) {
+        double attackBonus = 0.0;
+        if (itemStack != null) {
+            if (itemStack.getItem() instanceof ItemBow) {
+                attackBonus = 2;
+                if (itemStack.isItemEnchanted()) {
+                    int power = EnchantmentHelper.getEnchantmentLevel(Enchantment.power.effectId, itemStack);
+                    if (power > 0) {
+                        attackBonus += (double) (power + 1) * 0.25;
+                    }
+                    attackBonus += (double) EnchantmentHelper.getEnchantmentLevel(Enchantment.flame.effectId, itemStack) * 0.25;
+                    attackBonus += (double) EnchantmentHelper.getEnchantmentLevel(Enchantment.infinity.effectId, itemStack) * 0.05;
+                }
+            }
+        }
+        return attackBonus;
+    }
+
     public static int findSwordInInventorySlot(int startSlot, boolean checkDurability) {
         int bestSlot = -1;
         double bestAttackBonus = 0.0;
+        if (startSlot < 0) return bestSlot;
         for (int i = 0; i < 36; ++i) {
-            int currentSlot = ((startSlot + i) % 36 + 36) % 36;
+            int currentSlot = (startSlot + i) % 36;
             ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(currentSlot);
             if (itemStack == null) continue;
             if (!(itemStack.getItem() instanceof ItemSword)) continue;
@@ -153,11 +172,36 @@ public class ItemUtil {
         return bestSlot;
     }
 
+    public static int findBowInventorySlot(int startSlot, boolean checkDurability) {
+        int bestSlot = -1;
+        double bestAttackBonus = 0.0;
+        if (startSlot < 0) return bestSlot;
+        for (int i = 0; i < 36; ++i) {
+            int currentSlot = (startSlot + i) % 36;
+            ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(currentSlot);
+            if (itemStack == null) continue;
+            if (!(itemStack.getItem() instanceof ItemBow)) continue;
+            if (checkDurability) {
+                if (itemStack.isItemDamaged()) {
+                    if (itemStack.getMaxDamage() - itemStack.getItemDamage() < 30) {
+                        continue;
+                    }
+                }
+            }
+            double attackBonus = ItemUtil.getBowAttackBonus(itemStack);
+            if (!(attackBonus > bestAttackBonus)) continue;
+            bestSlot = currentSlot;
+            bestAttackBonus = attackBonus;
+        }
+        return bestSlot;
+    }
+
     public static int findInventorySlot(String toolClass, int startSlot, boolean checkDurability) {
         int bestSlot = -1;
         float bestEfficiency = 1.0f;
+        if (startSlot < 0) return bestSlot;
         for (int i = 0; i < 36; ++i) {
-            int currentSlot = ((startSlot + i) % 36 + 36) % 36;
+            int currentSlot = (startSlot + i) % 36;
             ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(currentSlot);
             if (itemStack == null) continue;
             if (!(itemStack.getItem() instanceof ItemTool)) continue;
@@ -240,8 +284,9 @@ public class ItemUtil {
     public static int findInventorySlot(int startSlot, ItemType itemType) {
         int bestSlot = -1;
         int maxStackSize = 0;
+        if (startSlot < 0) startSlot = 0;
         for (int i = 0; i < 36; ++i) {
-            int currentSlot = ((startSlot + i) % 36 + 36) % 36;
+            int currentSlot = (startSlot + i) % 36;
             ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(currentSlot);
             if (itemStack == null) continue;
             if (!itemType.contains(itemStack)) continue;
@@ -250,6 +295,17 @@ public class ItemUtil {
             maxStackSize = itemStack.stackSize;
         }
         return bestSlot;
+    }
+
+    public static int findInventorySlot(ItemType itemType) {
+        int stackSize = 0;
+        for (int i = 0; i < 36; ++i) {
+            ItemStack itemStack = ItemUtil.mc.thePlayer.inventory.getStackInSlot(i);
+            if (itemStack == null) continue;
+            if (!itemType.contains(itemStack)) continue;
+            stackSize += itemStack.stackSize;
+        }
+        return stackSize;
     }
 
     public static boolean hasRawUnbreakingEnchant() {
@@ -354,23 +410,32 @@ public class ItemUtil {
         }
     }
 
-    public static enum ItemType {
+    public enum ItemType {
         Block {
-            boolean contains(ItemStack itemStack) {
+            public boolean contains(ItemStack itemStack) {
                 return isBlock(itemStack);
             }
         },
         Projectile {
-            boolean contains(ItemStack itemStack) {
+            public boolean contains(ItemStack itemStack) {
                 return isProjectile(itemStack);
             }
         },
+        FishRod {
+            public boolean contains(ItemStack itemStack) {
+                return itemStack.getItem() instanceof ItemFishingRod;
+            }
+        },
         GoldApple {
-            boolean contains(ItemStack itemStack) {
-                Item item = itemStack.getItem();
-                return item instanceof ItemAppleGold;
+            public boolean contains(ItemStack itemStack) {
+                return itemStack.getItem() instanceof ItemAppleGold;
+            }
+        },
+        Arrow {
+            public boolean contains(ItemStack itemStack) {
+                return itemStack.getItem() == Items.arrow;
             }
         };
-        abstract boolean contains(ItemStack itemStack);
+        abstract public boolean contains(ItemStack itemStack);
     }
 }
