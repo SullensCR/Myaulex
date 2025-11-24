@@ -3,6 +3,7 @@ package myau.module.modules;
 import com.google.common.base.CaseFormat;
 import myau.Myau;
 import myau.enums.BlinkModules;
+import myau.event.EventManager;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.event.types.Priority;
@@ -112,6 +113,8 @@ public class KillAura extends Module {
                         && RotationUtil.rayTrace(this.target.getBox(), yaw, pitch, this.attackRange.getValue()) == null) {
                     return false;
                 } else {
+                    AttackEvent event = new AttackEvent(this.target.getEntity());
+                    EventManager.call(event);
                     ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
                     PacketUtil.sendPacket(new C02PacketUseEntity(this.target.getEntity(), Action.ATTACK));
                     if (mc.playerController.getCurrentGameType() != GameType.SPECTATOR) {
