@@ -52,7 +52,8 @@ public class KillAura extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     private static final DecimalFormat df = new DecimalFormat("+0.0;-0.0", new DecimalFormatSymbols(Locale.US));
     private final TimerUtil timer = new TimerUtil();
-    private AttackData target = null;
+    private RotationUtil.AttackData target = null;
+    private ArrayList<RotationUtil.AttackData> targets = new ArrayList<>();;
     private int switchTick = 0;
     private boolean hitRegistered = false;
     private boolean blockingState = false;
@@ -70,7 +71,8 @@ public class KillAura extends Module {
     public final FloatProperty autoBlockRange;
     public final FloatProperty swingRange;
     public final FloatProperty attackRange;
-    public final IntProperty fov;
+    public final IntProperty beginFov;
+    public final IntProperty endFov;
     public final IntProperty minCPS;
     public final IntProperty maxCPS;
     public final IntProperty switchDelay;
@@ -108,8 +110,9 @@ public class KillAura extends Module {
             } else {
                 this.attackDelayMS = this.attackDelayMS + this.getAttackDelay();
                 mc.thePlayer.swingItem();
+                MovingObjectPosition movingObjectPosition = null;
                 if ((this.rotations.getValue() != 0 || !this.isBoxInAttackRange(this.target.getBox()))
-                        && RotationUtil.rayTrace(this.target.getBox(), yaw, pitch, this.attackRange.getValue()) == null) {
+                        && (movingObjectPosition = RotationUtil.rayTrace(this.target.getBox(), yaw, pitch, this.attackRange.getValue())) == null) {
                     return false;
                 } else {
                     ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
@@ -118,6 +121,9 @@ public class KillAura extends Module {
                         PlayerUtil.attackEntity(this.target.getEntity());
                     }
                     this.hitRegistered = true;
+                    if (movingObjectPosition != null) {
+                        this.target.setAttackPoint(movingObjectPosition.hitVec);
+                    }
                     return true;
                 }
             }
@@ -205,17 +211,15 @@ public class KillAura extends Module {
     }
 
     private boolean hasValidTarget() {
-        return mc.theWorld
-                .loadedEntityList
-                .stream()
-                .anyMatch(
-                        entity -> entity instanceof EntityLivingBase
-                                && this.isValidTarget((EntityLivingBase) entity)
-                                && this.isInBlockRange((EntityLivingBase) entity)
-                );
+        if (this.targets.isEmpty()) return false;
+        return this.targets.stream().anyMatch(
+                target -> TeamUtil.isEntityLoaded(target.getEntity())
+                && this.isInBlockRange(target.getEntity())
+        );
     }
 
-    private boolean isValidTarget(EntityLivingBase entityLivingBase) {
+    private boolean isValidTarget(RotationUtil.AttackData attackData, float fov) {
+        EntityLivingBase entityLivingBase = attackData.getEntity();
         if (!mc.theWorld.loadedEntityList.contains(entityLivingBase)) {
             return false;
         } else if (entityLivingBase != mc.thePlayer && entityLivingBase != mc.thePlayer.ridingEntity) {
@@ -223,9 +227,9 @@ public class KillAura extends Module {
                 return false;
             } else if (entityLivingBase.deathTime > 0) {
                 return false;
-            } else if (RotationUtil.angleToEntity(entityLivingBase) > this.fov.getValue().floatValue()) {
+            } else if (RotationUtil.angleToEntity(entityLivingBase) > fov) {
                 return false;
-            } else if (!this.throughWalls.getValue() && RotationUtil.rayTrace(entityLivingBase) != null) {
+            } else if (!this.throughWalls.getValue() && RotationUtil.notRayTrace(attackData, this.swingRange.getValue().doubleValue())) {
                 return false;
             } else if (entityLivingBase instanceof EntityOtherPlayerMP) {
                 if (!this.players.getValue()) {
@@ -328,7 +332,8 @@ public class KillAura extends Module {
         this.autoBlockRange = new FloatProperty("auto-block-range", 6.0F, 3.0F, 8.0F);
         this.swingRange = new FloatProperty("swing-range", 3.5F, 3.0F, 6.0F);
         this.attackRange = new FloatProperty("attack-range", 3.0F, 3.0F, 6.0F);
-        this.fov = new IntProperty("fov", 360, 30, 360);
+        this.beginFov = new IntProperty("begin-fov", 60, 30, 360);
+        this.endFov = new IntProperty("end-fov", 360, 30, 360);
         this.minCPS = new IntProperty("min-aps", 14, 1, 20);
         this.maxCPS = new IntProperty("max-aps", 14, 1, 20);
         this.switchDelay = new IntProperty("switch-delay", 150, 0, 1000);
@@ -656,13 +661,24 @@ public class KillAura extends Module {
                 boolean attacked = false;
                 if (this.isBoxInSwingRange(this.target.getBox())) {
                     if (this.rotations.getValue() == 2 || this.rotations.getValue() == 3) {
-                        float[] rotations = RotationUtil.getRotationsToBox(
-                                this.target.getBox(),
-                                event.getYaw(),
-                                event.getPitch(),
-                                (float) this.angleStep.getValue() + RandomUtil.nextFloat(-5.0F, 5.0F),
-                                (float) this.smoothing.getValue() / 100.0F
-                        );
+                        float[] rotations;
+                        if (this.target.getAttackPoint() == null) {
+                            rotations = RotationUtil.getRotationsToBox(
+                                    this.target.getBox(),
+                                    event.getYaw(),
+                                    event.getPitch(),
+                                    (float) this.angleStep.getValue() + RandomUtil.nextFloat(-5.0F, 5.0F),
+                                    (float) this.smoothing.getValue() / 100.0F
+                            );
+                        } else {
+                            rotations = RotationUtil.getRotationsTo(
+                                    this.target.getAttackPoint(),
+                                    event.getYaw(),
+                                    event.getPitch(),
+                                    (float) this.angleStep.getValue() + RandomUtil.nextFloat(-5.0F, 5.0F),
+                                    (float) this.smoothing.getValue() / 100.0F
+                            );
+                        }
                         event.setRotation(rotations[0], rotations[1], 1);
                         if (this.rotations.getValue() == 3) {
                             Myau.rotationManager.setRotation(rotations[0], rotations[1], 1, true);
@@ -696,52 +712,55 @@ public class KillAura extends Module {
             switch (event.getType()) {
                 case PRE:
                     if (this.target == null
-                            || !this.isValidTarget(this.target.getEntity())
                             || !this.isBoxInAttackRange(this.target.getBox())
                             || !this.isBoxInSwingRange(this.target.getBox())
-                            || this.timer.hasTimeElapsed(this.switchDelay.getValue().longValue())) {
+                            || this.mode.getValue() != 0 && this.timer.hasTimeElapsed(this.switchDelay.getValue().longValue())
+                            || !this.canAttack()
+                            || !this.isValidTarget(this.target, this.endFov.getValue())) {
                         this.timer.reset();
-                        ArrayList<EntityLivingBase> targets = new ArrayList<>();
+                        ArrayList<RotationUtil.AttackData> targets = new ArrayList<>();
                         for (Entity entity : mc.theWorld.loadedEntityList) {
                             if (entity instanceof EntityLivingBase
-                                    && this.isValidTarget((EntityLivingBase) entity)
                                     && this.isInRange((EntityLivingBase) entity)) {
-                                targets.add((EntityLivingBase) entity);
+                                RotationUtil.AttackData attackEntity = new RotationUtil.AttackData((EntityLivingBase) entity);
+                                if (this.isValidTarget(attackEntity, this.beginFov.getValue()))
+                                    targets.add(attackEntity);
                             }
                         }
                         if (targets.isEmpty()) {
                             this.target = null;
                         } else {
-                            if (targets.stream().anyMatch(this::isInSwingRange)) {
-                                targets.removeIf(entityLivingBase -> !this.isInSwingRange(entityLivingBase));
+                            if (targets.stream().anyMatch(attackData -> this.isInSwingRange(attackData.getEntity()))) {
+                                targets.removeIf(attackData -> !this.isInSwingRange(attackData.getEntity()));
                             }
-                            if (targets.stream().anyMatch(this::isInAttackRange)) {
-                                targets.removeIf(entityLivingBase -> !this.isInAttackRange(entityLivingBase));
+                            if (targets.stream().anyMatch(attackData -> this.isInAttackRange(attackData.getEntity()))) {
+                                targets.removeIf(attackData -> !this.isInAttackRange(attackData.getEntity()));
                             }
-                            if (targets.stream().anyMatch(this::isPlayerTarget)) {
-                                targets.removeIf(entityLivingBase -> !this.isPlayerTarget(entityLivingBase));
+                            if (targets.stream().anyMatch(attackData -> this.isPlayerTarget(attackData.getEntity()))) {
+                                targets.removeIf(attackData -> !this.isPlayerTarget(attackData.getEntity()));
                             }
                             targets.sort(
-                                    (entityLivingBase1, entityLivingBase2) -> {
+                                    (attackData1, attackData2) -> {
                                         int sortBase = 0;
                                         switch (this.sort.getValue()) {
                                             case 1:
-                                                sortBase = Float.compare(TeamUtil.getHealthScore(entityLivingBase1), TeamUtil.getHealthScore(entityLivingBase2));
+                                                sortBase = Float.compare(TeamUtil.getHealthScore(attackData1.getEntity()), TeamUtil.getHealthScore(attackData2.getEntity()));
                                                 break;
                                             case 2:
-                                                sortBase = Integer.compare(entityLivingBase1.hurtResistantTime, entityLivingBase2.hurtResistantTime);
+                                                sortBase = Integer.compare(attackData1.getEntity().hurtResistantTime, attackData2.getEntity().hurtResistantTime);
                                                 break;
                                             case 3:
                                                 sortBase = Float.compare(
-                                                        RotationUtil.angleToEntity(entityLivingBase1),
-                                                        RotationUtil.angleToEntity(entityLivingBase2)
+                                                        RotationUtil.angleToEntity(attackData1.getEntity()),
+                                                        RotationUtil.angleToEntity(attackData2.getEntity())
                                                 );
                                         }
                                         return sortBase != 0
                                                 ? sortBase
-                                                : Double.compare(RotationUtil.distanceToEntity(entityLivingBase1), RotationUtil.distanceToEntity(entityLivingBase2));
+                                                : Double.compare(RotationUtil.distanceToEntity(attackData1.getEntity()), RotationUtil.distanceToEntity(attackData2.getEntity()));
                                     }
                             );
+                            this.targets = targets;
                             if (this.mode.getValue() == 1 && this.hitRegistered) {
                                 this.hitRegistered = false;
                                 this.switchTick++;
@@ -749,11 +768,11 @@ public class KillAura extends Module {
                             if (this.mode.getValue() == 0 || this.switchTick >= targets.size()) {
                                 this.switchTick = 0;
                             }
-                            this.target = new AttackData(targets.get(this.switchTick));
+                            this.target = new RotationUtil.AttackData(targets.get(this.switchTick).getEntity(), targets.get(this.switchTick).getAttackPoint());
                         }
                     }
                     if (this.target != null) {
-                        this.target = new AttackData(this.target.getEntity());
+                        this.target = new RotationUtil.AttackData(this.target.getEntity(), this.target.getAttackPoint());
                     }
                     break;
                 case POST:
@@ -921,25 +940,23 @@ public class KillAura extends Module {
 
     @Override
     public void verifyValue(String mode) {
-        if (!this.autoBlock.getName().equals(mode) && !this.autoBlockCPS.getName().equals(mode)) {
-            if (this.swingRange.getName().equals(mode)) {
-                if (this.swingRange.getValue() < this.attackRange.getValue()) {
-                    this.attackRange.setValue(this.swingRange.getValue());
-                }
-            } else if (this.attackRange.getName().equals(mode)) {
-                if (this.swingRange.getValue() < this.attackRange.getValue()) {
-                    this.swingRange.setValue(this.attackRange.getValue());
-                }
-            } else if (this.minCPS.getName().equals(mode)) {
-                if (this.minCPS.getValue() > this.maxCPS.getValue()) {
-                    this.maxCPS.setValue(this.minCPS.getValue());
-                }
-            } else {
-                if (this.maxCPS.getName().equals(mode) && this.minCPS.getValue() > this.maxCPS.getValue()) {
-                    this.minCPS.setValue(this.maxCPS.getValue());
-                }
+        if (this.swingRange.getName().equals(mode)) {
+            if (this.swingRange.getValue() < this.attackRange.getValue()) {
+                this.attackRange.setValue(this.swingRange.getValue());
             }
-        } else {
+        } else if (this.attackRange.getName().equals(mode)) {
+            if (this.swingRange.getValue() < this.attackRange.getValue()) {
+                this.swingRange.setValue(this.attackRange.getValue());
+            }
+        } else if (this.minCPS.getName().equals(mode)) {
+            if (this.minCPS.getValue() > this.maxCPS.getValue()) {
+                this.maxCPS.setValue(this.minCPS.getValue());
+            }
+        } else if (this.maxCPS.getName().equals(mode)){
+            if (this.minCPS.getValue() > this.maxCPS.getValue()) {
+                this.minCPS.setValue(this.maxCPS.getValue());
+            }
+        } else if (this.autoBlock.getName().equals(mode) || this.autoBlockCPS.getName().equals(mode)) {
             boolean badCps = this.autoBlock.getValue() == 2
                     || this.autoBlock.getValue() == 3
                     || this.autoBlock.getValue() == 4
@@ -949,48 +966,19 @@ public class KillAura extends Module {
             if (badCps && this.autoBlockCPS.getValue() > 10.0F) {
                 this.autoBlockCPS.setValue(10.0F);
             }
+        } else if (this.beginFov.getName().equals(mode)) {
+            if (this.beginFov.getValue() > this.endFov.getValue()) {
+                this.endFov.setValue(this.beginFov.getValue());
+            }
+        } else if (this.endFov.getName().equals(mode)) {
+            if (this.beginFov.getValue() > this.endFov.getValue()) {
+                this.beginFov.setValue(this.endFov.getValue());
+            }
         }
     }
 
     @Override
     public String[] getSuffix() {
         return new String[]{CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, this.mode.getModeString())};
-    }
-
-    public static class AttackData {
-        private final EntityLivingBase entity;
-        private final AxisAlignedBB box;
-        private final double x;
-        private final double y;
-        private final double z;
-
-        public AttackData(EntityLivingBase entityLivingBase) {
-            this.entity = entityLivingBase;
-            double collisionBorderSize = entityLivingBase.getCollisionBorderSize();
-            this.box = entityLivingBase.getEntityBoundingBox().expand(collisionBorderSize, collisionBorderSize, collisionBorderSize);
-            this.x = entityLivingBase.posX;
-            this.y = entityLivingBase.posY;
-            this.z = entityLivingBase.posZ;
-        }
-
-        public EntityLivingBase getEntity() {
-            return this.entity;
-        }
-
-        public AxisAlignedBB getBox() {
-            return this.box;
-        }
-
-        public double getX() {
-            return this.x;
-        }
-
-        public double getY() {
-            return this.y;
-        }
-
-        public double getZ() {
-            return this.z;
-        }
     }
 }
