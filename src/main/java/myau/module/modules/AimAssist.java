@@ -12,7 +12,6 @@ import myau.property.properties.FloatProperty;
 import myau.property.properties.PercentProperty;
 import myau.property.properties.IntProperty;
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MovingObjectPosition.MovingObjectType;
@@ -34,8 +33,7 @@ public class AimAssist extends Module {
     public final BooleanProperty botChecks = new BooleanProperty("bot-check", true);
     public final BooleanProperty team = new BooleanProperty("teams", true);
 
-    private boolean isValidTarget(RotationUtil.AttackData attackData) {
-        EntityPlayer entityPlayer = (EntityPlayer) attackData.getEntity();
+    private boolean isValidTarget(EntityPlayer entityPlayer) {
         if (entityPlayer != mc.thePlayer && entityPlayer != mc.thePlayer.ridingEntity) {
             if (entityPlayer == mc.getRenderViewEntity() || entityPlayer == mc.getRenderViewEntity().ridingEntity) {
                 return false;
@@ -45,7 +43,7 @@ public class AimAssist extends Module {
                 return false;
             } else if (RotationUtil.angleToEntity(entityPlayer) > (float) this.fov.getValue()) {
                 return false;
-            } else if (RotationUtil.notRayTrace(attackData, (double) this.range.getValue())) {
+            } else if (RotationUtil.rayTrace(entityPlayer) != null) {
                 return false;
             } else if (TeamUtil.isFriend(entityPlayer)) {
                 return false;
@@ -80,23 +78,24 @@ public class AimAssist extends Module {
                 boolean attacking = PlayerUtil.isAttacking();
                 if (!attacking || !this.isLookingAtBlock()) {
                     if (attacking || !this.timer.hasTimeElapsed(350L)) {
-                        List<RotationUtil.AttackData> inRange = mc.theWorld
+                        List<EntityPlayer> inRange = mc.theWorld
                                 .loadedEntityList
                                 .stream()
                                 .filter(entity -> entity instanceof EntityPlayer)
-                                .map(entity -> new RotationUtil.AttackData((EntityPlayer) entity))
+                                .map(entity -> (EntityPlayer) entity)
                                 .filter(this::isValidTarget)
-                                .sorted(Comparator.comparingDouble(attackData -> RotationUtil.distanceToEntity(attackData.getEntity())))
+                                .sorted(Comparator.comparingDouble(RotationUtil::distanceToEntity))
                                 .collect(Collectors.toList());
                         if (!inRange.isEmpty()) {
-                            if (inRange.stream().anyMatch(attackData -> this.isInReach((EntityPlayer) attackData.getEntity()))) {
-                                inRange.removeIf(attackData -> !this.isInReach((EntityPlayer) attackData.getEntity()));
+                            if (inRange.stream().anyMatch(this::isInReach)) {
+                                inRange.removeIf(entityPlayer -> !this.isInReach(entityPlayer));
                             }
-                            RotationUtil.AttackData attackData = inRange.get(0);
-                            EntityPlayer player = (EntityPlayer) attackData.getEntity();
+                            EntityPlayer player = inRange.get(0);
                             if (!(RotationUtil.distanceToEntity(player) <= 0.0)) {
-                                float[] rotation = RotationUtil.getRotationsTo(
-                                        attackData.getAttackPoint(),
+                                AxisAlignedBB axisAlignedBB = player.getEntityBoundingBox();
+                                double collisionBorderSize = player.getCollisionBorderSize();
+                                float[] rotation = RotationUtil.getRotationsToBox(
+                                        axisAlignedBB.expand(collisionBorderSize, collisionBorderSize, collisionBorderSize),
                                         mc.thePlayer.rotationYaw,
                                         mc.thePlayer.rotationPitch,
                                         180.0F,
