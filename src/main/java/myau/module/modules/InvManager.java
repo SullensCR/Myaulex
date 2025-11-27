@@ -29,6 +29,7 @@ public class InvManager extends Module {
     public final IntProperty openDelay = new IntProperty("open-delay", 1, 0, 20);
     public final BooleanProperty autoArmor = new BooleanProperty("auto-armor", true);
     public final BooleanProperty dropTrash = new BooleanProperty("drop-trash", false);
+    public final BooleanProperty checkDurability = new BooleanProperty("check-durability", true);
     public final IntProperty swordSlot = new IntProperty("sword-slot", 1, 0, 9);
     public final IntProperty pickaxeSlot = new IntProperty("pickaxe-slot", 3, 0, 9);
     public final IntProperty shovelSlot = new IntProperty("shovel-slot", 4, 0, 9);
@@ -98,16 +99,16 @@ public class InvManager extends Module {
                             inventoryArmorSlots.set(i, ItemUtil.findArmorInventorySlot(i, false));
                         }
                         int preferredSwordHotbarSlot = this.swordSlot.getValue() - 1;
-                        int inventorySwordSlot = ItemUtil.findSwordInInventorySlot(preferredSwordHotbarSlot, true);
+                        int inventorySwordSlot = ItemUtil.findSwordInInventorySlot(preferredSwordHotbarSlot, this.checkDurability.getValue());
                         if (inventorySwordSlot == -1) inventorySwordSlot = ItemUtil.findSwordInInventorySlot(preferredSwordHotbarSlot, false);
                         int preferredPickaxeHotbarSlot = this.pickaxeSlot.getValue() - 1;
-                        int inventoryPickaxeSlot = ItemUtil.findInventorySlot("pickaxe", preferredPickaxeHotbarSlot, true);
+                        int inventoryPickaxeSlot = ItemUtil.findInventorySlot("pickaxe", preferredPickaxeHotbarSlot, this.checkDurability.getValue());
                         if (inventoryPickaxeSlot == -1) inventoryPickaxeSlot = ItemUtil.findInventorySlot("pickaxe", preferredPickaxeHotbarSlot, false);
                         int preferredShovelHotbarSlot = this.shovelSlot.getValue() - 1;
-                        int inventoryShovelSlot = ItemUtil.findInventorySlot("shovel", preferredShovelHotbarSlot, true);
+                        int inventoryShovelSlot = ItemUtil.findInventorySlot("shovel", preferredShovelHotbarSlot, this.checkDurability.getValue());
                         if (inventoryShovelSlot == -1) inventoryShovelSlot = ItemUtil.findInventorySlot("shovel", preferredShovelHotbarSlot, false);
                         int preferredAxeHotbarSlot = this.axeSlot.getValue() - 1;
-                        int inventoryAxeSlot = ItemUtil.findInventorySlot("axe", preferredAxeHotbarSlot, true);
+                        int inventoryAxeSlot = ItemUtil.findInventorySlot("axe", preferredAxeHotbarSlot, this.checkDurability.getValue());
                         if (inventoryAxeSlot == -1) inventoryAxeSlot = ItemUtil.findInventorySlot("axe", preferredAxeHotbarSlot, false);
                         int preferredBlocksHotbarSlot = this.blocksSlot.getValue() - 1;
                         int inventoryBlocksSlot = ItemUtil.findInventorySlot(preferredBlocksHotbarSlot, ItemUtil.ItemType.Block);
@@ -117,7 +118,7 @@ public class InvManager extends Module {
                         int preferredGoldAppleHotbarSlot = this.goldAppleSlot.getValue() - 1;
                         int inventoryGoldAppleSlot = ItemUtil.findInventorySlot(preferredGoldAppleHotbarSlot, ItemUtil.ItemType.GoldApple);
                         int preferredBowHotbarSlot = this.bowSlot.getValue() - 1;
-                        int inventoryBowSlot = ItemUtil.findBowInventorySlot(preferredBowHotbarSlot, true);
+                        int inventoryBowSlot = ItemUtil.findBowInventorySlot(preferredBowHotbarSlot, this.checkDurability.getValue());
                         if (inventoryBowSlot == -1) inventoryBowSlot = ItemUtil.findBowInventorySlot(preferredBowHotbarSlot, false);
                         if (this.autoArmor.getValue()) {
                             for (int i = 0; i < 4; i++) {

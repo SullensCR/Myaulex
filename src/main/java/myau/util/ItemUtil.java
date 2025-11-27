@@ -25,9 +25,6 @@ public class ItemUtil {
             return false;
         }
         Item item = itemStack.getItem();
-//        if (item instanceof ItemBlock) {
-//            return !ItemUtil.isContainerBlock((ItemBlock) item);
-//        }
         if (item instanceof ItemPotion) {
             return ((ItemPotion) item).getEffects(itemStack).stream().map(PotionEffect::getPotionID).noneMatch(specialItems::contains);
         }
@@ -35,8 +32,7 @@ public class ItemUtil {
         if (item instanceof ItemFood) {
             if (item != Items.spider_eye) return false;
         }
-//         if (isProjectile(itemStack)) return false;
-//         if (isFishingRod(itemStack)) return false;
+        if (item instanceof ItemMonsterPlacer) return false;
         return item != Items.nether_star;
     }
 
