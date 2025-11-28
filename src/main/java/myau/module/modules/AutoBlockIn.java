@@ -22,10 +22,9 @@ import net.minecraft.util.*;
 import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
+import java.util.Queue;
 
 public class AutoBlockIn extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
@@ -283,64 +282,135 @@ public class AutoBlockIn extends Module {
     private void findBestPlacement() {
         Vec3 playerPos = mc.thePlayer.getPositionVector();
         BlockPos feetPos = new BlockPos(playerPos.xCoord, playerPos.yCoord, playerPos.zCoord);
-        
-        Vec3 eyes = mc.thePlayer.getPositionEyes(1.0f);
+
+        Vec3 eye = mc.thePlayer.getPositionEyes(1.0f);
         double reach = range.getValue().doubleValue();
-        
-        if (roofAim(eyes, reach, feetPos)) {
+        double reachSq = reach * reach;
+        double rp12 = (reach + 1) * (reach + 1);
+
+        BlockPos roofTarget = feetPos.up(2);
+
+        if (!isAir(roofTarget)) {
+            sidesAim(eye, reach, feetPos);
             return;
         }
-        
-        sidesAim(eyes, reach, feetPos);
-    }
 
-    private boolean roofAim(Vec3 eye, double reach, BlockPos feetPos) {
-        BlockPos roofTarget = feetPos.up(2);
-        
-        if (!isAir(roofTarget)) return false;
-        
-        double r2 = reach * reach;
-        double rp12 = (reach + 1) * (reach + 1);
-        
-        int minY = (int) Math.floor(eye.yCoord) + 1;
-        int maxY = (int) Math.floor(eye.yCoord + reach);
+        List<BlockData> supports = new ArrayList<>();
+
         int minX = (int) Math.floor(eye.xCoord - reach);
         int maxX = (int) Math.floor(eye.xCoord + reach);
+        int minY = (int) Math.floor(eye.yCoord - 1);
+        int maxY = (int) Math.floor(eye.yCoord + reach);
         int minZ = (int) Math.floor(eye.zCoord - reach);
         int maxZ = (int) Math.floor(eye.zCoord + reach);
-        
-        List<BlockData> candidates = new ArrayList<>();
-        
-        for (int y = minY; y <= maxY; y++) {
-            for (int x = minX; x <= maxX; x++) {
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    if (isAir(p)) continue;
+
                     double dx = (x + 0.5) - eye.xCoord;
                     double dy = (y + 0.5) - eye.yCoord;
                     double dz = (z + 0.5) - eye.zCoord;
-                    
                     if (dx*dx + dy*dy + dz*dz > rp12) continue;
-                    
-                    Block block = mc.theWorld.getBlockState(new BlockPos(x, y, z)).getBlock();
-                    if (isAir(new BlockPos(x, y, z))) continue;
-                    
+
                     double d2 = dist2PointAABB(eye, x, y, z);
-                    if (d2 > r2) continue;
-                    
-                    candidates.add(new BlockData(new BlockPos(x, y, z), d2));
+                    if (d2 > reachSq) continue;
+
+                    Vec3 mid = new Vec3(x + 0.5, y + 0.5, z + 0.5);
+                    MovingObjectPosition mop = mc.theWorld.rayTraceBlocks(eye, mid, false, false, false);
+                    if (mop == null) continue;
+                    if (!mop.getBlockPos().equals(p)) continue;
+
+                    supports.add(new BlockData(p, d2));
                 }
             }
         }
-        
-        candidates.sort((a, b) -> Double.compare(a.distance, b.distance));
-        
-        for (BlockData cand : candidates) {
-            if (tryPlaceOnBlock(cand.pos, eye, reach, roofTarget)) {
-                return true;
+        if (supports.isEmpty()) {
+            sidesAim(eye, reach, feetPos);
+            return;
+        }
+        supports.sort(Comparator.comparingDouble(a -> a.distance));
+        for (BlockData bd : supports) {
+            if (tryPlaceOnBlock(bd.pos, eye, reach, roofTarget)) {
+                return;
             }
         }
-        
-        return false;
+        Queue<BlockPos> q = new LinkedList<>();
+        Map<BlockPos, BlockPos> parent = new HashMap<>();
+        Set<BlockPos> visited = new HashSet<>();
+        for (BlockData bd : supports) {
+            BlockPos sup = bd.pos;
+            for (EnumFacing f : EnumFacing.values()) {
+                BlockPos node = sup.offset(f);
+                if (!isAir(node)) continue;
+                if (visited.contains(node)) continue;
+                visited.add(node);
+                parent.put(node, null);
+                q.add(node);
+            }
+        }
+        BlockPos endNode = null;
+        int nodesSeen = 0;
+        while (!q.isEmpty() && nodesSeen < 8964) {
+            BlockPos cur = q.poll();
+            nodesSeen++;
+            if (cur.distanceSq(roofTarget) <= 1.5) {
+                endNode = cur;
+                break;
+            }
+            for (EnumFacing f : EnumFacing.values()) {
+                BlockPos nxt = cur.offset(f);
+                if (visited.contains(nxt)) continue;
+                if (!isAir(nxt)) continue;
+                visited.add(nxt);
+                parent.put(nxt, cur);
+                q.add(nxt);
+            }
+        }
+
+        if (endNode == null) {
+            sidesAim(eye, reach, feetPos);
+            return;
+        }
+
+        List<BlockPos> path = new ArrayList<>();
+        for (BlockPos cur = endNode; cur != null; cur = parent.get(cur)) {
+            path.add(cur);
+        }
+        Collections.reverse(path);
+
+        for (BlockPos place : path) {
+            if (!isAir(place)) continue;
+
+            boolean placedThis = false;
+            for (BlockData bd : supports) {
+                BlockPos sup = bd.pos;
+                if (!isAdjacent(sup, place)) continue;
+                if (tryPlaceOnBlock(sup, eye, reach, place)) {
+                    return;
+                }
+            }
+            for (EnumFacing f : EnumFacing.values()) {
+                BlockPos sup = place.offset(f);
+                if (isAir(sup)) continue;
+                if (tryPlaceOnBlock(sup, eye, reach, place)) {
+                    return;
+                }
+            }
+            if (placedThis) break;
+        }
+        sidesAim(eye, reach, feetPos);
     }
+
+    private boolean isAdjacent(BlockPos a, BlockPos b) {
+        int dx = Math.abs(a.getX() - b.getX());
+        int dy = Math.abs(a.getY() - b.getY());
+        int dz = Math.abs(a.getZ() - b.getZ());
+        return (dx + dy + dz) == 1;
+    }
+
 
     private boolean tryPlaceOnBlock(BlockPos supportBlock, Vec3 eye, double reach, BlockPos targetPos) {
         // Try all 6 faces of support block
