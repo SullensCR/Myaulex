@@ -4,10 +4,13 @@ import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.event.types.Priority;
 import myau.events.*;
+import myau.management.RotationState;
 import myau.module.Module;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.FloatProperty;
 import myau.property.properties.IntProperty;
+import myau.property.properties.ModeProperty;
+import myau.util.MoveUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
@@ -15,27 +18,26 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.BlockPos;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.util.Vec3;
+import net.minecraft.util.*;
 import org.lwjgl.opengl.GL11;
 
-import java.awt.Color;
+import java.awt.*;
 import java.util.*;
+import java.util.List;
+import java.util.Queue;
 
 public class AutoBlockIn extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     private final Map<String, Integer> BLOCK_SCORE = new HashMap<>();
     private long lastPlaceTime = 0;
     
-    public final FloatProperty range;
-    public final IntProperty speed;
-    public final IntProperty placeDelay;
-    public final IntProperty rotationTolerance;
-    public final BooleanProperty itemSpoof;
-    public final BooleanProperty showProgress;
+    public final FloatProperty range = new FloatProperty("range", 4.5f, 3.0f, 6.0f);
+    public final IntProperty speed = new IntProperty("speed", 20, 5, 100);
+    public final IntProperty placeDelay = new IntProperty("place-delay", 50, 0, 200);
+    public final IntProperty rotationTolerance = new IntProperty("rotation-tolerance", 25, 5, 100);
+    public final BooleanProperty itemSpoof = new BooleanProperty("item-spoof", true);
+    public final BooleanProperty showProgress = new BooleanProperty("show-progress", true);
+    public final ModeProperty moveFix = new ModeProperty("move-fix", 1, new String[]{"NONE", "SILENT", "STRICT"});
     
     private float serverYaw;
     private float serverPitch;
@@ -64,13 +66,6 @@ public class AutoBlockIn extends Module {
         BLOCK_SCORE.put("hardened_clay", 4);
         BLOCK_SCORE.put("stained_hardened_clay", 4);
         BLOCK_SCORE.put("cloth", 5);
-        
-        this.range = new FloatProperty("range", 4.5f, 3.0f, 6.0f);
-        this.speed = new IntProperty("speed", 20, 5, 100);
-        this.placeDelay = new IntProperty("place-delay", 50, 0, 200);
-        this.rotationTolerance = new IntProperty("rotation-tolerance", 25, 5, 100);
-        this.itemSpoof = new BooleanProperty("item-spoof", true);
-        this.showProgress = new BooleanProperty("show-progress", true);
     }
 
     @Override
@@ -157,6 +152,19 @@ public class AutoBlockIn extends Module {
             aimPitch = MathHelper.clamp_float(serverPitch + pitchStep, -90.0f, 90.0f);
             
             event.setRotation(aimYaw, aimPitch, 6);
+            event.setPervRotation(this.moveFix.getValue() != 0 ? aimYaw : mc.thePlayer.rotationYaw, 6);
+        }
+    }
+
+    @EventTarget
+    public void onMove(MoveInputEvent event) {
+        if (this.isEnabled()) {
+            if (this.moveFix.getValue() == 1
+                    && RotationState.isActived()
+                    && RotationState.getPriority() == 6
+                    && MoveUtil.isForwardPressed()) {
+                MoveUtil.fixStrafe(RotationState.getSmoothedYaw());
+            }
         }
     }
     
@@ -274,64 +282,135 @@ public class AutoBlockIn extends Module {
     private void findBestPlacement() {
         Vec3 playerPos = mc.thePlayer.getPositionVector();
         BlockPos feetPos = new BlockPos(playerPos.xCoord, playerPos.yCoord, playerPos.zCoord);
-        
-        Vec3 eyes = mc.thePlayer.getPositionEyes(1.0f);
+
+        Vec3 eye = mc.thePlayer.getPositionEyes(1.0f);
         double reach = range.getValue().doubleValue();
-        
-        if (roofAim(eyes, reach, feetPos)) {
+        double reachSq = reach * reach;
+        double rp12 = (reach + 1) * (reach + 1);
+
+        BlockPos roofTarget = feetPos.up(2);
+
+        if (!isAir(roofTarget)) {
+            sidesAim(eye, reach, feetPos);
             return;
         }
-        
-        sidesAim(eyes, reach, feetPos);
-    }
 
-    private boolean roofAim(Vec3 eye, double reach, BlockPos feetPos) {
-        BlockPos roofTarget = feetPos.up(2);
-        
-        if (!isAir(roofTarget)) return false;
-        
-        double r2 = reach * reach;
-        double rp12 = (reach + 1) * (reach + 1);
-        
-        int minY = (int) Math.floor(eye.yCoord) + 1;
-        int maxY = (int) Math.floor(eye.yCoord + reach);
+        List<BlockData> supports = new ArrayList<>();
+
         int minX = (int) Math.floor(eye.xCoord - reach);
         int maxX = (int) Math.floor(eye.xCoord + reach);
+        int minY = (int) Math.floor(eye.yCoord - 1);
+        int maxY = (int) Math.floor(eye.yCoord + reach);
         int minZ = (int) Math.floor(eye.zCoord - reach);
         int maxZ = (int) Math.floor(eye.zCoord + reach);
-        
-        List<BlockData> candidates = new ArrayList<>();
-        
-        for (int y = minY; y <= maxY; y++) {
-            for (int x = minX; x <= maxX; x++) {
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    if (isAir(p)) continue;
+
                     double dx = (x + 0.5) - eye.xCoord;
                     double dy = (y + 0.5) - eye.yCoord;
                     double dz = (z + 0.5) - eye.zCoord;
-                    
                     if (dx*dx + dy*dy + dz*dz > rp12) continue;
-                    
-                    Block block = mc.theWorld.getBlockState(new BlockPos(x, y, z)).getBlock();
-                    if (isAir(new BlockPos(x, y, z))) continue;
-                    
+
                     double d2 = dist2PointAABB(eye, x, y, z);
-                    if (d2 > r2) continue;
-                    
-                    candidates.add(new BlockData(new BlockPos(x, y, z), d2));
+                    if (d2 > reachSq) continue;
+
+                    Vec3 mid = new Vec3(x + 0.5, y + 0.5, z + 0.5);
+                    MovingObjectPosition mop = mc.theWorld.rayTraceBlocks(eye, mid, false, false, false);
+                    if (mop == null) continue;
+                    if (!mop.getBlockPos().equals(p)) continue;
+
+                    supports.add(new BlockData(p, d2));
                 }
             }
         }
-        
-        candidates.sort((a, b) -> Double.compare(a.distance, b.distance));
-        
-        for (BlockData cand : candidates) {
-            if (tryPlaceOnBlock(cand.pos, eye, reach, roofTarget)) {
-                return true;
+        if (supports.isEmpty()) {
+            sidesAim(eye, reach, feetPos);
+            return;
+        }
+        supports.sort(Comparator.comparingDouble(a -> a.distance));
+        for (BlockData bd : supports) {
+            if (tryPlaceOnBlock(bd.pos, eye, reach, roofTarget)) {
+                return;
             }
         }
-        
-        return false;
+        Queue<BlockPos> q = new LinkedList<>();
+        Map<BlockPos, BlockPos> parent = new HashMap<>();
+        Set<BlockPos> visited = new HashSet<>();
+        for (BlockData bd : supports) {
+            BlockPos sup = bd.pos;
+            for (EnumFacing f : EnumFacing.values()) {
+                BlockPos node = sup.offset(f);
+                if (!isAir(node)) continue;
+                if (visited.contains(node)) continue;
+                visited.add(node);
+                parent.put(node, null);
+                q.add(node);
+            }
+        }
+        BlockPos endNode = null;
+        int nodesSeen = 0;
+        while (!q.isEmpty() && nodesSeen < 8964) {
+            BlockPos cur = q.poll();
+            nodesSeen++;
+            if (cur.distanceSq(roofTarget) <= 1.5) {
+                endNode = cur;
+                break;
+            }
+            for (EnumFacing f : EnumFacing.values()) {
+                BlockPos nxt = cur.offset(f);
+                if (visited.contains(nxt)) continue;
+                if (!isAir(nxt)) continue;
+                visited.add(nxt);
+                parent.put(nxt, cur);
+                q.add(nxt);
+            }
+        }
+
+        if (endNode == null) {
+            sidesAim(eye, reach, feetPos);
+            return;
+        }
+
+        List<BlockPos> path = new ArrayList<>();
+        for (BlockPos cur = endNode; cur != null; cur = parent.get(cur)) {
+            path.add(cur);
+        }
+        Collections.reverse(path);
+
+        for (BlockPos place : path) {
+            if (!isAir(place)) continue;
+
+            boolean placedThis = false;
+            for (BlockData bd : supports) {
+                BlockPos sup = bd.pos;
+                if (!isAdjacent(sup, place)) continue;
+                if (tryPlaceOnBlock(sup, eye, reach, place)) {
+                    return;
+                }
+            }
+            for (EnumFacing f : EnumFacing.values()) {
+                BlockPos sup = place.offset(f);
+                if (isAir(sup)) continue;
+                if (tryPlaceOnBlock(sup, eye, reach, place)) {
+                    return;
+                }
+            }
+            if (placedThis) break;
+        }
+        sidesAim(eye, reach, feetPos);
     }
+
+    private boolean isAdjacent(BlockPos a, BlockPos b) {
+        int dx = Math.abs(a.getX() - b.getX());
+        int dy = Math.abs(a.getY() - b.getY());
+        int dz = Math.abs(a.getZ() - b.getZ());
+        return (dx + dy + dz) == 1;
+    }
+
 
     private boolean tryPlaceOnBlock(BlockPos supportBlock, Vec3 eye, double reach, BlockPos targetPos) {
         // Try all 6 faces of support block

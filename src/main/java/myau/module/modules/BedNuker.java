@@ -11,10 +11,11 @@ import myau.events.*;
 import myau.management.RotationState;
 import myau.mixin.IAccessorPlayerControllerMP;
 import myau.module.Module;
-import myau.util.*;
-import myau.property.properties.*;
 import myau.property.properties.BooleanProperty;
+import myau.property.properties.FloatProperty;
 import myau.property.properties.ModeProperty;
+import myau.property.properties.PercentProperty;
+import myau.util.*;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockBed;
 import net.minecraft.block.BlockBed.EnumPartType;
@@ -329,6 +330,8 @@ public class BedNuker extends Module {
     @EventTarget(Priority.HIGH)
     public void onTick(TickEvent event) {
         if (this.isEnabled() && event.getType() == EventType.PRE) {
+            AutoBlockIn autoBlockIn = (AutoBlockIn) Myau.moduleManager.modules.get(AutoBlockIn.class);
+            if(autoBlockIn.isEnabled()) return;
             if (this.targetBed != null) {
                 if (mc.theWorld.isAirBlock(this.targetBed) || !PlayerUtil.canReach(this.targetBed, this.range.getValue().doubleValue())) {
                     this.restoreSlot();
@@ -431,6 +434,8 @@ public class BedNuker extends Module {
     @EventTarget(Priority.LOWEST)
     public void onUpdate(UpdateEvent event) {
         if (this.isEnabled() && event.getType() == EventType.PRE) {
+            AutoBlockIn autoBlockIn = (AutoBlockIn) Myau.moduleManager.modules.get(AutoBlockIn.class);
+            if(autoBlockIn.isEnabled()) return;
             if (this.isReady()) {
                 double x = (double) this.targetBed.getX() + 0.5 - mc.thePlayer.posX;
                 double y = (double) this.targetBed.getY() + 0.5 - mc.thePlayer.posY - (double) mc.thePlayer.getEyeHeight();
