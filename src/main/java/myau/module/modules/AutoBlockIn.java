@@ -4,10 +4,13 @@ import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.event.types.Priority;
 import myau.events.*;
+import myau.management.RotationState;
 import myau.module.Module;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.FloatProperty;
 import myau.property.properties.IntProperty;
+import myau.property.properties.ModeProperty;
+import myau.util.MoveUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
@@ -15,27 +18,27 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.BlockPos;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.util.Vec3;
+import net.minecraft.util.*;
 import org.lwjgl.opengl.GL11;
 
-import java.awt.Color;
-import java.util.*;
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class AutoBlockIn extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     private final Map<String, Integer> BLOCK_SCORE = new HashMap<>();
     private long lastPlaceTime = 0;
     
-    public final FloatProperty range;
-    public final IntProperty speed;
-    public final IntProperty placeDelay;
-    public final IntProperty rotationTolerance;
-    public final BooleanProperty itemSpoof;
-    public final BooleanProperty showProgress;
+    public final FloatProperty range = new FloatProperty("range", 4.5f, 3.0f, 6.0f);
+    public final IntProperty speed = new IntProperty("speed", 20, 5, 100);
+    public final IntProperty placeDelay = new IntProperty("place-delay", 50, 0, 200);
+    public final IntProperty rotationTolerance = new IntProperty("rotation-tolerance", 25, 5, 100);
+    public final BooleanProperty itemSpoof = new BooleanProperty("item-spoof", true);
+    public final BooleanProperty showProgress = new BooleanProperty("show-progress", true);
+    public final ModeProperty moveFix = new ModeProperty("move-fix", 1, new String[]{"NONE", "SILENT", "STRICT"});
     
     private float serverYaw;
     private float serverPitch;
@@ -64,13 +67,6 @@ public class AutoBlockIn extends Module {
         BLOCK_SCORE.put("hardened_clay", 4);
         BLOCK_SCORE.put("stained_hardened_clay", 4);
         BLOCK_SCORE.put("cloth", 5);
-        
-        this.range = new FloatProperty("range", 4.5f, 3.0f, 6.0f);
-        this.speed = new IntProperty("speed", 20, 5, 100);
-        this.placeDelay = new IntProperty("place-delay", 50, 0, 200);
-        this.rotationTolerance = new IntProperty("rotation-tolerance", 25, 5, 100);
-        this.itemSpoof = new BooleanProperty("item-spoof", true);
-        this.showProgress = new BooleanProperty("show-progress", true);
     }
 
     @Override
@@ -157,6 +153,19 @@ public class AutoBlockIn extends Module {
             aimPitch = MathHelper.clamp_float(serverPitch + pitchStep, -90.0f, 90.0f);
             
             event.setRotation(aimYaw, aimPitch, 6);
+            event.setPervRotation(this.moveFix.getValue() != 0 ? aimYaw : mc.thePlayer.rotationYaw, 6);
+        }
+    }
+
+    @EventTarget
+    public void onMove(MoveInputEvent event) {
+        if (this.isEnabled()) {
+            if (this.moveFix.getValue() == 1
+                    && RotationState.isActived()
+                    && RotationState.getPriority() == 6
+                    && MoveUtil.isForwardPressed()) {
+                MoveUtil.fixStrafe(RotationState.getSmoothedYaw());
+            }
         }
     }
     
