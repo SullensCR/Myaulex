@@ -5,7 +5,6 @@ import myau.event.types.EventType;
 import myau.event.types.Priority;
 import myau.events.LeftClickMouseEvent;
 import myau.events.TickEvent;
-import myau.events.UpdateEvent;
 import myau.module.Module;
 import myau.util.*;
 import myau.property.properties.BooleanProperty;
@@ -16,10 +15,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.MovingObjectPosition.MovingObjectType;
 import net.minecraft.world.WorldSettings.GameType;
 
-import java.util.Comparator;
-import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class AutoClicker extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
@@ -35,7 +31,8 @@ public class AutoClicker extends Module {
     public final BooleanProperty allowTools = new BooleanProperty("allow-tools", false, this.weaponsOnly::getValue);
     public final BooleanProperty breakBlocks = new BooleanProperty("break-blocks", true);
     public final FloatProperty range = new FloatProperty("range", 3.0F, 3.0F, 8.0F, this.breakBlocks::getValue);
-    public final FloatProperty hitBox = new FloatProperty("hit-box", 0.2F, 0.0F, 1.0F, this.breakBlocks::getValue);
+    public final FloatProperty hitBoxVertical = new FloatProperty("hit-box-vertical", 0.1F, 0.0F, 1.0F, this.breakBlocks::getValue);
+    public final FloatProperty hitBoxHorizontal = new FloatProperty("hit-box-horizontal", 0.2F, 0.0F, 1.0F, this.breakBlocks::getValue);
 
     private long getNextClickDelay() {
         return 1000L / RandomUtil.nextLong(this.minCPS.getValue(), this.maxCPS.getValue());
@@ -73,9 +70,9 @@ public class AutoClicker extends Module {
             } else {
                 float borderSize = entityPlayer.getCollisionBorderSize();
                 return RotationUtil.rayTrace(entityPlayer.getEntityBoundingBox().expand(
-                        borderSize + this.hitBox.getValue(),
-                        borderSize,
-                        borderSize + this.hitBox.getValue()
+                        borderSize + this.hitBoxHorizontal.getValue(),
+                        borderSize + this.hitBoxVertical.getValue(),
+                        borderSize + this.hitBoxHorizontal.getValue()
                 ), mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, this.range.getValue()) != null;
             }
         } else {
