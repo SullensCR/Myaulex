@@ -53,7 +53,7 @@ public class InvWalk extends Module {
 
     public final ModeProperty mode = new ModeProperty("mode", 1, new String[]{"VANILLA", "LEGIT", "HYPIXEL", "KEEPMOVE"});
     public final BooleanProperty guiEnabled = new BooleanProperty("ClickGUI", true);
-    public final IntProperty openDelay = new IntProperty("openDelay", 6, 0, 20, () -> mode.getValue() == 3);
+    public final IntProperty openDelay = new IntProperty("openDelay", 0, 0, 20, () -> mode.getValue() == 3);
     public final IntProperty closeDelay = new IntProperty("closeDelay", 4, 0, 20, () -> mode.getValue() == 3);
     public final BooleanProperty lockMoveKey = new BooleanProperty("lockMoveKey", false);
 
@@ -129,7 +129,6 @@ public class InvWalk extends Module {
             }
             while (!this.clickQueue.isEmpty()) {
                 PacketUtil.sendPacketNoEvent(this.clickQueue.poll());
-                ChatUtil.sendFormatted(String.format("%s%s: &csend clickQueue&r", Myau.clientName, this.getName()));
             }
             if (this.closeDelayTicks > 0) {
                 if (mc.thePlayer.inventory.getItemStack() == null) {
@@ -139,7 +138,6 @@ public class InvWalk extends Module {
                 if (mc.currentScreen instanceof GuiInventory)
                     PacketUtil.sendPacketNoEvent(new C0DPacketCloseWindow(0));
                 this.closeDelayTicks = -1;
-                ChatUtil.sendFormatted(String.format("%s%s: &cclose inv&r", Myau.clientName, this.getName()));
             }
         }
     }
@@ -172,7 +170,6 @@ public class InvWalk extends Module {
             if (this.pendingStatus != null) {
                 PacketUtil.sendPacketNoEvent(this.pendingStatus);
                 this.pendingStatus = null;
-                ChatUtil.sendFormatted(String.format("%s%s: &copen inv&r", Myau.clientName, this.getName()));
             }
             if (this.delayTicks > 0) {
                 this.delayTicks--;
@@ -195,7 +192,6 @@ public class InvWalk extends Module {
                     }
                 }
             } else if (((C16PacketClientStatus) event.getPacket()).getStatus() == EnumState.OPEN_INVENTORY_ACHIEVEMENT) {
-                ChatUtil.sendFormatted(String.format("%s%s: &copen inv native2&r", Myau.clientName, this.getName()));
             }
         } else if (!(event.getPacket() instanceof C0EPacketClickWindow)) {
             if (event.getPacket() instanceof C0DPacketCloseWindow) {
@@ -209,7 +205,6 @@ public class InvWalk extends Module {
                             this.openDelayTicks = -1;
                         }
                         if (this.closeDelayTicks >= 0) {
-                            ChatUtil.sendFormatted(String.format("%s%s: &cclose inv native 1&r", Myau.clientName, this.getName()));
                             this.closeDelayTicks = -1;
                         } else {
                             event.setCancelled(true);
@@ -217,8 +212,6 @@ public class InvWalk extends Module {
                     } else if (this.pendingStatus != null) {
                         this.pendingStatus = null;
                         event.setCancelled(true);
-                    } else {
-                        ChatUtil.sendFormatted(String.format("%s%s: &cclose inv native 2&r", Myau.clientName, this.getName()));
                     }
                 } else {
                     if (!this.clickQueue.isEmpty()) {
@@ -230,7 +223,6 @@ public class InvWalk extends Module {
                     if (this.closeDelayTicks >= 0) {
                         this.closeDelayTicks = -1;
                     }
-                    ChatUtil.sendFormatted(String.format("%s%s: &cC0DPacketCloseWindow %d&r", Myau.clientName, this.getName(), ((IAccessorC0DPacketCloseWindow) packet).getWindowId()));
                 }
             }
         } else {
@@ -279,7 +271,6 @@ public class InvWalk extends Module {
             if (this.pendingStatus != null) {
                 PacketUtil.sendPacketNoEvent(this.pendingStatus);
                 this.pendingStatus = null;
-                ChatUtil.sendFormatted(String.format("%s%s: &copen inv native1&r", Myau.clientName, this.getName()));
             }
         }
     }
