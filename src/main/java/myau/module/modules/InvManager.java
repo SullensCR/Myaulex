@@ -8,6 +8,7 @@ import myau.module.Module;
 import myau.util.ItemUtil;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.IntProperty;
+import myau.util.TimerUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.inventory.GuiInventory;
 import net.minecraft.inventory.ContainerPlayer;
@@ -24,10 +25,12 @@ public class InvManager extends Module {
     private int actionDelay = 0;
     private int oDelay = 0;
     private boolean inventoryOpen = false;
+    private final TimerUtil autoArmorTime = new TimerUtil();
     public final IntProperty minDelay = new IntProperty("min-delay", 1, 0, 20);
     public final IntProperty maxDelay = new IntProperty("max-delay", 2, 0, 20);
     public final IntProperty openDelay = new IntProperty("open-delay", 1, 0, 20);
     public final BooleanProperty autoArmor = new BooleanProperty("auto-armor", true);
+    public final IntProperty autoArmorInterval = new IntProperty("autoArmorInterval", 0, 0, 100, this.autoArmor::getValue);
     public final BooleanProperty dropTrash = new BooleanProperty("drop-trash", false);
     public final BooleanProperty checkDurability = new BooleanProperty("check-durability", true);
     public final IntProperty swordSlot = new IntProperty("sword-slot", 1, 0, 9);
@@ -89,6 +92,7 @@ public class InvManager extends Module {
                 if (!this.inventoryOpen) {
                     this.inventoryOpen = true;
                     this.oDelay = this.openDelay.getValue() + 1;
+                    this.autoArmorTime.reset();
                 }
                 if (this.oDelay <= 0 && this.actionDelay <= 0) {
                     if (this.isEnabled() && this.isValidGameMode()) {
@@ -120,7 +124,7 @@ public class InvManager extends Module {
                         int preferredBowHotbarSlot = this.bowSlot.getValue() - 1;
                         int inventoryBowSlot = ItemUtil.findBowInventorySlot(preferredBowHotbarSlot, this.checkDurability.getValue());
                         if (inventoryBowSlot == -1) inventoryBowSlot = ItemUtil.findBowInventorySlot(preferredBowHotbarSlot, false);
-                        if (this.autoArmor.getValue()) {
+                        if (this.autoArmor.getValue() && this.autoArmorTime.hasTimeElapsed(this.autoArmorInterval.getValue() * 50L)) {
                             for (int i = 0; i < 4; i++) {
                                 int equippedSlot = equippedArmorSlots.get(i);
                                 int inventorySlot = inventoryArmorSlots.get(i);
@@ -136,6 +140,7 @@ public class InvManager extends Module {
                                         } else {
                                             int armorToEquipSlot = equippedSlot != -1 ? equippedSlot : inventorySlot;
                                             this.clickSlot(mc.thePlayer.inventoryContainer.windowId, this.convertSlotIndex(armorToEquipSlot), 0, 1);
+                                            this.autoArmorTime.reset();
                                         }
                                         return;
                                     }
