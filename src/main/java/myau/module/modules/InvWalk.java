@@ -11,7 +11,6 @@ import myau.events.UpdateEvent;
 import myau.mixin.IAccessorC0DPacketCloseWindow;
 import myau.module.Module;
 import myau.property.properties.IntProperty;
-import myau.util.ChatUtil;
 import myau.util.KeyBindUtil;
 import myau.util.PacketUtil;
 import myau.property.properties.ModeProperty;
@@ -25,8 +24,6 @@ import net.minecraft.network.play.client.C0DPacketCloseWindow;
 import net.minecraft.network.play.client.C0EPacketClickWindow;
 import net.minecraft.network.play.client.C16PacketClientStatus;
 import net.minecraft.network.play.client.C16PacketClientStatus.EnumState;
-import net.minecraft.network.play.server.S2DPacketOpenWindow;
-import net.minecraft.network.play.server.S2EPacketCloseWindow;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,7 +48,7 @@ public class InvWalk extends Module {
         put(mc.gameSettings.keyBindSprint, false);
     }};
 
-    public final ModeProperty mode = new ModeProperty("mode", 1, new String[]{"VANILLA", "LEGIT", "HYPIXEL", "KEEPMOVE"});
+    public final ModeProperty mode = new ModeProperty("mode", 1, new String[]{"VANILLA", "LEGIT", "HYPIXEL", "LEGIT+"});
     public final BooleanProperty guiEnabled = new BooleanProperty("ClickGUI", true);
     public final IntProperty openDelay = new IntProperty("openDelay", 0, 0, 20, () -> mode.getValue() == 3);
     public final IntProperty closeDelay = new IntProperty("closeDelay", 4, 0, 20, () -> mode.getValue() == 3);
@@ -63,6 +60,7 @@ public class InvWalk extends Module {
 
     public void pressMovementKeys() {
         for (KeyBinding keyBinding : movementKeys.keySet()) {
+            if (keyBinding == mc.gameSettings.keyBindSneak) continue;
             KeyBindUtil.updateKeyState(keyBinding.getKeyCode());
         }
         if (Myau.moduleManager.modules.get(Sprint.class).isEnabled()) {
@@ -112,7 +110,7 @@ public class InvWalk extends Module {
                 return this.pendingStatus != null && this.clickQueue.isEmpty();
             case 2: // Hypixel
                 return this.delayTicks == 0 && this.clickQueue.isEmpty();
-            case 3: // KeepMove
+            case 3: // Legit+
                 if (!(mc.currentScreen instanceof GuiInventory)) return false;
                 return this.closeDelayTicks == -1 && this.clickQueue.isEmpty();
             default:
@@ -191,7 +189,6 @@ public class InvWalk extends Module {
                         this.pendingStatus = packet;
                     }
                 }
-            } else if (((C16PacketClientStatus) event.getPacket()).getStatus() == EnumState.OPEN_INVENTORY_ACHIEVEMENT) {
             }
         } else if (!(event.getPacket() instanceof C0EPacketClickWindow)) {
             if (event.getPacket() instanceof C0DPacketCloseWindow) {
@@ -251,7 +248,7 @@ public class InvWalk extends Module {
                         this.delayTicks = 8;
                     }
                     break;
-                case 3: // KeepMove
+                case 3: // Legit+
                     if (packet.getWindowId() == 0) { // inventory
                         if ((packet.getMode() == 3 || packet.getMode() == 4) && packet.getSlotId() == -999) {
                             event.setCancelled(true);
