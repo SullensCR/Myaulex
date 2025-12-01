@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagList;
@@ -78,7 +79,7 @@ public class RenderUtil {
     }
 
     public static void drawOutlinedString(String text, float x, float y) {
-        String string2 = text.replaceAll("(?i)§[\\da-f]", "");
+        String string2 = text.replaceAll("(?i)Â§[\\da-f]", "");
         RenderUtil.mc.fontRendererObj.drawString(string2, x + 1.0f, y, 0, false);
         RenderUtil.mc.fontRendererObj.drawString(string2, x - 1.0f, y, 0, false);
         RenderUtil.mc.fontRendererObj.drawString(string2, x, y + 1.0f, 0, false);
@@ -482,6 +483,66 @@ public class RenderUtil {
 
     public static void drawBlockBoundingBox(BlockPos blockPos, double height, int red, int green, int blue, int alpha, float lineWidth) {
         RenderUtil.drawBoundingBox(new AxisAlignedBB(blockPos.getX(), blockPos.getY(), blockPos.getZ(), (double) blockPos.getX() + 1.0, (double) blockPos.getY() + height, (double) blockPos.getZ() + 1.0).offset(-((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX(), -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(), -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()), red, green, blue, alpha, lineWidth);
+    }
+
+    public static void drawCornerESP(EntityPlayer entity, float red, float green, float blue) {
+        float x = (float) (RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX());
+        float y = (float) (RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY());
+        float z = (float) (RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ());
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(x, y + entity.height / 2.0F, z);
+        GlStateManager.rotate(-mc.getRenderManager().playerViewY, 0.0F, 1.0F, 0.0F);
+        GlStateManager.scale(-0.098F, -0.098F, 0.098F);
+        float width = (float) (26.6 * entity.width / 2.0);
+        float height = 12.0F;
+        GlStateManager.color(red, green, blue);
+        draw3DRect(width, height - 1.0F, width - 4.0F, height);
+        draw3DRect(-width, height - 1.0F, -width + 4.0F, height);
+        draw3DRect(-width, height, -width + 1.0F, height - 4.0F);
+        draw3DRect(width, height, width - 1.0F, height - 4.0F);
+        draw3DRect(width, -height, width - 4.0F, -height + 1.0F);
+        draw3DRect(-width, -height, -width + 4.0F, -height + 1.0F);
+        draw3DRect(-width, -height + 1.0F, -width + 1.0F, -height + 4.0F);
+        draw3DRect(width, -height + 1.0F, width - 1.0F, -height + 4.0F);
+        GlStateManager.color(0.0F, 0.0F, 0.0F);
+        draw3DRect(width, height, width - 4.0F, height + 0.2F);
+        draw3DRect(-width, height, -width + 4.0F, height + 0.2F);
+        draw3DRect(-width - 0.2F, height + 0.2F, -width, height - 4.0F);
+        draw3DRect(width + 0.2F, height + 0.2F, width, height - 4.0F);
+        draw3DRect(width + 0.2F, -height, width - 4.0F, -height - 0.2F);
+        draw3DRect(-width - 0.2F, -height, -width + 4.0F, -height - 0.2F);
+        draw3DRect(-width - 0.2F, -height, -width, -height + 4.0F);
+        draw3DRect(width + 0.2F, -height, width, -height + 4.0F);
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+        GlStateManager.popMatrix();
+    }
+
+    public static void drawFake2DESP(EntityPlayer entity, float red, float green, float blue) {
+        float x = (float) (RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX());
+        float y = (float) (RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY());
+        float z = (float) (RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ());
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(x, y + entity.height / 2.0F, z);
+        GlStateManager.rotate(-mc.getRenderManager().playerViewY, 0.0F, 1.0F, 0.0F);
+        GlStateManager.scale(-0.1F, -0.1F, 0.1F);
+        GlStateManager.color(red, green, blue);
+        float width = (float) (23.3 * entity.width / 2.0);
+        float height = 12.0F;
+        draw3DRect(width, height, -width, height + 0.4F);
+        draw3DRect(width, -height, -width, -height + 0.4F);
+        draw3DRect(width, -height + 0.4F, width - 0.4F, height + 0.4F);
+        draw3DRect(-width, -height + 0.4F, -width + 0.4F, height + 0.4F);
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+        GlStateManager.popMatrix();
+    }
+
+    public static void draw3DRect(float x1, float y1, float x2, float y2) {
+        GL11.glBegin(GL11.GL_POLYGON);
+        GL11.glVertex2f(x2, y1);
+        GL11.glVertex2f(x1, y1);
+        GL11.glVertex2f(x1, y2);
+        GL11.glVertex2f(x2, y2);
+        GL11.glEnd();
     }
 
     public static Vector4d projectToScreen(Entity entity, double screenScale) {

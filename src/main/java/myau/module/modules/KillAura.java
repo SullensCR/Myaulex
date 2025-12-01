@@ -3,6 +3,7 @@ package myau.module.modules;
 import com.google.common.base.CaseFormat;
 import myau.Myau;
 import myau.enums.BlinkModules;
+import myau.event.EventManager;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.event.types.Priority;
@@ -10,8 +11,8 @@ import myau.events.*;
 import myau.management.RotationState;
 import myau.mixin.IAccessorPlayerControllerMP;
 import myau.module.Module;
-import myau.util.*;
 import myau.property.properties.*;
+import myau.util.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.inventory.GuiContainer;
@@ -47,6 +48,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.Random;
 
 public class KillAura extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
@@ -112,6 +114,8 @@ public class KillAura extends Module {
                         && RotationUtil.rayTrace(this.target.getBox(), yaw, pitch, this.attackRange.getValue()) == null) {
                     return false;
                 } else {
+                    AttackEvent event = new AttackEvent(this.target.getEntity());
+                    EventManager.call(event);
                     ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
                     PacketUtil.sendPacket(new C02PacketUseEntity(this.target.getEntity(), Action.ATTACK));
                     if (mc.playerController.getCurrentGameType() != GameType.SPECTATOR) {
@@ -138,9 +142,7 @@ public class KillAura extends Module {
     }
 
     private void stopBlock() {
-        PacketUtil.sendPacket(
-                new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, EnumFacing.DOWN)
-        );
+        PacketUtil.sendPacket(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, EnumFacing.DOWN));
         mc.thePlayer.stopUsingItem();
         this.blockingState = false;
     }
@@ -180,9 +182,12 @@ public class KillAura extends Module {
                     return false;
                 } else {
                     BedNuker bedNuker = (BedNuker) Myau.moduleManager.modules.get(BedNuker.class);
+                    AutoBlockIn autoBlockIn = (AutoBlockIn) Myau.moduleManager.modules.get(AutoBlockIn.class);
                     if (bedNuker.isEnabled() && bedNuker.isReady()) {
                         return false;
                     } else if (Myau.moduleManager.modules.get(Scaffold.class).isEnabled()) {
+                        return false;
+                    } else if (autoBlockIn.isEnabled()) {
                         return false;
                     } else if (this.requirePress.getValue()) {
                         return PlayerUtil.isAttacking();
@@ -482,6 +487,14 @@ public class KillAura extends Module {
                                             break;
                                         case 1:
                                             if (this.isPlayerBlocking()) {
+                                                if(Myau.moduleManager.modules.get(NoSlow.class).isEnabled()){
+                                                    int randomSlot = new Random().nextInt(9);
+                                                    while (randomSlot == mc.thePlayer.inventory.currentItem) {
+                                                        randomSlot = new Random().nextInt(9);
+                                                    }
+                                                    PacketUtil.sendPacket(new C09PacketHeldItemChange(randomSlot));
+                                                    PacketUtil.sendPacket(new C09PacketHeldItemChange(mc.thePlayer.inventory.currentItem));
+                                                }
                                                 this.stopBlock();
                                                 attack = false;
                                             }

@@ -8,7 +8,7 @@ import myau.Myau;
 import myau.module.Module;
 import myau.module.modules.*;
 import myau.ui.components.CategoryComponent;
-import net.minecraft.client.gui.*;
+import net.minecraft.client.gui.GuiScreen;
 import org.lwjgl.input.Mouse;
 
 import java.awt.*;
@@ -38,8 +38,11 @@ public class ClickGui extends GuiScreen {
         combatModules.add(Myau.moduleManager.getModule(NoHitDelay.class));
         combatModules.add(Myau.moduleManager.getModule(AntiFireball.class));
         combatModules.add(Myau.moduleManager.getModule(LagRange.class));
+        combatModules.add(Myau.moduleManager.getModule(HitBox.class));
+        combatModules.add(Myau.moduleManager.getModule(MoreKB.class));
 
         List<Module> movementModules = new ArrayList<>();
+        movementModules.add(Myau.moduleManager.getModule(AntiAFK.class));
         movementModules.add(Myau.moduleManager.getModule(Fly.class));
         movementModules.add(Myau.moduleManager.getModule(Speed.class));
         movementModules.add(Myau.moduleManager.getModule(LongJump.class));
@@ -71,7 +74,6 @@ public class ClickGui extends GuiScreen {
         renderModules.add(Myau.moduleManager.getModule(GuiModule.class));
         renderModules.add(Myau.moduleManager.getModule(ChestESP.class));
         renderModules.add(Myau.moduleManager.getModule(Trajectories.class));
-        renderModules.add(Myau.moduleManager.getModule(Radar.class));
 
         List<Module> playerModules = new ArrayList<>();
         playerModules.add(Myau.moduleManager.getModule(AutoHeal.class));
@@ -80,6 +82,7 @@ public class ClickGui extends GuiScreen {
         playerModules.add(Myau.moduleManager.getModule(InvManager.class));
         playerModules.add(Myau.moduleManager.getModule(InvWalk.class));
         playerModules.add(Myau.moduleManager.getModule(Scaffold.class));
+        playerModules.add(Myau.moduleManager.getModule(AutoBlockIn.class));
         playerModules.add(Myau.moduleManager.getModule(SpeedMine.class));
         playerModules.add(Myau.moduleManager.getModule(FastPlace.class));
         playerModules.add(Myau.moduleManager.getModule(GhostHand.class));
@@ -95,7 +98,7 @@ public class ClickGui extends GuiScreen {
         miscModules.add(Myau.moduleManager.getModule(NickHider.class));
         miscModules.add(Myau.moduleManager.getModule(AntiObbyTrap.class));
         miscModules.add(Myau.moduleManager.getModule(AntiObfuscate.class));
-        miscModules.add(Myau.moduleManager.getModule(AutoAnduril.class));
+        miscModules.add(Myau.moduleManager.getModule(InventoryClicker.class));
 
         Comparator<Module> comparator = Comparator.comparing(m -> m.getName().toLowerCase());
         combatModules.sort(comparator);
@@ -214,32 +217,32 @@ public class ClickGui extends GuiScreen {
 
     }
 
-    public void mouseReleased(int x, int y, int mouseButton) {
-        Iterator<CategoryComponent> iterator = categoryList.iterator();
+    public void mouseReleased(int x, int y, int s) {
+        if (s == 0) {
+            Iterator<CategoryComponent> iterator = categoryList.iterator();
 
-        CategoryComponent categoryComponent;
-        while (iterator.hasNext()) {
-            categoryComponent = iterator.next();
-            if (mouseButton == 0) {
+            CategoryComponent categoryComponent;
+            while (iterator.hasNext()) {
+                categoryComponent = iterator.next();
                 categoryComponent.mousePressed(false);
             }
-        }
 
-        iterator = categoryList.iterator();
+            iterator = categoryList.iterator();
 
-        while (true) {
-            do {
+            while (true) {
                 do {
-                    if (!iterator.hasNext()) {
-                        return;
-                    }
+                    do {
+                        if (!iterator.hasNext()) {
+                            return;
+                        }
 
-                    categoryComponent = iterator.next();
-                } while (!categoryComponent.isOpened());
-            } while (categoryComponent.getModules().isEmpty());
+                        categoryComponent = iterator.next();
+                    } while (!categoryComponent.isOpened());
+                } while (categoryComponent.getModules().isEmpty());
 
-            for (Component component : categoryComponent.getModules()) {
-                component.mouseReleased(x, y, mouseButton);
+                for (Component component : categoryComponent.getModules()) {
+                    component.mouseReleased(x, y, s);
+                }
             }
         }
     }

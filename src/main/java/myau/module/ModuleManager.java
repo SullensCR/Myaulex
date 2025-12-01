@@ -35,14 +35,12 @@ public class ModuleManager {
                 continue;
             }
             boolean shouldNotify = module.toggle();
-            if (!shouldNotify) {
-                HUD hud = (HUD) this.modules.get(HUD.class);
-                if (hud != null) {
-                    shouldNotify = hud.toggleAlerts.getValue();
-                }
-                if(module instanceof GuiModule){
-                    shouldNotify = false;
-                }
+            HUD hud = (HUD) this.modules.get(HUD.class);
+            if (hud != null && shouldNotify) {
+                shouldNotify = hud.toggleAlerts.getValue();
+            }
+            if(module instanceof GuiModule){
+                shouldNotify = false;
             }
             if (shouldNotify) {
                 String status = module.isEnabled() ? "&a&lON" : "&c&lOFF";

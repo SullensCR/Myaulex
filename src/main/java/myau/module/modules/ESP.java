@@ -35,7 +35,7 @@ public class ESP extends Module {
     private Framebuffer framebuffer = null;
     private boolean outline = true;
     private boolean glow = true;
-    public final ModeProperty mode = new ModeProperty("mode", 2, new String[]{"NONE", "2D", "3D", "OUTLINE"});
+    public final ModeProperty mode = new ModeProperty("mode", 2, new String[]{"NONE", "2D", "3D", "OUTLINE", "FAKECORNER", "FAKE2D"});
     public final ModeProperty color = new ModeProperty("color", 0, new String[]{"DEFAULT", "TEAMS", "HUD"});
     public final ModeProperty healthBar = new ModeProperty("health-bar", 0, new String[]{"NONE", "2D", "RAVEN"});
     public final BooleanProperty players = new BooleanProperty("players", true);
@@ -185,7 +185,7 @@ public class ESP extends Module {
 
     @EventTarget
     public void onRender(Render3DEvent event) {
-        if (this.isEnabled() && (this.mode.getValue() == 2 || this.healthBar.getValue() == 2)) {
+        if (this.isEnabled() && (this.mode.getValue() == 2 || this.mode.getValue() == 4 || this.mode.getValue() == 5 || this.healthBar.getValue() == 2)) {
             RenderUtil.enableRenderState();
             for (EntityPlayer player : TeamUtil.getLoadedEntitiesSorted().stream().filter(entity -> entity instanceof EntityPlayer && this.shouldRenderPlayer((EntityPlayer) entity)).map(EntityPlayer.class::cast).collect(Collectors.toList())) {
                 if (player.ignoreFrustumCheck || RenderUtil.isInViewFrustum(player.getEntityBoundingBox(), 0.1F)) {
@@ -193,6 +193,14 @@ public class ESP extends Module {
                         Color color = this.getEntityColor(player);
                         RenderUtil.drawEntityBoundingBox(player, color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha(), 1.5F, 0.1F);
                         GlStateManager.resetColor();
+                    }
+                    if (this.mode.getValue() == 4) {
+                        Color color = this.getEntityColor(player);
+                        RenderUtil.drawCornerESP(player, color.getRed() / 255.0F, color.getGreen() / 255.0F, color.getBlue() / 255.0F);
+                    }
+                    if (this.mode.getValue() == 5) {
+                        Color color = this.getEntityColor(player);
+                        RenderUtil.drawFake2DESP(player, color.getRed() / 255.0F, color.getGreen() / 255.0F, color.getBlue() / 255.0F);
                     }
                     if (this.healthBar.getValue() == 2) {
                         double x = RenderUtil.lerpDouble(player.posX, player.lastTickPosX, event.getPartialTicks())

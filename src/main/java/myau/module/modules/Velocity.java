@@ -2,7 +2,6 @@ package myau.module.modules;
 
 import com.google.common.base.CaseFormat;
 import myau.Myau;
-import myau.enums.ChatColors;
 import myau.enums.DelayModules;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
@@ -23,6 +22,7 @@ import net.minecraft.potion.Potion;
 
 public class Velocity extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
+
     private int chanceCounter = 0;
     private int delayChanceCounter = 0;
     private boolean pendingExplosion = false;
@@ -30,7 +30,11 @@ public class Velocity extends Module {
     private boolean jumpFlag = false;
     private boolean reverseFlag = false;
     private boolean delayActive = false;
-    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"VANILLA", "JUMP", "DELAY", "REVERSE"});
+
+    private boolean shouldJump = false;
+    private int jumpCooldown = 0;
+
+    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"VANILLA", "JUMP", "DELAY", "REVERSE", "LEGITTest"});
     public final IntProperty delayTicks = new IntProperty("delay-ticks", 3, 1, 20, () -> this.mode.getValue() == 2);
     public final PercentProperty delayChance = new PercentProperty("delay-chance", 100, () -> this.mode.getValue() == 2);
     public final PercentProperty chance = new PercentProperty("chance", 100);
@@ -104,7 +108,7 @@ public class Velocity extends Module {
                     && (
                     this.canDelay()
                             || this.isInLiquidOrWeb()
-                            || Myau.delayManager.isDelay() >= (long) this.delayTicks.getValue()
+                            || Myau.delayManager.getDelay() >= (long) this.delayTicks.getValue()
             )) {
                 Myau.delayManager.setDelayState(false, DelayModules.VELOCITY);
                 this.reverseFlag = false;
@@ -112,6 +116,29 @@ public class Velocity extends Module {
             if (this.delayActive) {
                 MoveUtil.setSpeed(MoveUtil.getSpeed(), MoveUtil.getMoveYaw());
                 this.delayActive = false;
+            }
+
+            if (this.mode.getValue() == 4) {
+                int hurtTime = mc.thePlayer.hurtTime;
+
+                if (hurtTime >= 8) {
+                    if (jumpCooldown <= 0) {
+                        shouldJump = true;
+                        jumpCooldown = 2;
+                    }
+                } else if (hurtTime <= 1) {
+                    shouldJump = false;
+                    jumpCooldown = 0;
+                }
+
+                if (shouldJump && mc.thePlayer.onGround && jumpCooldown <= 0) {
+                    mc.thePlayer.jump();
+                    shouldJump = false;
+                }
+
+                if (jumpCooldown > 0) {
+                    jumpCooldown--;
+                }
             }
         }
     }
@@ -203,16 +230,12 @@ public class Velocity extends Module {
     public void onDisabled() {
         this.pendingExplosion = false;
         this.allowNext = true;
+        this.shouldJump = false;
+        this.jumpCooldown = 0;
     }
 
     @Override
     public String[] getSuffix() {
-        boolean predictionMode = this.mode.getValue() == 1 || this.mode.getValue() == 2;
-        return predictionMode && this.horizontal.getValue() == 100 && this.vertical.getValue() == 100
-                ? new String[]{CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, this.mode.getModeString())}
-                : new String[]{
-                ChatColors.formatColor(String.format(this.mode.getValue() == 3 ? "&m%d%%&r" : "%d%%", this.horizontal.getValue())),
-                String.format("%d%%", this.vertical.getValue())
-        };
+        return new String[]{CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, this.mode.getModeString())};
     }
 }
