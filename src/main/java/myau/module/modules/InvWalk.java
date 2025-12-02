@@ -60,11 +60,10 @@ public class InvWalk extends Module {
         super("InvWalk", false);
     }
 
-    public void pressMovementKeys() {
-        for (KeyBinding keyBinding : movementKeys.keySet()) {
-            if (keyBinding == mc.gameSettings.keyBindSneak) continue;
-            KeyBindUtil.updateKeyState(keyBinding.getKeyCode());
-        }
+    public void pressMovementKeys(boolean skipSneak) {
+        this.movementKeys.keySet().stream()
+                .filter(key -> !skipSneak || key != mc.gameSettings.keyBindSneak)
+                .forEach(key -> KeyBindUtil.updateKeyState(key.getKeyCode()));
         if (Myau.moduleManager.modules.get(Sprint.class).isEnabled()) {
             KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
         }
@@ -72,22 +71,15 @@ public class InvWalk extends Module {
     }
 
     public void resetMovementKeys() {
-        for (Map.Entry<KeyBinding, Boolean> keyBinding : movementKeys.entrySet()) {
-            keyBinding.setValue(false);
-        }
+        this.movementKeys.replaceAll((k, v) -> false);
     }
 
     public boolean isSetMovementKeys() {
-        for (Boolean keyBinding : movementKeys.values()) {
-            if (keyBinding) return true;
-        }
-        return false;
+        return this.movementKeys.values().stream().anyMatch(Boolean::booleanValue);
     }
 
     public void storeMovementKeys() {
-        for (Map.Entry<KeyBinding, Boolean> keyBinding : movementKeys.entrySet()) {
-            keyBinding.setValue(KeyBindUtil.isKeyDown(keyBinding.getKey().getKeyCode()));
-        }
+        this.movementKeys.replaceAll((k, v) -> KeyBindUtil.isKeyDown(k.getKeyCode()));
     }
 
     public void restoreMovementKeys() {
@@ -161,7 +153,7 @@ public class InvWalk extends Module {
         if (!this.isEnabled() || event.getType() != EventType.PRE) return;
 
         if (mc.currentScreen instanceof myau.ui.ClickGui && this.guiEnabled.getValue()) {
-            pressMovementKeys();
+            this.pressMovementKeys(true);
             return;
         }
 
@@ -169,7 +161,7 @@ public class InvWalk extends Module {
             if (this.isSetMovementKeys() && this.lockMoveKey.getValue()) {
                 this.restoreMovementKeys();
             } else {
-                this.pressMovementKeys();
+                this.pressMovementKeys(true);
             }
         } else {
             if (this.keysPressed) {
@@ -177,7 +169,7 @@ public class InvWalk extends Module {
                     KeyBinding.unPressAllKeys();
                 } else if (this.isSetMovementKeys()) {
                     this.resetMovementKeys();
-                    this.pressMovementKeys();
+                    this.pressMovementKeys(false);
                 }
                 this.keysPressed = false;
             }
