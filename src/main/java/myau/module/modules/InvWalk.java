@@ -20,6 +20,8 @@ import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.gui.inventory.GuiContainerCreative;
 import net.minecraft.client.gui.inventory.GuiInventory;
 import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.inventory.ContainerPlayer;
+import net.minecraft.item.ItemStack;
 import net.minecraft.network.play.client.C0DPacketCloseWindow;
 import net.minecraft.network.play.client.C0EPacketClickWindow;
 import net.minecraft.network.play.client.C16PacketClientStatus;
@@ -118,6 +120,20 @@ public class InvWalk extends Module {
         }
     }
 
+    public boolean temporaryStackIsEmpty() {
+        if (mc.thePlayer.inventory.getItemStack() != null) return false;
+        if (mc.thePlayer.inventoryContainer instanceof ContainerPlayer) {
+            ContainerPlayer containerPlayer = (ContainerPlayer)mc.thePlayer.inventoryContainer;
+            for (int i = 0; i < containerPlayer.craftMatrix.getSizeInventory(); i++) {
+                ItemStack stack = containerPlayer.craftMatrix.getStackInSlot(i);
+                if (stack != null) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     @EventTarget(Priority.LOWEST)
     public void onTick(TickEvent event) {
         if (event.getType() == EventType.PRE) {
@@ -129,7 +145,7 @@ public class InvWalk extends Module {
                 PacketUtil.sendPacketNoEvent(this.clickQueue.poll());
             }
             if (this.closeDelayTicks > 0) {
-                if (mc.thePlayer.inventory.getItemStack() == null) {
+                if (this.temporaryStackIsEmpty()) {
                     this.closeDelayTicks--;
                 }
             } else if (this.closeDelayTicks == 0) {

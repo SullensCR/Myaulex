@@ -108,7 +108,7 @@ public class Radar extends Module {
         double cos = Math.cos(yaw);
         double sin = Math.sin(yaw);
 
-        RenderUtil.drawRadarCircle(0.0, 0, yaw, radarRadius.getValue(), 64, fillColor.getValue(), outlineColor.getValue(), crossColor.getValue());
+        this.drawRadarCircle(0.0, 0, yaw, radarRadius.getValue(), 64, fillColor.getValue(), outlineColor.getValue(), crossColor.getValue());
         for (EntityPlayer player : TeamUtil.getLoadedEntitiesSorted().stream().filter(entity -> entity instanceof EntityPlayer && this.shouldRender((EntityPlayer) entity)).map(EntityPlayer.class::cast).collect(Collectors.toList())) {
             double dx = (player.lastTickPosX + (player.posX - player.lastTickPosX) * event.getPartialTicks()) - mc.thePlayer.posX;
             double dz = (player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * event.getPartialTicks()) - mc.thePlayer.posZ;
@@ -149,5 +149,94 @@ public class Radar extends Module {
         }
         RenderUtil.disableRenderState();
         GlStateManager.popMatrix();
+    }
+
+    public void drawRadarCircle(double x, double y, double angle, double radius,
+                                       int segments,
+                                       int fillColor,
+                                       int outlineColor,
+                                       int crossColor) {
+
+        GlStateManager.enableBlend();
+        GlStateManager.disableTexture2D();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        if ((fillColor >>> 24) != 0) {
+            RenderUtil.setColor(fillColor);
+            GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+            GL11.glVertex2d(x, y);
+            for (int i = 0; i <= segments; i++) {
+                double angle1 = i * (Math.PI * 2 / segments);
+                GL11.glVertex2d(
+                        x + Math.cos(angle1) * radius,
+                        y + Math.sin(angle1) * radius
+                );
+            }
+            GL11.glEnd();
+        }
+
+        if ((outlineColor >>> 24) != 0) {
+            RenderUtil.setColor(outlineColor);
+            GL11.glLineWidth(2f);
+
+            GL11.glBegin(GL11.GL_LINE_LOOP);
+            for (int i = 0; i <= segments; i++) {
+                double angle1 = i * (Math.PI * 2 / segments);
+                GL11.glVertex2d(
+                        x + Math.cos(angle1) * radius,
+                        y + Math.sin(angle1) * radius
+                );
+            }
+            GL11.glEnd();
+        }
+
+        if ((crossColor >>> 24) != 0) {
+            RenderUtil.setColor(crossColor);
+            GL11.glLineWidth(1.5f);
+            GL11.glBegin(GL11.GL_LINES);
+
+            double dx1 = Math.sin(angle);
+            double dy1 = Math.cos(angle);
+
+            double dx2 = Math.sin(angle + Math.PI / 2);
+            double dy2 = Math.cos(angle + Math.PI / 2);
+
+            GL11.glVertex2d(x - dx1 * radius, y - dy1 * radius);
+            GL11.glVertex2d(x + dx1 * radius, y + dy1 * radius);
+
+            GL11.glVertex2d(x - dx2 * radius, y - dy2 * radius);
+            GL11.glVertex2d(x + dx2 * radius, y + dy2 * radius);
+
+            GL11.glEnd();
+
+            GlStateManager.disableDepth();
+            GlStateManager.enableBlend();
+            GlStateManager.enableTexture2D();
+            GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            HUD hud = (HUD) Myau.moduleManager.modules.get(HUD.class);
+            int color = hud.getColor(System.currentTimeMillis()).getRGB();
+            mc.fontRendererObj.drawString("N",
+                    (float) (x - dx1 * (radius + 5)) - mc.fontRendererObj.getStringWidth("N") / 2.0F,
+                    (float) (y - dy1 * (radius + 5)) - mc.fontRendererObj.FONT_HEIGHT / 2.0F,
+                    color, hud.shadow.getValue());
+            mc.fontRendererObj.drawString("E",
+                    (float) (x + dx2 * (radius + 5)) - mc.fontRendererObj.getStringWidth("E") / 2.0F,
+                    (float) (y + dy2 * (radius + 5)) - mc.fontRendererObj.FONT_HEIGHT / 2.0F,
+                    color, hud.shadow.getValue());
+            mc.fontRendererObj.drawString("S",
+                    (float) (x + dx1 * (radius + 5)) - mc.fontRendererObj.getStringWidth("S") / 2.0F,
+                    (float) (y + dy1 * (radius + 5)) - mc.fontRendererObj.FONT_HEIGHT / 2.0F,
+                    color, hud.shadow.getValue());
+            mc.fontRendererObj.drawString("W",
+                    (float) (x - dx2 * (radius + 5)) - mc.fontRendererObj.getStringWidth("W") / 2.0F,
+                    (float) (y - dy2 * (radius + 5)) - mc.fontRendererObj.FONT_HEIGHT / 2.0F,
+                    color, hud.shadow.getValue());
+            GlStateManager.disableTexture2D();
+            GlStateManager.disableBlend();
+            GlStateManager.enableDepth();
+        }
+
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+        GlStateManager.resetColor();
     }
 }
