@@ -65,6 +65,7 @@ public class Myau {
         moduleManager.modules.put(AntiObfuscate.class, new AntiObfuscate());
         moduleManager.modules.put(AntiVoid.class, new AntiVoid());
         moduleManager.modules.put(AutoClicker.class, new AutoClicker());
+        moduleManager.modules.put(AutoAnduril.class, new AutoAnduril());
         moduleManager.modules.put(AutoHeal.class, new AutoHeal());
         moduleManager.modules.put(AutoTool.class, new AutoTool());
         moduleManager.modules.put(BedNuker.class, new BedNuker());
@@ -77,10 +78,12 @@ public class Myau {
         moduleManager.modules.put(Eagle.class, new Eagle());
         moduleManager.modules.put(ESP.class, new ESP());
         moduleManager.modules.put(FastPlace.class, new FastPlace());
+        moduleManager.modules.put(Freeze.class, new Freeze());
         moduleManager.modules.put(Fly.class, new Fly());
         moduleManager.modules.put(FullBright.class, new FullBright());
         moduleManager.modules.put(GhostHand.class, new GhostHand());
         moduleManager.modules.put(GuiModule.class, new GuiModule());
+        moduleManager.modules.put(HitSelect.class, new HitSelect());
         moduleManager.modules.put(HUD.class, new HUD());
         moduleManager.modules.put(MoreKB.class, new MoreKB());
         moduleManager.modules.put(Indicators.class, new Indicators());
@@ -104,6 +107,7 @@ public class Myau {
         moduleManager.modules.put(NoJumpDelay.class, new NoJumpDelay());
         moduleManager.modules.put(NoRotate.class, new NoRotate());
         moduleManager.modules.put(NoSlow.class, new NoSlow());
+        moduleManager.modules.put(Radar.class, new Radar());
         moduleManager.modules.put(Reach.class, new Reach());
         moduleManager.modules.put(SafeWalk.class, new SafeWalk());
         moduleManager.modules.put(Scaffold.class, new Scaffold());
