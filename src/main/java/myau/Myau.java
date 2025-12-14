@@ -2,6 +2,7 @@ package myau;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import me.ksyz.accountmanager.AccountManager;
 import myau.command.CommandManager;
 import myau.command.commands.*;
 import myau.config.Config;
@@ -175,5 +176,7 @@ public class Myau {
         } catch (Exception e) {
             version = "dev";
         }
+
+        AccountManager.init();
     }
 }

@@ -24,7 +24,7 @@ public class NoRotate extends Module {
 
     @EventTarget
     public void onPacket(PacketEvent event) {
-        if (this.isEnabled() && event.getType() == EventType.RECEIVE && !event.isCancelled()) {
+        if (this.isEnabled() && event.getType() == EventType.RECEIVE && !event.isCancelled() && mc.thePlayer != null && mc.theWorld != null) {
             if (mc.thePlayer.rotationYaw != -180.0F || mc.thePlayer.rotationPitch != 0.0F) {
                 if (event.getPacket() instanceof S02PacketChat) {
                     String msg = ((S02PacketChat) event.getPacket()).getChatComponent().getFormattedText();
