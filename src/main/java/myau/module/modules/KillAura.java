@@ -68,7 +68,8 @@ public class KillAura extends Module {
     public final ModeProperty sort;
     public final ModeProperty autoBlock;
     public final BooleanProperty autoBlockRequirePress;
-    public final FloatProperty autoBlockCPS;
+    public final FloatProperty autoBlockMinCPS;
+    public final FloatProperty autoBlockMaxCPS;
     public final FloatProperty autoBlockRange;
     public final FloatProperty swingRange;
     public final FloatProperty attackRange;
@@ -98,7 +99,7 @@ public class KillAura extends Module {
     public final ModeProperty debugLog;
 
     private long getAttackDelay() {
-        return this.isBlocking ? (long) (1000.0F / this.autoBlockCPS.getValue()) : 1000L / RandomUtil.nextLong(this.minCPS.getValue(), this.maxCPS.getValue());
+        return this.isBlocking ? (long) (1000.0F / RandomUtil.nextLong(this.autoBlockMinCPS.getValue().longValue(), this.autoBlockMaxCPS.getValue().longValue())) : 1000L / RandomUtil.nextLong(this.minCPS.getValue(), this.maxCPS.getValue());
     }
 
     private boolean performAttack(float yaw, float pitch) {
@@ -329,7 +330,8 @@ public class KillAura extends Module {
                 "auto-block", 2, new String[]{"NONE", "VANILLA", "SPOOF", "HYPIXEL", "BLINK", "INTERACT", "SWAP", "LEGIT", "FAKE"}
         );
         this.autoBlockRequirePress = new BooleanProperty("auto-block-require-press", false);
-        this.autoBlockCPS = new FloatProperty("auto-block-aps", 10.0F, 1.0F, 20.0F);
+        this.autoBlockMinCPS = new FloatProperty("auto-block-min-aps", 8.0F, 1.0F, 20.0F);
+        this.autoBlockMaxCPS = new FloatProperty("auto-block-max-aps", 10.0F, 1.0F, 20.0F);
         this.autoBlockRange = new FloatProperty("auto-block-range", 6.0F, 3.0F, 8.0F);
         this.swingRange = new FloatProperty("swing-range", 3.5F, 3.0F, 6.0F);
         this.attackRange = new FloatProperty("attack-range", 3.0F, 3.0F, 6.0F);
@@ -779,7 +781,7 @@ public class KillAura extends Module {
 
     @EventTarget(Priority.LOWEST)
     public void onPacket(PacketEvent event) {
-        if (this.isEnabled() && !event.isCancelled()) {
+        if (this.isEnabled() && !event.isCancelled() && mc.thePlayer != null && mc.theWorld != null) {
             if (event.getPacket() instanceof C07PacketPlayerDigging) {
                 C07PacketPlayerDigging packet = (C07PacketPlayerDigging) event.getPacket();
                 if (packet.getStatus() == C07PacketPlayerDigging.Action.RELEASE_USE_ITEM) {
@@ -933,22 +935,36 @@ public class KillAura extends Module {
     }
 
     @Override
-    public void verifyValue(String mode) {
-        if (!this.autoBlock.getName().equals(mode) && !this.autoBlockCPS.getName().equals(mode)) {
-            if (this.swingRange.getName().equals(mode)) {
+    public void verifyValue(String value) {
+        if (!this.autoBlock.getName().equals(value)) {
+            if (this.swingRange.getName().equals(value)) {
                 if (this.swingRange.getValue() < this.attackRange.getValue()) {
                     this.attackRange.setValue(this.swingRange.getValue());
                 }
-            } else if (this.attackRange.getName().equals(mode)) {
+            } else if (this.attackRange.getName().equals(value)) {
                 if (this.swingRange.getValue() < this.attackRange.getValue()) {
                     this.swingRange.setValue(this.attackRange.getValue());
                 }
-            } else if (this.minCPS.getName().equals(mode)) {
+            } else if (this.minCPS.getName().equals(value)) {
                 if (this.minCPS.getValue() > this.maxCPS.getValue()) {
                     this.maxCPS.setValue(this.minCPS.getValue());
                 }
+            } else if (this.autoBlockMinCPS.getName().equals(value)) {
+                if (this.autoBlockMinCPS.getValue() > this.autoBlockMaxCPS.getValue()) {
+                    this.autoBlockMaxCPS.setValue(this.autoBlockMinCPS.getValue());
+                }
+                if(autoBlockMinCPS.getValue() > 10.0F){
+                    autoBlockMinCPS.setValue(10.0F);
+                }
+            } else if (this.autoBlockMaxCPS.getName().equals(value)) {
+                if (this.autoBlockMinCPS.getValue() > this.autoBlockMaxCPS.getValue()) {
+                    this.autoBlockMinCPS.setValue(this.autoBlockMaxCPS.getValue());
+                }
+                if(autoBlockMaxCPS.getValue() > 10.0F){
+                    autoBlockMaxCPS.setValue(10.0F);
+                }
             } else {
-                if (this.maxCPS.getName().equals(mode) && this.minCPS.getValue() > this.maxCPS.getValue()) {
+                if (this.maxCPS.getName().equals(value) && this.minCPS.getValue() > this.maxCPS.getValue()) {
                     this.minCPS.setValue(this.maxCPS.getValue());
                 }
             }
@@ -959,8 +975,9 @@ public class KillAura extends Module {
                     || this.autoBlock.getValue() == 5
                     || this.autoBlock.getValue() == 6
                     || this.autoBlock.getValue() == 7;
-            if (badCps && this.autoBlockCPS.getValue() > 10.0F) {
-                this.autoBlockCPS.setValue(10.0F);
+            if (badCps && (this.autoBlockMinCPS.getValue() > 10.0F || this.autoBlockMaxCPS.getValue() > 10.0F)) {
+                this.autoBlockMinCPS.setValue(8.0F);
+                this.autoBlockMaxCPS.setValue(10.0F);
             }
         }
     }
