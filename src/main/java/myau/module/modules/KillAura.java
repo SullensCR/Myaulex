@@ -936,6 +936,12 @@ public class KillAura extends Module {
 
     @Override
     public void verifyValue(String value) {
+        boolean badCps = this.autoBlock.getValue() == 2
+                || this.autoBlock.getValue() == 3
+                || this.autoBlock.getValue() == 4
+                || this.autoBlock.getValue() == 5
+                || this.autoBlock.getValue() == 6
+                || this.autoBlock.getValue() == 7;
         if (!this.autoBlock.getName().equals(value)) {
             if (this.swingRange.getName().equals(value)) {
                 if (this.swingRange.getValue() < this.attackRange.getValue()) {
@@ -953,14 +959,14 @@ public class KillAura extends Module {
                 if (this.autoBlockMinCPS.getValue() > this.autoBlockMaxCPS.getValue()) {
                     this.autoBlockMaxCPS.setValue(this.autoBlockMinCPS.getValue());
                 }
-                if(autoBlockMinCPS.getValue() > 10.0F){
+                if(autoBlockMinCPS.getValue() > 10.0F && badCps){
                     autoBlockMinCPS.setValue(10.0F);
                 }
             } else if (this.autoBlockMaxCPS.getName().equals(value)) {
                 if (this.autoBlockMinCPS.getValue() > this.autoBlockMaxCPS.getValue()) {
                     this.autoBlockMinCPS.setValue(this.autoBlockMaxCPS.getValue());
                 }
-                if(autoBlockMaxCPS.getValue() > 10.0F){
+                if(autoBlockMaxCPS.getValue() > 10.0F && badCps){
                     autoBlockMaxCPS.setValue(10.0F);
                 }
             } else {
@@ -969,12 +975,6 @@ public class KillAura extends Module {
                 }
             }
         } else {
-            boolean badCps = this.autoBlock.getValue() == 2
-                    || this.autoBlock.getValue() == 3
-                    || this.autoBlock.getValue() == 4
-                    || this.autoBlock.getValue() == 5
-                    || this.autoBlock.getValue() == 6
-                    || this.autoBlock.getValue() == 7;
             if (badCps && (this.autoBlockMinCPS.getValue() > 10.0F || this.autoBlockMaxCPS.getValue() > 10.0F)) {
                 this.autoBlockMinCPS.setValue(8.0F);
                 this.autoBlockMaxCPS.setValue(10.0F);
