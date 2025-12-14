@@ -6,13 +6,11 @@ import myau.events.Render3DEvent;
 import myau.mixin.IAccessorMinecraft;
 import myau.mixin.IAccessorRenderManager;
 import myau.module.Module;
-import myau.util.RenderUtil;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.ColorProperty;
-import myau.property.properties.PercentProperty;
+import myau.util.RenderUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockChest;
-import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityChest;
@@ -27,8 +25,8 @@ import java.util.stream.Collectors;
 public class ChestESP extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     public final ColorProperty chest = new ColorProperty("chest", new Color(255, 170, 0).getRGB());
-    public final ColorProperty trappedChest = new ColorProperty("trappedChest", new Color(255, 43, 0).getRGB());
-    public final ColorProperty enderChest = new ColorProperty("enderChest", new Color(26, 17, 0).getRGB());
+    public final ColorProperty trappedChest = new ColorProperty("trapped-chest", new Color(255, 43, 0).getRGB());
+    public final ColorProperty enderChest = new ColorProperty("ender-chest", new Color(26, 17, 0).getRGB());
     public final BooleanProperty tracers = new BooleanProperty("tracers", false);
 
     public ChestESP() {

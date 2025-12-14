@@ -8,11 +8,12 @@ import myau.event.types.EventType;
 import myau.events.*;
 import myau.mixin.IAccessorEntity;
 import myau.module.Module;
+import myau.property.properties.BooleanProperty;
+import myau.property.properties.IntProperty;
+import myau.property.properties.ModeProperty;
+import myau.property.properties.PercentProperty;
 import myau.util.ChatUtil;
 import myau.util.MoveUtil;
-import myau.property.properties.*;
-import myau.property.properties.BooleanProperty;
-import myau.property.properties.ModeProperty;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.network.play.server.S12PacketEntityVelocity;
@@ -34,7 +35,7 @@ public class Velocity extends Module {
     private boolean shouldJump = false;
     private int jumpCooldown = 0;
 
-    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"VANILLA", "JUMP", "DELAY", "REVERSE", "LEGITTest"});
+    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"VANILLA", "JUMP", "DELAY", "REVERSE", "LEGIT_TEST"});
     public final IntProperty delayTicks = new IntProperty("delay-ticks", 3, 1, 20, () -> this.mode.getValue() == 2);
     public final PercentProperty delayChance = new PercentProperty("delay-chance", 100, () -> this.mode.getValue() == 2);
     public final PercentProperty chance = new PercentProperty("chance", 100);

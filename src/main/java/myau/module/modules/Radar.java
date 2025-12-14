@@ -22,18 +22,18 @@ public class Radar extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     public final ModeProperty colorMode = new ModeProperty("color", 0, new String[]{"DEFAULT", "TEAMS", "HUD"});
     public final IntProperty position = new IntProperty("position", 0, 0, 4);
-    public final IntProperty offsetX = new IntProperty("offsetX", 60, 0, 1000, () -> position.getValue() != 4);
-    public final IntProperty offsetY = new IntProperty("offsetY", 60, 0, 1000, () -> position.getValue() != 4);
-    public final IntProperty radarRadius = new IntProperty("radarRadius", 55, 10, 200);
-    public final FloatProperty dotRadius = new FloatProperty("dotRadius", 1.5F, 0.1F, 5.0F);
+    public final IntProperty offsetX = new IntProperty("offset-x", 60, 0, 1000, () -> position.getValue() != 4);
+    public final IntProperty offsetY = new IntProperty("offset-y", 60, 0, 1000, () -> position.getValue() != 4);
+    public final IntProperty radarRadius = new IntProperty("radar-radius", 55, 10, 200);
+    public final FloatProperty dotRadius = new FloatProperty("dot-radius", 1.5F, 0.1F, 5.0F);
     public final BooleanProperty showPlayers = new BooleanProperty("players", true);
     public final BooleanProperty showFriends = new BooleanProperty("friends", true);
     public final BooleanProperty showEnemies = new BooleanProperty("enemies", true);
     public final BooleanProperty showBots = new BooleanProperty("bots", false);
-    public final BooleanProperty showPVP = new BooleanProperty("showPVP", false);
-    public final ColorProperty fillColor = new ColorProperty("fillColor", Color.GRAY.getRGB(), 0x40);
-    public final ColorProperty outlineColor = new ColorProperty("outlineColor", Color.DARK_GRAY.getRGB());
-    public final ColorProperty crossColor = new ColorProperty("crossColor", Color.LIGHT_GRAY.getRGB(), 0x80);
+    public final BooleanProperty showPVP = new BooleanProperty("show-pvp", false);
+    public final ColorProperty fillColor = new ColorProperty("fill-color", Color.GRAY.getRGB(), 0x40);
+    public final ColorProperty outlineColor = new ColorProperty("outline-color", Color.DARK_GRAY.getRGB());
+    public final ColorProperty crossColor = new ColorProperty("cross-color", Color.LIGHT_GRAY.getRGB(), 0x80);
     public Radar() {
         super("Radar", false);
     }

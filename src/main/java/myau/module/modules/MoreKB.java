@@ -15,7 +15,7 @@ import net.minecraft.util.MovingObjectPosition;
 
 public class MoreKB extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"LEGIT", "LEGITFAST", "LESSPACKET", "PACKET", "DOUBLEPACKET"});
+    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"LEGIT", "LEGIT_FAST", "LESS_PACKET", "PACKET", "DOUBLE_PACKET"});
     public final BooleanProperty intelligent = new BooleanProperty("intelligent", false);
     public final BooleanProperty onlyGround = new BooleanProperty("only-ground", true);
     private boolean shouldSprintReset;
@@ -101,5 +101,10 @@ public class MoreKB extends Module {
 
     private boolean isMoving() {
         return mc.thePlayer.moveForward != 0.0F || mc.thePlayer.moveStrafing != 0.0F;
+    }
+
+    @Override
+    public String[] getSuffix() {
+        return new String[]{this.mode.getValue().toString()};
     }
 }

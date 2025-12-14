@@ -19,7 +19,7 @@ import net.minecraft.util.Vec3;
 public class HitSelect extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     
-    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"Second", "Criticals", "WTap"});
+    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"SECOND", "CRITICALS", "W_TAP"});
     
     private boolean sprintState = false;
     private boolean set = false;

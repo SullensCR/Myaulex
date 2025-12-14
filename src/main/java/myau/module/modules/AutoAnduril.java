@@ -9,7 +9,6 @@ import myau.module.Module;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.IntProperty;
 import myau.util.ItemUtil;
-import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
@@ -26,7 +25,7 @@ public class AutoAnduril extends Module {
     private int holdTick = -1;
     public final IntProperty interval = new IntProperty("interval", 40, 0, 100);
     public final IntProperty hold = new IntProperty("hold", 1, 0, 20);
-    public final BooleanProperty speedCheck = new BooleanProperty("speedCheck", false);
+    public final BooleanProperty speedCheck = new BooleanProperty("speed-check", false);
     public final IntProperty debug = new IntProperty("debug", 0, 0, 9);
 
     public AutoAnduril() {
