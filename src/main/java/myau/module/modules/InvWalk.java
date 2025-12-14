@@ -10,11 +10,11 @@ import myau.events.TickEvent;
 import myau.events.UpdateEvent;
 import myau.mixin.IAccessorC0DPacketCloseWindow;
 import myau.module.Module;
+import myau.property.properties.BooleanProperty;
 import myau.property.properties.IntProperty;
+import myau.property.properties.ModeProperty;
 import myau.util.KeyBindUtil;
 import myau.util.PacketUtil;
-import myau.property.properties.ModeProperty;
-import myau.property.properties.BooleanProperty;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.gui.inventory.GuiContainerCreative;
@@ -51,10 +51,10 @@ public class InvWalk extends Module {
     }};
 
     public final ModeProperty mode = new ModeProperty("mode", 1, new String[]{"VANILLA", "LEGIT", "HYPIXEL", "LEGIT+"});
-    public final BooleanProperty guiEnabled = new BooleanProperty("ClickGUI", true);
-    public final IntProperty openDelay = new IntProperty("openDelay", 0, 0, 20, () -> mode.getValue() == 3);
-    public final IntProperty closeDelay = new IntProperty("closeDelay", 4, 0, 20, () -> mode.getValue() == 3);
-    public final BooleanProperty lockMoveKey = new BooleanProperty("lockMoveKey", false);
+    public final BooleanProperty guiEnabled = new BooleanProperty("click-gui", true);
+    public final IntProperty openDelay = new IntProperty("open-delay", 0, 0, 20, () -> mode.getValue() == 3);
+    public final IntProperty closeDelay = new IntProperty("close-delay", 4, 0, 20, () -> mode.getValue() == 3);
+    public final BooleanProperty lockMoveKey = new BooleanProperty("lock-move-dey", false);
 
     public InvWalk() {
         super("InvWalk", false);
