@@ -635,12 +635,15 @@ public class KillAura extends Module {
                                             this.blockTick = 1;
                                             break;
                                         case 1:
-                                            if (this.isPlayerBlocking()) {
+                                            if (this.isPlayerBlocking() && this.attackDelayMS <= 100L) {
                                                 this.stopBlock();
-                                                attack = false;
+                                                this.blockTick = 2;
                                             }
-                                            if (this.attackDelayMS <= 50L) {
-                                                this.blockTick = 0;
+                                            break;
+                                        case 2:
+                                            if (!this.isPlayerBlocking() && this.attackDelayMS <= 50L) {
+                                                swap = true;
+                                                this.blockTick = 1;
                                             }
                                             break;
                                         default:
@@ -654,6 +657,7 @@ public class KillAura extends Module {
                                 Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
                                 this.isBlocking = false;
                                 this.fakeBlockState = false;
+                                this.blockTick = 0;
                             }
                             break;
                         case 8: // FAKE
