@@ -71,6 +71,7 @@ public class KillAura extends Module {
     public final FloatProperty autoBlockMinCPS;
     public final FloatProperty autoBlockMaxCPS;
     public final FloatProperty autoBlockRange;
+    public final IntProperty blinkTicks;
     public final FloatProperty swingRange;
     public final FloatProperty attackRange;
     public final IntProperty fov;
@@ -333,6 +334,7 @@ public class KillAura extends Module {
         this.autoBlockMinCPS = new FloatProperty("auto-block-min-aps", 8.0F, 1.0F, 20.0F);
         this.autoBlockMaxCPS = new FloatProperty("auto-block-max-aps", 10.0F, 1.0F, 20.0F);
         this.autoBlockRange = new FloatProperty("auto-block-range", 6.0F, 3.0F, 8.0F);
+        this.blinkTicks = new IntProperty("blink-ticks", 1, 1, 10, () -> this.autoBlock.getValue() == 4);
         this.swingRange = new FloatProperty("swing-range", 3.5F, 3.0F, 6.0F);
         this.attackRange = new FloatProperty("attack-range", 3.0F, 3.0F, 6.0F);
         this.fov = new IntProperty("fov", 360, 30, 360);
@@ -527,17 +529,19 @@ public class KillAura extends Module {
                                             this.blinkReset = true;
                                             this.blockTick = 1;
                                             break;
-                                        case 1:
-                                            if (this.isPlayerBlocking()) {
-                                                this.stopBlock();
-                                                attack = false;
-                                            }
-                                            if (this.attackDelayMS <= 50L) {
-                                                this.blockTick = 0;
+                                        default:
+                                            if (this.blockTick >= this.blinkTicks.getValue()) {
+                                                if (this.isPlayerBlocking()) {
+                                                    this.stopBlock();
+                                                    attack = false;
+                                                }
+                                                if (this.attackDelayMS <= 50L) {
+                                                    this.blockTick = 0;
+                                                }
+                                            } else {
+                                                this.blockTick++;
                                             }
                                             break;
-                                        default:
-                                            this.blockTick = 0;
                                     }
                                 }
                                 this.isBlocking = true;
