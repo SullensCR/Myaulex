@@ -49,6 +49,7 @@ public class ClickGui extends GuiScreen {
         movementModules.add(Myau.moduleManager.getModule(AntiAFK.class));
         movementModules.add(Myau.moduleManager.getModule(Fly.class));
         movementModules.add(Myau.moduleManager.getModule(Speed.class));
+        movementModules.add(Myau.moduleManager.getModule(myau.module.modules.Timer.class));
         movementModules.add(Myau.moduleManager.getModule(LongJump.class));
         movementModules.add(Myau.moduleManager.getModule(Sprint.class));
         movementModules.add(Myau.moduleManager.getModule(SafeWalk.class));
