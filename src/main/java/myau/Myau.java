@@ -69,6 +69,7 @@ public class Myau {
         moduleManager.modules.put(AutoAnduril.class, new AutoAnduril());
         moduleManager.modules.put(AutoHeal.class, new AutoHeal());
         moduleManager.modules.put(AutoTool.class, new AutoTool());
+        moduleManager.modules.put(BackTrack.class, new BackTrack());
         moduleManager.modules.put(BedNuker.class, new BedNuker());
         moduleManager.modules.put(BedESP.class, new BedESP());
         moduleManager.modules.put(BedTracker.class, new BedTracker());
@@ -78,6 +79,7 @@ public class Myau {
         moduleManager.modules.put(ChestStealer.class, new ChestStealer());
         moduleManager.modules.put(Eagle.class, new Eagle());
         moduleManager.modules.put(ESP.class, new ESP());
+        moduleManager.modules.put(FakeLag.class, new FakeLag());
         moduleManager.modules.put(FastPlace.class, new FastPlace());
         moduleManager.modules.put(Freeze.class, new Freeze());
         moduleManager.modules.put(Fly.class, new Fly());
