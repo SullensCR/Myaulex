@@ -9,6 +9,7 @@ import myau.events.TickEvent;
 import myau.mixin.IAccessorPlayerControllerMP;
 import myau.mixin.IAccessorRenderManager;
 import myau.module.Module;
+import myau.util.ChatUtil;
 import myau.util.ItemUtil;
 import myau.util.RenderUtil;
 import myau.util.RotationUtil;
@@ -37,16 +38,19 @@ public class LagRange extends Module {
     private int tickIndex = -1;
     private long delayCounter = 0L;
     private boolean hasTarget = false;
-    private long maxTimeStarted = 0L;
+    private long lagStartTime = 0L;
+    private boolean timerExpired = false;
     private Vec3 lastPosition = null;
     private Vec3 currentPosition = null;
+    private boolean isLagging = false;
+    private boolean wasLagging = false;
     
     public final BooleanProperty advancedMode = new BooleanProperty("advanced-mode", false);
     
     public final IntProperty delay = new IntProperty("delay", 150, 0, 1000, () -> !this.advancedMode.getValue());
     public final FloatProperty range = new FloatProperty("range", 10.0F, 3.0F, 100.0F, () -> !this.advancedMode.getValue());
     
-    public final IntProperty maxTime = new IntProperty("max-time", 1000, 0, 5000, this.advancedMode::getValue);
+    public final FloatProperty maxTime = new FloatProperty("max-time", 0.0F, 0.0F, 20.0F, this.advancedMode::getValue);
     public final FloatProperty closeRange = new FloatProperty("close-range", 6.0F, 3.0F, 100.0F, this.advancedMode::getValue);
     public final FloatProperty farRange = new FloatProperty("far-range", 10.0F, 3.0F, 100.0F, this.advancedMode::getValue);
     public final IntProperty delayClose = new IntProperty("packet-delay-close", 150, 0, 1000, this.advancedMode::getValue);
@@ -56,6 +60,7 @@ public class LagRange extends Module {
     public final BooleanProperty botCheck = new BooleanProperty("bot-check", true);
     public final BooleanProperty teams = new BooleanProperty("teams", true);
     public final ModeProperty showPosition = new ModeProperty("show-position", 0, new String[]{"NONE", "DEFAULT", "HUD"});
+    public final BooleanProperty debugLog = new BooleanProperty("debug-log", false);
 
     private boolean isValidTarget(EntityPlayer entityPlayer) {
         if (entityPlayer != mc.thePlayer && entityPlayer != mc.thePlayer.ridingEntity) {
@@ -97,6 +102,8 @@ public class LagRange extends Module {
                 case PRE:
                     Myau.lagManager.setDelay(0);
                     this.hasTarget = false;
+                    this.isLagging = false;
+                    
                     BedNuker bedNuker = (BedNuker) Myau.moduleManager.modules.get(BedNuker.class);
                     if ((!bedNuker.isEnabled() || !bedNuker.isReady())
                             && !((IAccessorPlayerControllerMP) mc.playerController).getIsHittingBlock()
@@ -115,17 +122,41 @@ public class LagRange extends Module {
                                 .collect(Collectors.toList());
                         if (players.isEmpty()) {
                             this.tickIndex = -1;
-                            this.maxTimeStarted = 0L;
+                            this.lagStartTime = 0L;
+                            this.timerExpired = false;
                         } else {
                             double height = mc.thePlayer.getEyeHeight();
                             Vec3 eyePosition = Myau.lagManager.getLastPosition().addVector(0.0, height, 0.0);
                             Vec3 targetEyePosition = new Vec3(mc.thePlayer.lastTickPosX, mc.thePlayer.lastTickPosY + height, mc.thePlayer.lastTickPosZ);
                             Vec3 playerEyePosition = new Vec3(mc.thePlayer.posX, mc.thePlayer.posY + height, mc.thePlayer.posZ);
                             
+                            boolean timerEnabled = this.advancedMode.getValue() && this.maxTime.getValue() > 0.0F;
+                            boolean anyPlayerInCloseRange = false;
+                            
+                            if (timerEnabled) {
+                                for (EntityPlayer player : players) {
+                                    double distance = RotationUtil.distanceToBox(player, playerEyePosition);
+                                    if (distance <= (double) this.closeRange.getValue()) {
+                                        anyPlayerInCloseRange = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (timerEnabled && this.timerExpired && anyPlayerInCloseRange) {
+                                this.tickIndex = -1;
+                                this.logDebugState();
+                                break;
+                            }
+                            
+                            if (timerEnabled && this.timerExpired && !anyPlayerInCloseRange) {
+                                this.timerExpired = false;
+                                this.lagStartTime = 0L;
+                            }
+                            
                             for (EntityPlayer player : players) {
                                 double distance = RotationUtil.distanceToBox(player, playerEyePosition);
                                 
-                                // Determine which range to use
                                 float maxRange = this.advancedMode.getValue() 
                                     ? Math.max(this.closeRange.getValue(), this.farRange.getValue())
                                     : this.range.getValue();
@@ -135,39 +166,33 @@ public class LagRange extends Module {
                                     double eyeDist = RotationUtil.distanceToBox(player, eyePosition);
                                     
                                     if (distance < targetDist || distance < eyeDist) {
-                                        // Determine delay based on distance
+                                        if (timerEnabled) {
+                                            if (this.lagStartTime == 0L) {
+                                                this.lagStartTime = System.currentTimeMillis();
+                                            }
+                                            
+                                            long elapsed = System.currentTimeMillis() - this.lagStartTime;
+                                            long maxTimeMs = (long) (this.maxTime.getValue() * 1000.0F);
+                                            if (elapsed >= maxTimeMs) {
+                                                this.timerExpired = true;
+                                                Myau.lagManager.setDelay(0);
+                                                this.tickIndex = -1;
+                                                this.isLagging = false;
+                                                this.logDebugState();
+                                                return;
+                                            }
+                                        }
+                                        
                                         int currentDelay;
                                         boolean isInCloseRange = false;
                                         
                                         if (this.advancedMode.getValue()) {
                                             isInCloseRange = distance <= (double) this.closeRange.getValue();
-                                            
-                                            if (isInCloseRange) {
-                                                // Start timer when entering close range
-                                                if (this.maxTimeStarted == 0L) {
-                                                    this.maxTimeStarted = System.currentTimeMillis();
-                                                }
-                                                
-                                                // Check if max time has elapsed
-                                                long elapsed = System.currentTimeMillis() - this.maxTimeStarted;
-                                                if (elapsed >= this.maxTime.getValue()) {
-                                                    // Max time reached, stop lagging
-                                                    Myau.lagManager.setDelay(0);
-                                                    this.tickIndex = -1;
-                                                    return;
-                                                }
-                                                
-                                                currentDelay = this.delayClose.getValue();
-                                            } else {
-                                                // In far range, reset timer
-                                                this.maxTimeStarted = 0L;
-                                                currentDelay = this.delayFar.getValue();
-                                            }
+                                            currentDelay = isInCloseRange ? this.delayClose.getValue() : this.delayFar.getValue();
                                         } else {
                                             currentDelay = this.delay.getValue();
                                         }
                                         
-                                        // Apply delay using original flush logic
                                         if (this.tickIndex < 0) {
                                             this.tickIndex = 0;
                                             for (this.delayCounter = this.delayCounter + (long) currentDelay;
@@ -180,19 +205,22 @@ public class LagRange extends Module {
                                         
                                         Myau.lagManager.setDelay(this.tickIndex);
                                         this.hasTarget = true;
+                                        this.isLagging = true;
+                                        this.logDebugState();
                                         return;
                                     }
                                 }
                             }
                             
-                            // No valid targets found - reset
                             this.tickIndex = -1;
-                            this.maxTimeStarted = 0L;
                         }
                     } else {
                         this.tickIndex = -1;
-                        this.maxTimeStarted = 0L;
+                        this.lagStartTime = 0L;
+                        this.timerExpired = false;
                     }
+                    
+                    this.logDebugState();
                     break;
                 case POST:
                     Vec3 savedPosition = Myau.lagManager.getLastPosition();
@@ -206,13 +234,28 @@ public class LagRange extends Module {
         }
     }
 
+    private void logDebugState() {
+        if (this.debugLog.getValue() && this.isLagging != this.wasLagging) {
+            ChatUtil.sendFormatted(
+                String.format(
+                    "%sLagRange (&ostate: %d&r)&r",
+                    Myau.clientName,
+                    this.isLagging ? 1 : 0
+                )
+            );
+            this.wasLagging = this.isLagging;
+        }
+    }
+
     @EventTarget
     public void onPacket(PacketEvent event) {
         if (this.isEnabled()) {
             if (this.shouldResetOnPacket(event.getPacket())) {
                 Myau.lagManager.setDelay(0);
                 this.tickIndex = -1;
-                this.maxTimeStarted = 0L;
+                this.lagStartTime = 0L;
+                this.isLagging = false;
+                this.logDebugState();
             }
         }
     }
@@ -264,9 +307,12 @@ public class LagRange extends Module {
         this.tickIndex = -1;
         this.delayCounter = 0L;
         this.hasTarget = false;
-        this.maxTimeStarted = 0L;
+        this.lagStartTime = 0L;
+        this.timerExpired = false;
         this.lastPosition = null;
         this.currentPosition = null;
+        this.isLagging = false;
+        this.wasLagging = false;
     }
 
     @Override

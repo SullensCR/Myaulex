@@ -96,4 +96,9 @@ public class FakeLag extends Module {
             this.timestamp = timestamp;
         }
     }
+
+    @Override
+    public String[] getSuffix() {
+        return new String[]{String.format("%dms", this.delay.getValue())};
+    }
 }
