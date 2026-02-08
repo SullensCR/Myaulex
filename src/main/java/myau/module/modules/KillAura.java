@@ -72,9 +72,6 @@ public class KillAura extends Module {
     public final FloatProperty autoBlockMaxCPS;
     public final FloatProperty autoBlockRange;
     public final IntProperty maxHurtTime;
-    public final IntProperty blinkTicks;
-    public final IntProperty holdTicks;
-    public final BooleanProperty preventDelay;
     public final FloatProperty swingRange;
     public final FloatProperty attackRange;
     public final IntProperty fov;
@@ -126,13 +123,6 @@ public class KillAura extends Module {
                     if (mc.playerController.getCurrentGameType() != GameType.SPECTATOR) {
                         PlayerUtil.attackEntity(this.target.getEntity());
                     }
-                    this.hitRegistered = true;
-
-                    // Prevent Delaying Attacks logic: stop blinking immediately upon attack
-                    if (this.autoBlock.getValue() == 4 && this.preventDelay.getValue()) {
-                        this.blockTick = 0;
-                    }
-
                     return true;
                 }
             }
@@ -218,9 +208,7 @@ public class KillAura extends Module {
         } else if (this.autoBlockRequirePress.getValue() && !PlayerUtil.isUsingItem()) {
             return false;
         } else {
-            // CORRECTED: Check the PLAYER'S hurtResistantTime
             if (this.maxHurtTime.getValue() > 0) {
-                // If our invulnerability is about to run out, stop blocking to prepare an attack
                 if (mc.thePlayer.hurtResistantTime <= this.maxHurtTime.getValue() / 50) {
                     return false;
                 }
@@ -352,10 +340,7 @@ public class KillAura extends Module {
         this.autoBlockMinCPS = new FloatProperty("auto-block-min-aps", 8.0F, 1.0F, 20.0F);
         this.autoBlockMaxCPS = new FloatProperty("auto-block-max-aps", 10.0F, 1.0F, 20.0F);
         this.autoBlockRange = new FloatProperty("auto-block-range", 6.0F, 3.0F, 8.0F);
-        this.maxHurtTime = new IntProperty("max-hurt-time", 0, 0, 1000);
-        this.holdTicks = new IntProperty("hold-ticks", 1, 1, 10, () -> this.autoBlock.getValue() == 4);
-        this.blinkTicks = new IntProperty("blink-ticks", 2, 1, 10, () -> this.autoBlock.getValue() == 4);
-        this.preventDelay = new BooleanProperty("prevent-delay", true, () -> this.autoBlock.getValue() == 4);
+        this.maxHurtTime = new IntProperty("max-hurt-time", 0, 0, 100);
         this.swingRange = new FloatProperty("swing-range", 3.5F, 3.0F, 6.0F);
         this.attackRange = new FloatProperty("attack-range", 3.0F, 3.0F, 6.0F);
         this.fov = new IntProperty("fov", 360, 30, 360);
@@ -542,28 +527,35 @@ public class KillAura extends Module {
                         case 4: // BLINK
                             if (this.hasValidTarget()) {
                                 if (!Myau.playerStateManager.digging && !Myau.playerStateManager.placing) {
-                                    if (this.blockTick == 0) {
-                                        if (!this.isPlayerBlocking()) swap = true;
-                                        this.blinkReset = true; 
-                                        this.blockTick = 1;
-                                    } else {
-                                        if (this.blockTick >= this.holdTicks.getValue()) {
-                                            if (this.isPlayerBlocking()) {
-                                                this.stopBlock(); 
+                                    switch (this.blockTick) {
+                                        case 0:
+                                            if (!this.isPlayerBlocking()) {
+                                                swap = true;
                                             }
-                                        }
-
-                                        if (this.blockTick >= (this.holdTicks.getValue() + this.blinkTicks.getValue()) || this.blockTick == 0) {
-                                            Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
+                                            this.blinkReset = true;
+                                            this.blockTick = 1;
+                                            break;
+                                        case 1:
+                                            if (this.isPlayerBlocking()) {
+                                                this.stopBlock();
+                                                attack = false;
+                                            }
+                                            if (this.attackDelayMS <= 50L) {
+                                                this.blockTick = 0;
+                                            }
+                                            break;
+                                        default:
                                             this.blockTick = 0;
-                                        } else {
-                                            this.blockTick++;
-                                        }
                                     }
                                 }
                                 this.isBlocking = true;
                                 this.fakeBlockState = true;
+                            } else {
+                                Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
+                                this.isBlocking = false;
+                                this.fakeBlockState = false;
                             }
+                            break;
                         case 5: // INTERACT
                             if (this.hasValidTarget()) {
                                 int item = ((IAccessorPlayerControllerMP) mc.playerController).getCurrentPlayerItem();
