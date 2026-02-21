@@ -699,7 +699,6 @@ public class KillAura extends Module {
                     }
                 }
                 boolean attacked = false;
-                // For swingThrough, a wall target is still a valid target to aim and swing at
                 boolean behindWall = this.swingThrough.getValue()
                         && RotationUtil.rayTrace(this.target.getEntity()) != null;
                 boolean inSwingOrWall = this.isBoxInSwingRange(this.target.getBox()) || behindWall;
@@ -724,8 +723,6 @@ public class KillAura extends Module {
 
                     if (attack) {
                         if (behindWall) {
-                            // Target is behind a wall — swing animation only, no attack packet sent.
-                            // Looks exactly like a legit player clicking on someone through geometry.
                             attacked = this.performSwing();
                         } else {
                             attacked = this.performAttack(event.getNewYaw(), event.getNewPitch());
@@ -752,8 +749,6 @@ public class KillAura extends Module {
         if (this.isEnabled()) {
             switch (event.getType()) {
                 case PRE:
-                    // When swingThrough is on, a wall target is still valid — don't force rescan just
-                    // because it's behind geometry. Only rescan if truly out of swing range or invalid.
                     boolean currentTargetBehindWall = this.swingThrough.getValue()
                             && this.target != null
                             && RotationUtil.rayTrace(this.target.getEntity()) != null;
@@ -777,8 +772,6 @@ public class KillAura extends Module {
                             if (targets.stream().anyMatch(this::isInSwingRange)) {
                                 targets.removeIf(entityLivingBase -> !this.isInSwingRange(entityLivingBase));
                             }
-                            // When swingThrough is on, keep wall targets in the list even if outside
-                            // strict attack range — they are valid swing targets
                             if (targets.stream().anyMatch(e -> this.isInAttackRange(e) || (this.swingThrough.getValue() && RotationUtil.rayTrace(e) != null))) {
                                 targets.removeIf(entityLivingBase -> !this.isInAttackRange(entityLivingBase)
                                         && !(this.swingThrough.getValue() && RotationUtil.rayTrace(entityLivingBase) != null));
