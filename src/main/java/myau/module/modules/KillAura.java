@@ -83,6 +83,7 @@ public class KillAura extends Module {
     public final PercentProperty smoothing;
     public final IntProperty angleStep;
     public final BooleanProperty throughWalls;
+    public final BooleanProperty swingThrough;
     public final BooleanProperty requirePress;
     public final BooleanProperty allowMining;
     public final BooleanProperty weaponsOnly;
@@ -125,6 +126,22 @@ public class KillAura extends Module {
                     }
                     return true;
                 }
+            }
+        } else {
+            return false;
+        }
+    }
+
+    private boolean performSwing() {
+        if (!Myau.playerStateManager.digging && !Myau.playerStateManager.placing) {
+            if (this.isPlayerBlocking() && this.autoBlock.getValue() != 1) {
+                return false;
+            } else if (this.attackDelayMS > 0L) {
+                return false;
+            } else {
+                this.attackDelayMS = this.attackDelayMS + this.getAttackDelay();
+                mc.thePlayer.swingItem();
+                return true;
             }
         } else {
             return false;
@@ -238,7 +255,7 @@ public class KillAura extends Module {
                 return false;
             } else if (RotationUtil.angleToEntity(entityLivingBase) > this.fov.getValue().floatValue()) {
                 return false;
-            } else if (!this.throughWalls.getValue() && RotationUtil.rayTrace(entityLivingBase) != null) {
+            } else if (!this.throughWalls.getValue() && !this.swingThrough.getValue() && RotationUtil.rayTrace(entityLivingBase) != null) {
                 return false;
             } else if (entityLivingBase instanceof EntityOtherPlayerMP) {
                 if (!this.players.getValue()) {
@@ -352,6 +369,7 @@ public class KillAura extends Module {
         this.smoothing = new PercentProperty("smoothing", 0);
         this.angleStep = new IntProperty("angle-step", 90, 30, 180);
         this.throughWalls = new BooleanProperty("through-walls", true);
+        this.swingThrough = new BooleanProperty("swing-through", false);
         this.requirePress = new BooleanProperty("require-press", false);
         this.allowMining = new BooleanProperty("allow-mining", true);
         this.weaponsOnly = new BooleanProperty("weapons-only", true);
@@ -681,7 +699,12 @@ public class KillAura extends Module {
                     }
                 }
                 boolean attacked = false;
-                if (this.isBoxInSwingRange(this.target.getBox())) {
+                // For swingThrough, a wall target is still a valid target to aim and swing at
+                boolean behindWall = this.swingThrough.getValue()
+                        && RotationUtil.rayTrace(this.target.getEntity()) != null;
+                boolean inSwingOrWall = this.isBoxInSwingRange(this.target.getBox()) || behindWall;
+
+                if (inSwingOrWall) {
                     if (this.rotations.getValue() == 2 || this.rotations.getValue() == 3) {
                         float[] rotations = RotationUtil.getRotationsToBox(
                                 this.target.getBox(),
@@ -698,8 +721,15 @@ public class KillAura extends Module {
                             event.setPervRotation(rotations[0], 1);
                         }
                     }
+
                     if (attack) {
-                        attacked = this.performAttack(event.getNewYaw(), event.getNewPitch());
+                        if (behindWall) {
+                            // Target is behind a wall — swing animation only, no attack packet sent.
+                            // Looks exactly like a legit player clicking on someone through geometry.
+                            attacked = this.performSwing();
+                        } else {
+                            attacked = this.performAttack(event.getNewYaw(), event.getNewPitch());
+                        }
                     }
                 }
                 if (swap) {
@@ -722,9 +752,14 @@ public class KillAura extends Module {
         if (this.isEnabled()) {
             switch (event.getType()) {
                 case PRE:
+                    // When swingThrough is on, a wall target is still valid — don't force rescan just
+                    // because it's behind geometry. Only rescan if truly out of swing range or invalid.
+                    boolean currentTargetBehindWall = this.swingThrough.getValue()
+                            && this.target != null
+                            && RotationUtil.rayTrace(this.target.getEntity()) != null;
                     if (this.target == null
                             || !this.isValidTarget(this.target.getEntity())
-                            || !this.isBoxInAttackRange(this.target.getBox())
+                            || (!currentTargetBehindWall && !this.isBoxInAttackRange(this.target.getBox()))
                             || !this.isBoxInSwingRange(this.target.getBox())
                             || this.timer.hasTimeElapsed(this.switchDelay.getValue().longValue())) {
                         this.timer.reset();
@@ -742,8 +777,11 @@ public class KillAura extends Module {
                             if (targets.stream().anyMatch(this::isInSwingRange)) {
                                 targets.removeIf(entityLivingBase -> !this.isInSwingRange(entityLivingBase));
                             }
-                            if (targets.stream().anyMatch(this::isInAttackRange)) {
-                                targets.removeIf(entityLivingBase -> !this.isInAttackRange(entityLivingBase));
+                            // When swingThrough is on, keep wall targets in the list even if outside
+                            // strict attack range — they are valid swing targets
+                            if (targets.stream().anyMatch(e -> this.isInAttackRange(e) || (this.swingThrough.getValue() && RotationUtil.rayTrace(e) != null))) {
+                                targets.removeIf(entityLivingBase -> !this.isInAttackRange(entityLivingBase)
+                                        && !(this.swingThrough.getValue() && RotationUtil.rayTrace(entityLivingBase) != null));
                             }
                             if (targets.stream().anyMatch(this::isPlayerTarget)) {
                                 targets.removeIf(entityLivingBase -> !this.isPlayerTarget(entityLivingBase));

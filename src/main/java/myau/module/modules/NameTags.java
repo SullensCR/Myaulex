@@ -134,13 +134,12 @@ public class NameTags extends Module {
                             case 2:
                                 distanceText = String.format("&a[&f%d&a]&r ", (int) distance);
                         }
-                        
-                        // Add sneak indicator
+
                         String sneakText = "";
                         if (this.sneak.getValue() && entity.isSneaking()) {
-                            sneakText = "&cS&r ";
+                            sneakText = "&eS&r ";
                         }
-                        
+
                         float health = ((EntityLivingBase) entity).getHealth();
                         float absorption = ((EntityLivingBase) entity).getAbsorptionAmount();
                         float max = ((EntityLivingBase) entity).getMaxHealth();

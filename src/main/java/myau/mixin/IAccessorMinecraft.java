@@ -7,6 +7,7 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
+import org.spongepowered.asm.mixin.gen.Invoker;
 
 @SideOnly(Side.CLIENT)
 @Mixin({Minecraft.class})
@@ -22,4 +23,10 @@ public interface IAccessorMinecraft {
 
     @Accessor("rightClickDelayTimer")
     void setRightClickDelayTimer(int integer);
+    
+    @Invoker("clickMouse")
+    void callClickMouse();
+    
+    @Invoker("rightClickMouse")
+    void callRightClickMouse();
 }
