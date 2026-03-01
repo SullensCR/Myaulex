@@ -4,6 +4,7 @@ import myau.event.EventTarget;
 import myau.event.types.Priority;
 import myau.events.LeftClickMouseEvent;
 import myau.events.RightClickMouseEvent;
+import myau.mixin.IAccessorMinecraft;
 import myau.module.Module;
 import myau.util.ItemUtil;
 import myau.property.properties.BooleanProperty;
@@ -114,7 +115,7 @@ public class DoubleClicker extends Module {
 
     @EventTarget(Priority.HIGH)
     public void onRightClick(RightClickMouseEvent event) {
-        if (!this.isEnabled() || this.bot == null) return;
+        if (!this.isEnabled()) return;
         if (this.disableInCreative.getValue() && mc.playerController.getCurrentGameType() == GameType.CREATIVE) return;
         if (mc.currentScreen != null) return;
 
@@ -129,27 +130,16 @@ public class DoubleClicker extends Module {
 
         if (this.blocksOnly.getValue()) {
             ItemStack item = mc.thePlayer.getHeldItem();
-            if (item == null || !(item.getItem() instanceof ItemBlock)) {
-                if (!org.lwjgl.input.Mouse.isButtonDown(1)) {
-                    this.bot.mouseRelease(InputEvent.BUTTON3_MASK);
-                }
-                return;
-            }
+            if (item == null || !(item.getItem() instanceof ItemBlock)) return;
         }
 
         if (this.aboveCPSRight.getValue() && getRightCPS() <= 5) return;
 
         if (this.chanceRight.getValue() < 100.0F) {
-            if (Math.random() >= this.chanceRight.getValue() / 100.0F) {
-                if (!org.lwjgl.input.Mouse.isButtonDown(1)) {
-                    this.bot.mouseRelease(InputEvent.BUTTON3_MASK);
-                }
-                return;
-            }
+            if (Math.random() >= this.chanceRight.getValue() / 100.0F) return;
         }
 
-        this.bot.mouseRelease(InputEvent.BUTTON3_MASK);
-        this.bot.mousePress(InputEvent.BUTTON3_MASK);
         this.ignNR = true;
+        ((IAccessorMinecraft) mc).callRightClickMouse();
     }
 }
