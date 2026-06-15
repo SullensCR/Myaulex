@@ -1,0 +1,7 @@
+Vaca = http://textures.minecraft.net/texture/5d6c6eda942f7f5f71c3161c7306f4aed307d82895f9d2b07ab4525718edc5
+Galinha = http://textures.minecraft.net/texture/11a2c3ce5e50b9718cbdb6149827d35a737f71f0136cb3e95a156e489e8da62
+Sapo = http://textures.minecraft.net/texture/e155412fd11dcd0aba77a18378583537e7625c6f71fe452f7a717dae3326f22a
+Pinguim = http://textures.minecraft.net/texture/d3c57facbb3a4db7fd55b5c0dc7d19c19cb0813c748ccc9710c714727551f5b9
+Porco = http://textures.minecraft.net/texture/eaf8b5abd25c2092ac09692b1325df9b6c907cd5bd54587e8aa3a8153cfed
+Raposa = http://textures.minecraft.net/texture/24a0347436434eb13d537b9eb6b45b6ef4c5a78f86e91863ef61d2b8a53b82
+Abelha = http://textures.minecraft.net/texture/5162dd0b9f65b58a1e70f81d8e03e8ff6c53e4e985bdbe0186558d8a69a81189
