@@ -59,6 +59,8 @@ public class Myau {
         EventManager.register(moduleManager);
         EventManager.register(commandManager);
         moduleManager.modules.put(AimAssist.class, new AimAssist());
+        moduleManager.modules.put(AutoCaptcha.class, new AutoCaptcha());
+        moduleManager.modules.put(AutoRegister.class, new AutoRegister());
         moduleManager.modules.put(AntiAFK.class, new AntiAFK());
         moduleManager.modules.put(AntiDebuff.class, new AntiDebuff());
         moduleManager.modules.put(AntiFireball.class, new AntiFireball());
@@ -89,6 +91,7 @@ public class Myau {
         moduleManager.modules.put(GuiModule.class, new GuiModule());
         moduleManager.modules.put(HitSelect.class, new HitSelect());
         moduleManager.modules.put(HUD.class, new HUD());
+        moduleManager.modules.put(RenderFixes.class, new RenderFixes());
         moduleManager.modules.put(MoreKB.class, new MoreKB());
         moduleManager.modules.put(Indicators.class, new Indicators());
         moduleManager.modules.put(InventoryClicker.class, new InventoryClicker());

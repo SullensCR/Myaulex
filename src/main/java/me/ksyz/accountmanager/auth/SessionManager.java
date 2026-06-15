@@ -38,6 +38,23 @@ public class SessionManager {
         return mc.getSession();
     }
 
+    /**
+     * Builds an offline ("cracked") session for the given username. The UUID is
+     * derived the same way the vanilla server does for offline-mode players, so
+     * the account behaves consistently across cracked/offline servers. No
+     * network request is made.
+     */
+    public static Session offline(String username) {
+        try {
+            java.nio.charset.Charset utf8 = java.nio.charset.StandardCharsets.UTF_8;
+            String uuid = java.util.UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(utf8))
+                    .toString().replace("-", "");
+            return new Session(username, uuid, "0", Session.Type.LEGACY.toString());
+        } catch (Exception e) {
+            return new Session(username, username, "0", Session.Type.LEGACY.toString());
+        }
+    }
+
     public static void set(Session session) {
         try {
             getField().set(mc, session);

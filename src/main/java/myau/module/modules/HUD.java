@@ -27,6 +27,19 @@ import java.util.stream.Collectors;
 
 public class HUD extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
+    public static int targetHUDX = 100;
+    public static int targetHUDY = 100;
+
+    public static void setTargetHUDPosition(int x, int y) {
+        targetHUDX = x;
+        targetHUDY = y;
+    }
+
+    public static void resetTargetHUDPosition() {
+        targetHUDX = 100;
+        targetHUDY = 100;
+    }
+
     private List<Module> activeModules = new ArrayList<>();
     public final ModeProperty colorMode = new ModeProperty(
             "color", 3, new String[]{"RAINBOW", "CHROMA", "ASTOLFO", "CUSTOM1", "CUSTOM12", "CUSTOM123"}
