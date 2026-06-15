@@ -40,4 +40,9 @@ public class ColorUtil {
     public static Color scale(Color color, float scaleFactor, int alpha) {
         return new Color(Math.min(Math.max((int) ((float) color.getRed() * scaleFactor), 0), 255), Math.min(Math.max((int) ((float) color.getGreen() * scaleFactor), 0), 255), Math.min(Math.max((int) ((float) color.getBlue() * scaleFactor), 0), 255), alpha);
     }
+
+    public static Color withAlpha(Color color, int alpha) {
+        alpha = Math.max(0, Math.min(255, alpha));
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
+    }
 }

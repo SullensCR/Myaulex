@@ -5,6 +5,7 @@ import me.ksyz.accountmanager.auth.Account;
 import me.ksyz.accountmanager.auth.MicrosoftAuth;
 import me.ksyz.accountmanager.auth.SessionManager;
 import me.ksyz.accountmanager.utils.Notification;
+import me.ksyz.accountmanager.utils.NameGenerator;
 import me.ksyz.accountmanager.utils.TextFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.*;
@@ -56,6 +57,9 @@ public class GuiAccountManager extends GuiScreen {
         ));
         buttonList.add(new GuiButton(
                 1, width / 2 - 50, height - 52, 95, 20, "Add"
+        ));
+        buttonList.add(new GuiButton(
+                6, width / 2 - 50, height - 76, 95, 20, "Offline Random Login"
         ));
         buttonList.add(new GuiButton(
                 4, width / 2 + 50, height - 52, 95, 20, "Session"
@@ -275,6 +279,19 @@ public class GuiAccountManager extends GuiScreen {
                 break;
                 case 1: { // Add
                     mc.displayGuiScreen(new GuiMicrosoftAuth(previousScreen));
+                }
+                break;
+                case 6: { // Offline Random Login
+                    String username = NameGenerator.randomUsername();
+                    // Create an offline account entry (empty tokens)
+                    Account offline = new Account("", "", username, "", "");
+                    AccountManager.accounts.add(offline);
+                    AccountManager.save();
+                    // Set local cracked session
+                    SessionManager.set(SessionManager.offline(username));
+                    notification = new Notification(TextFormatting.translate(String.format(
+                            "&aLogged in offline as %s&r", username
+                    )), 5000L);
                 }
                 break;
                 case 2: { // Delete

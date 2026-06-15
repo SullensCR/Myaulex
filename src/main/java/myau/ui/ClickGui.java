@@ -98,6 +98,7 @@ public class ClickGui extends GuiScreen {
         playerModules.add(Myau.moduleManager.getModule(AntiDebuff.class));
 
         List<Module> miscModules = new ArrayList<>();
+        miscModules.add(Myau.moduleManager.getModule(AutoCaptcha.class));
         miscModules.add(Myau.moduleManager.getModule(Spammer.class));
         miscModules.add(Myau.moduleManager.getModule(BedNuker.class));
         miscModules.add(Myau.moduleManager.getModule(BedTracker.class));
@@ -124,8 +125,11 @@ public class ClickGui extends GuiScreen {
         registered.addAll(miscModules);
 
         for (Module module : Myau.moduleManager.modules.values()) {
-            if (!registered.contains(module)) {
-                throw new RuntimeException(module.getClass().getName() + " is unregistered to click gui.");
+            if (module != null && !module.isHidden() && !registered.contains(module)) {
+                // Some modules may be toggled visible via config but not yet categorized in the click GUI lists.
+                // Instead of throwing, add them to the misc category so they remain reachable in the GUI.
+                miscModules.add(module);
+                registered.add(module);
             }
         }
 

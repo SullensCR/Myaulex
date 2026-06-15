@@ -38,6 +38,7 @@ public class Velocity extends Module {
     public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"VANILLA", "JUMP", "DELAY", "REVERSE", "LEGIT_TEST"});
     public final IntProperty delayTicks = new IntProperty("delay-ticks", 3, 1, 20, () -> this.mode.getValue() == 2);
     public final PercentProperty delayChance = new PercentProperty("delay-chance", 100, () -> this.mode.getValue() == 2);
+    public final BooleanProperty jumpReset = new BooleanProperty("jump-reset", true, () -> this.mode.getValue() == 2);
     public final PercentProperty chance = new PercentProperty("chance", 100);
     public final PercentProperty horizontal = new PercentProperty("horizontal", 0);
     public final PercentProperty vertical = new PercentProperty("vertical", 100);
@@ -83,7 +84,11 @@ public class Velocity extends Module {
             } else {
                 this.chanceCounter = this.chanceCounter % 100 + this.chance.getValue();
                 if (this.chanceCounter >= 100) {
-                    this.jumpFlag = (this.mode.getValue() == 1 || this.mode.getValue() == 2) && event.getY() > 0.0;
+                    if (this.mode.getValue() == 1) {
+                        this.jumpFlag = event.getY() > 0.0;
+                    } else if (this.mode.getValue() == 2 && this.jumpReset.getValue()) {
+                        this.jumpFlag = event.getY() > 0.0;
+                    }
                     this.delayActive = this.mode.getValue() == 3;
                     if (this.horizontal.getValue() > 0) {
                         event.setX(event.getX() * (double) this.horizontal.getValue() / 100.0);

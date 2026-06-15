@@ -512,6 +512,67 @@ public class RenderUtil {
         GlStateManager.color(f2, f3, f4, f);
     }
 
+    // Helper: merge a new alpha value (0-255) into an ARGB color
+    public static int mergeAlpha(int color, int alpha) {
+        alpha = Math.max(0, Math.min(255, alpha));
+        return (alpha << 24) | (color & 0x00FFFFFF);
+    }
+
+    // Simple rounded-rect fallbacks. The project contains many calls to rounded
+    // versions of rect/gradient drawing. Provide reasonable implementations that
+    // map to existing rectangle primitives so the renderer still works even if
+    // fancy rounded shader utilities are not available.
+    public static void drawRoundedRect(float x, float y, float width, float height, float radius, int color) {
+        drawRect(x, y, x + width, y + height, color);
+    }
+
+    // Overload used by some callers that pass corner booleans.
+    public static void drawRoundedRect(float x, float y, float width, float height, float radius, int color, boolean a, boolean b, boolean c, boolean d) {
+        drawRoundedRect(x, y, width, height, radius, color);
+    }
+
+    public static void drawRoundedRectangle(float x1, float y1, float x2, float y2, float radius, int color) {
+        drawRect(x1, y1, x2, y2, color);
+    }
+
+    public static void drawRoundedRectOutline(float x, float y, float width, float height, float radius, float lineWidth, int color, boolean a, boolean b, boolean c, boolean d) {
+        // approximate with outline rect
+        drawLine(x, y, x, y + height, lineWidth, color);
+        drawLine(x + width, y, x + width, y + height, lineWidth, color);
+        drawLine(x, y, x + width, y, lineWidth, color);
+        drawLine(x, y + height, x + width, y + height, lineWidth, color);
+    }
+
+    public static void drawRoundedGradientRect(float x, float y, float x2, float y2, float radius, int c1, int c2, int c3, int c4) {
+        // Fallback: draw a simple horizontal gradient using start color c1 -> c3
+        drawHorizontalGradientRect(x, y, x2 - x, y2 - y, c1, c3);
+    }
+
+    public static void drawRoundedGradientRect(float x, float y, float width, float height, float radius, int startColor, int endColor) {
+        drawHorizontalGradientRect(x, y, width, height, startColor, endColor);
+    }
+
+    public static void drawRoundedGradientOutlinedRectangle(float x1, float y1, float x2, float y2, float radius, int outlineColor, int startColor, int endColor) {
+        drawRoundedGradientRect(x1, y1, x2, y2, radius, startColor, endColor);
+        drawRoundedRectOutline(x1, y1, x2 - x1, y2 - y1, radius, 1.0f, outlineColor, true, true, true, true);
+    }
+
+    public static int darkenColor(int color, int amount) {
+        int a = (color >> 24) & 0xFF;
+        int r = (color >> 16) & 0xFF;
+        int g = (color >> 8) & 0xFF;
+        int b = color & 0xFF;
+        r = Math.max(0, r - amount);
+        g = Math.max(0, g - amount);
+        b = Math.max(0, b - amount);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    public static void drawHorizontalGradientRect(float x, float y, float width, float height, int startColor, int endColor) {
+        // simple fallback: draw solid rect with startColor
+        drawRect(x, y, x + width, y + height, startColor);
+    }
+
     public static float lerpFloat(float current, float previous, float t) {
         return previous + (current - previous) * t;
     }
