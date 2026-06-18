@@ -19,8 +19,9 @@ import java.util.Optional;
  * This modified version is licensed under the GNU GPL v3.
  */
 public class AccountManager {
+    private static final String ACCOUNT_FILE_NAME = "myaulex.accounts.json";
     private static final Minecraft mc = Minecraft.getMinecraft();
-    private static final File file = new File(mc.mcDataDir, "openmyau.accounts.json");
+    private static final File file = new File(mc.mcDataDir, ACCOUNT_FILE_NAME);
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     public static final ArrayList<Account> accounts = new ArrayList<>();
@@ -33,11 +34,11 @@ public class AccountManager {
             try {
                 if (file.getParentFile().exists() || file.getParentFile().mkdirs()) {
                     if (file.createNewFile()) {
-                        System.out.print("Successfully created openmyau.accounts.json!");
+                        System.out.print("Successfully created " + ACCOUNT_FILE_NAME + "!");
                     }
                 }
             } catch (IOException e) {
-                System.err.print("Couldn't create openmyau.accounts.json!");
+                System.err.print("Couldn't create " + ACCOUNT_FILE_NAME + "!");
             }
         }
     }
@@ -63,7 +64,7 @@ public class AccountManager {
                 }
             }
         } catch (FileNotFoundException e) {
-            System.err.print("Couldn't find openmyau.accounts.json!");
+            System.err.print("Couldn't find " + ACCOUNT_FILE_NAME + "!");
         }
     }
 
@@ -84,7 +85,7 @@ public class AccountManager {
             printWriter.println(gson.toJson(jsonArray));
             printWriter.close();
         } catch (IOException e) {
-            System.err.print("Couldn't save openmyau.accounts.json!");
+            System.err.print("Couldn't save " + ACCOUNT_FILE_NAME + "!");
         }
     }
 }

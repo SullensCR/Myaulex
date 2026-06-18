@@ -5,9 +5,12 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import myau.Myau;
+import myau.config.Config;
 import myau.module.Module;
 import myau.module.modules.*;
 import myau.ui.components.CategoryComponent;
+import myau.util.font.FontManager;
+import myau.util.font.IFont;
 import net.minecraft.client.gui.GuiScreen;
 import org.lwjgl.input.Mouse;
 
@@ -21,7 +24,7 @@ import java.util.List;
 
 public class ClickGui extends GuiScreen {
     private static ClickGui instance;
-    private final File configFile = new File("./config/Myau/", "clickgui.txt");
+    private final File configFile = new File(Config.CONFIG_DIR, "clickgui.txt");
     private final ArrayList<CategoryComponent> categoryList;
 
     public ClickGui() {
@@ -35,7 +38,6 @@ public class ClickGui extends GuiScreen {
         combatModules.add(Myau.moduleManager.getModule(Velocity.class));
         combatModules.add(Myau.moduleManager.getModule(Freeze.class));
         combatModules.add(Myau.moduleManager.getModule(Reach.class));
-        combatModules.add(Myau.moduleManager.getModule(Backtrack.class));
         combatModules.add(Myau.moduleManager.getModule(TargetStrafe.class));
         combatModules.add(Myau.moduleManager.getModule(NoHitDelay.class));
         combatModules.add(Myau.moduleManager.getModule(AntiFireball.class));
@@ -43,7 +45,6 @@ public class ClickGui extends GuiScreen {
         combatModules.add(Myau.moduleManager.getModule(HitBox.class));
         combatModules.add(Myau.moduleManager.getModule(MoreKB.class));
         combatModules.add(Myau.moduleManager.getModule(Refill.class));
-        combatModules.add(Myau.moduleManager.getModule(HitSelect.class));
 
         List<Module> movementModules = new ArrayList<>();
         movementModules.add(Myau.moduleManager.getModule(AntiAFK.class));
@@ -67,6 +68,8 @@ public class ClickGui extends GuiScreen {
         renderModules.add(Myau.moduleManager.getModule(ESP.class));
         renderModules.add(Myau.moduleManager.getModule(Chams.class));
         renderModules.add(Myau.moduleManager.getModule(FullBright.class));
+        renderModules.add(Myau.moduleManager.getModule(FKDRTracker.class));
+        renderModules.add(Myau.moduleManager.getModule(FloatingIsland.class));
         renderModules.add(Myau.moduleManager.getModule(Tracers.class));
         renderModules.add(Myau.moduleManager.getModule(NameTags.class));
         renderModules.add(Myau.moduleManager.getModule(Xray.class));
@@ -99,15 +102,14 @@ public class ClickGui extends GuiScreen {
 
         List<Module> miscModules = new ArrayList<>();
         miscModules.add(Myau.moduleManager.getModule(AutoCaptcha.class));
+        miscModules.add(Myau.moduleManager.getModule(AutoRegister.class));
         miscModules.add(Myau.moduleManager.getModule(Spammer.class));
         miscModules.add(Myau.moduleManager.getModule(BedNuker.class));
         miscModules.add(Myau.moduleManager.getModule(BedTracker.class));
-        miscModules.add(Myau.moduleManager.getModule(LightningTracker.class));
         miscModules.add(Myau.moduleManager.getModule(NoRotate.class));
         miscModules.add(Myau.moduleManager.getModule(NickHider.class));
-        miscModules.add(Myau.moduleManager.getModule(AntiObbyTrap.class));
+        miscModules.add(Myau.moduleManager.getModule(ServerHider.class));
         miscModules.add(Myau.moduleManager.getModule(AntiObfuscate.class));
-        miscModules.add(Myau.moduleManager.getModule(AutoAnduril.class));
         miscModules.add(Myau.moduleManager.getModule(InventoryClicker.class));
 
         Comparator<Module> comparator = Comparator.comparing(m -> m.getName().toLowerCase());
@@ -175,8 +177,10 @@ public class ClickGui extends GuiScreen {
     public void drawScreen(int x, int y, float p) {
         drawRect(0, 0, this.width, this.height, new Color(0, 0, 0, 100).getRGB());
 
-        mc.fontRendererObj.drawStringWithShadow("Myau " + Myau.version, 4, this.height - 3 - mc.fontRendererObj.FONT_HEIGHT * 2, new Color(60, 162, 253).getRGB());
-        mc.fontRendererObj.drawStringWithShadow("dev, ksyz", 4, this.height - 3 - mc.fontRendererObj.FONT_HEIGHT, new Color(60, 162, 253).getRGB());
+        FontManager.initializeFonts();
+        IFont footerFont = FontManager.nunito16 != null ? FontManager.nunito16 : FontManager.getMinecraft();
+        footerFont.drawStringWithShadow("Myaulex " + Myau.version, 4, this.height - 4 - footerFont.height() * 2, new Color(60, 162, 253).getRGB());
+        footerFont.drawStringWithShadow("dev, ksyz", 4, this.height - 3 - footerFont.height(), new Color(60, 162, 253).getRGB());
 
         for (CategoryComponent category : categoryList) {
             category.render(this.fontRendererObj);

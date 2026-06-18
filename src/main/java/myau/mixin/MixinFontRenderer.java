@@ -3,6 +3,7 @@ package myau.mixin;
 import myau.Myau;
 import myau.module.modules.AntiObfuscate;
 import myau.module.modules.NickHider;
+import myau.module.modules.ServerHider;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -29,7 +30,11 @@ public abstract class MixinFontRenderer {
                 string = antiObfuscate.stripObfuscated(string);
             }
             NickHider nickHider = (NickHider) Myau.moduleManager.modules.get(NickHider.class);
-            return nickHider.isEnabled() ? nickHider.replaceNick(string) : string;
+            if (nickHider.isEnabled()) {
+                string = nickHider.replaceNick(string);
+            }
+            ServerHider serverHider = (ServerHider) Myau.moduleManager.modules.get(ServerHider.class);
+            return serverHider != null && serverHider.isEnabled() ? serverHider.replaceServer(string) : string;
         }
     }
 
@@ -48,7 +53,11 @@ public abstract class MixinFontRenderer {
                 string = antiObfuscate.stripObfuscated(string);
             }
             NickHider nickHider = (NickHider) Myau.moduleManager.modules.get(NickHider.class);
-            return nickHider.isEnabled() ? nickHider.replaceNick(string) : string;
+            if (nickHider.isEnabled()) {
+                string = nickHider.replaceNick(string);
+            }
+            ServerHider serverHider = (ServerHider) Myau.moduleManager.modules.get(ServerHider.class);
+            return serverHider != null && serverHider.isEnabled() ? serverHider.replaceServer(string) : string;
         }
     }
 

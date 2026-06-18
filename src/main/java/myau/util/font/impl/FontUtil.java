@@ -41,7 +41,7 @@ public class FontUtil {
                 }
             }
 
-            System.err.println("[Myau] Failed to load font: " + location);
+            System.err.println("[Myaulex] Failed to load font: " + location);
             font = new Font("default", Font.PLAIN, size);
             locationMap.put(location, font);
         }
@@ -74,4 +74,3 @@ public class FontUtil {
         }
     }
 }
-

@@ -29,6 +29,7 @@ import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.passive.EntityBat;
 import net.minecraft.entity.passive.EntitySquid;
 import net.minecraft.entity.passive.EntityVillager;
+import net.minecraft.entity.passive.EntityWolf;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
@@ -96,6 +97,7 @@ public class KillAura extends Module {
     public final BooleanProperty animals;
     public final BooleanProperty golems;
     public final BooleanProperty silverfish;
+    public final BooleanProperty wolf;
     public final BooleanProperty teams;
     public final ModeProperty showTarget;
     public final ModeProperty debugLog;
@@ -268,7 +270,9 @@ public class KillAura extends Module {
             } else if (entityLivingBase instanceof EntityDragon || entityLivingBase instanceof EntityWither) {
                 return this.bosses.getValue();
             } else if (!(entityLivingBase instanceof EntityMob) && !(entityLivingBase instanceof EntitySlime)) {
-                if (entityLivingBase instanceof EntityAnimal
+                if (entityLivingBase instanceof EntityWolf) {
+                    return this.wolf.getValue();
+                } else if (entityLivingBase instanceof EntityAnimal
                         || entityLivingBase instanceof EntityBat
                         || entityLivingBase instanceof EntitySquid
                         || entityLivingBase instanceof EntityVillager) {
@@ -382,6 +386,7 @@ public class KillAura extends Module {
         this.animals = new BooleanProperty("animals", false);
         this.golems = new BooleanProperty("golems", false);
         this.silverfish = new BooleanProperty("silverfish", false);
+        this.wolf = new BooleanProperty("wolf", false);
         this.teams = new BooleanProperty("teams", true);
         this.showTarget = new ModeProperty("show-target", 0, new String[]{"NONE", "DEFAULT", "HUD"});
         this.debugLog = new ModeProperty("debug-log", 0, new String[]{"NONE", "HEALTH"});

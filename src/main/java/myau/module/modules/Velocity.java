@@ -13,6 +13,7 @@ import myau.property.properties.IntProperty;
 import myau.property.properties.ModeProperty;
 import myau.property.properties.PercentProperty;
 import myau.util.ChatUtil;
+import myau.util.ItemUtil;
 import myau.util.MoveUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
@@ -38,7 +39,9 @@ public class Velocity extends Module {
     public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"VANILLA", "JUMP", "DELAY", "REVERSE", "LEGIT_TEST"});
     public final IntProperty delayTicks = new IntProperty("delay-ticks", 3, 1, 20, () -> this.mode.getValue() == 2);
     public final PercentProperty delayChance = new PercentProperty("delay-chance", 100, () -> this.mode.getValue() == 2);
+    public final BooleanProperty alwaysDelay = new BooleanProperty("always-delay", false, () -> this.mode.getValue() == 2);
     public final BooleanProperty jumpReset = new BooleanProperty("jump-reset", true, () -> this.mode.getValue() == 2);
+    public final BooleanProperty weaponsOnly = new BooleanProperty("weapons-only", false);
     public final PercentProperty chance = new PercentProperty("chance", 100);
     public final PercentProperty horizontal = new PercentProperty("horizontal", 0);
     public final PercentProperty vertical = new PercentProperty("vertical", 100);
@@ -56,13 +59,17 @@ public class Velocity extends Module {
         return mc.thePlayer.onGround && (!killAura.isEnabled() || !killAura.shouldAutoBlock());
     }
 
+    private boolean canApplyVelocity() {
+        return mc.thePlayer != null && (!this.weaponsOnly.getValue() || ItemUtil.hasRawUnbreakingEnchant());
+    }
+
     public Velocity() {
         super("Velocity", false);
     }
 
     @EventTarget
     public void onKnockback(KnockbackEvent event) {
-        if (!this.isEnabled() || event.isCancelled()) {
+        if (!this.isEnabled() || event.isCancelled() || !this.canApplyVelocity()) {
             this.pendingExplosion = false;
             this.allowNext = true;
         } else if (!this.allowNext || !(Boolean) this.fakeCheck.getValue()) {
@@ -119,6 +126,10 @@ public class Velocity extends Module {
                 Myau.delayManager.setDelayState(false, DelayModules.VELOCITY);
                 this.reverseFlag = false;
             }
+            if (this.reverseFlag && !this.canApplyVelocity()) {
+                Myau.delayManager.setDelayState(false, DelayModules.VELOCITY);
+                this.reverseFlag = false;
+            }
             if (this.delayActive) {
                 MoveUtil.setSpeed(MoveUtil.getSpeed(), MoveUtil.getMoveYaw());
                 this.delayActive = false;
@@ -161,18 +172,22 @@ public class Velocity extends Module {
 
     @EventTarget
     public void onPacket(PacketEvent event) {
-        if (this.isEnabled() && event.getType() == EventType.RECEIVE && !event.isCancelled()) {
+        if (this.isEnabled() && event.getType() == EventType.RECEIVE && !event.isCancelled() && this.canApplyVelocity()) {
             if (event.getPacket() instanceof S12PacketEntityVelocity) {
                 S12PacketEntityVelocity packet = (S12PacketEntityVelocity) event.getPacket();
                 if (packet.getEntityID() == mc.thePlayer.getEntityId()) {
                     LongJump longJump = (LongJump) Myau.moduleManager.modules.get(LongJump.class);
-                    if (this.mode.getValue() == 2
+                    boolean damageVelocity = !this.allowNext || !(Boolean) this.fakeCheck.getValue();
+                    boolean shouldDelay = this.mode.getValue() == 2
                             && !this.reverseFlag
-                            && !this.canDelay()
+                            && Myau.delayManager.getDelayModule() != DelayModules.VELOCITY
                             && !this.isInLiquidOrWeb()
                             && !this.pendingExplosion
-                            && (!this.allowNext || !(Boolean) this.fakeCheck.getValue())
-                            && (!longJump.isEnabled() || !longJump.canStartJump())) {
+                            && damageVelocity
+                            && (!longJump.isEnabled() || !longJump.canStartJump())
+                            && (this.alwaysDelay.getValue() || !this.canDelay());
+                    if (this.mode.getValue() == 2
+                            && shouldDelay) {
                         this.delayChanceCounter = this.delayChanceCounter % 100 + this.delayChance.getValue();
                         if (this.delayChanceCounter >= 100) {
                             Myau.delayManager.setDelayState(true, DelayModules.VELOCITY);
@@ -224,6 +239,10 @@ public class Velocity extends Module {
                     }
                 }
             }
+        }
+        if (this.isEnabled() && event.getType() == EventType.RECEIVE && !this.canApplyVelocity()) {
+            this.pendingExplosion = false;
+            this.allowNext = true;
         }
     }
 
