@@ -152,7 +152,7 @@ public class InvWalk extends Module {
     public void onUpdate(UpdateEvent event) {
         if (!this.isEnabled() || event.getType() != EventType.PRE) return;
 
-        if (mc.currentScreen instanceof myau.ui.ClickGui && this.guiEnabled.getValue()) {
+        if ((mc.currentScreen instanceof myau.ui.ClickGui || mc.currentScreen instanceof myau.ui.ModernClickGui) && this.guiEnabled.getValue()) {
             this.pressMovementKeys(true);
             return;
         }

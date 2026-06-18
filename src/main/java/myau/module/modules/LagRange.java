@@ -2,6 +2,7 @@ package myau.module.modules;
 
 import myau.Myau;
 import myau.event.EventTarget;
+import myau.event.types.EventType;
 import myau.event.types.Priority;
 import myau.events.PacketEvent;
 import myau.events.Render3DEvent;
@@ -26,6 +27,7 @@ import net.minecraft.network.play.client.C02PacketUseEntity;
 import net.minecraft.network.play.client.C07PacketPlayerDigging;
 import net.minecraft.network.play.client.C07PacketPlayerDigging.Action;
 import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement;
+import net.minecraft.network.play.server.S12PacketEntityVelocity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.Vec3;
 
@@ -44,6 +46,7 @@ public class LagRange extends Module {
     private Vec3 currentPosition = null;
     private boolean isLagging = false;
     private boolean wasLagging = false;
+    private int backwardsDamageTicks = 0;
     
     public final BooleanProperty advancedMode = new BooleanProperty("advanced-mode", false);
     
@@ -57,6 +60,7 @@ public class LagRange extends Module {
     public final IntProperty delayFar = new IntProperty("packet-delay-far", 300, 0, 1000, this.advancedMode::getValue);
     public final BooleanProperty weaponsOnly = new BooleanProperty("weapons-only", true);
     public final BooleanProperty allowTools = new BooleanProperty("allow-tools", false, this.weaponsOnly::getValue);
+    public final BooleanProperty backwardsDmgIgnore = new BooleanProperty("backwards-dmg-ignore", false);
     public final BooleanProperty botCheck = new BooleanProperty("bot-check", true);
     public final BooleanProperty teams = new BooleanProperty("teams", true);
     public final ModeProperty showPosition = new ModeProperty("show-position", 0, new String[]{"NONE", "DEFAULT", "HUD"});
@@ -91,6 +95,31 @@ public class LagRange extends Module {
         }
     }
 
+    private boolean isBackwardsVelocity(S12PacketEntityVelocity packet) {
+        if (packet.getEntityID() != mc.thePlayer.getEntityId()) {
+            return false;
+        }
+
+        double motionX = (double) packet.getMotionX() / 8000.0;
+        double motionZ = (double) packet.getMotionZ() / 8000.0;
+        if (motionX == 0.0 && motionZ == 0.0) {
+            return false;
+        }
+
+        double yaw = Math.toRadians(mc.thePlayer.rotationYaw);
+        double forwardX = -Math.sin(yaw);
+        double forwardZ = Math.cos(yaw);
+        return motionX * forwardX + motionZ * forwardZ < 0.0;
+    }
+
+    private void resetLagRange() {
+        Myau.lagManager.setDelay(0);
+        this.tickIndex = -1;
+        this.lagStartTime = 0L;
+        this.isLagging = false;
+        this.logDebugState();
+    }
+
     public LagRange() {
         super("LagRange", false);
     }
@@ -103,6 +132,11 @@ public class LagRange extends Module {
                     Myau.lagManager.setDelay(0);
                     this.hasTarget = false;
                     this.isLagging = false;
+                    if (this.backwardsDamageTicks > 0) {
+                        this.backwardsDamageTicks--;
+                        this.resetLagRange();
+                        break;
+                    }
                     
                     BedNuker bedNuker = (BedNuker) Myau.moduleManager.modules.get(BedNuker.class);
                     if ((!bedNuker.isEnabled() || !bedNuker.isReady())
@@ -250,12 +284,16 @@ public class LagRange extends Module {
     @EventTarget
     public void onPacket(PacketEvent event) {
         if (this.isEnabled()) {
+            if (this.backwardsDmgIgnore.getValue()
+                    && event.getType() == EventType.RECEIVE
+                    && event.getPacket() instanceof S12PacketEntityVelocity
+                    && this.isBackwardsVelocity((S12PacketEntityVelocity) event.getPacket())) {
+                this.backwardsDamageTicks = 10;
+                this.resetLagRange();
+                return;
+            }
             if (this.shouldResetOnPacket(event.getPacket())) {
-                Myau.lagManager.setDelay(0);
-                this.tickIndex = -1;
-                this.lagStartTime = 0L;
-                this.isLagging = false;
-                this.logDebugState();
+                this.resetLagRange();
             }
         }
     }
@@ -313,6 +351,7 @@ public class LagRange extends Module {
         this.currentPosition = null;
         this.isLagging = false;
         this.wasLagging = false;
+        this.backwardsDamageTicks = 0;
     }
 
     @Override

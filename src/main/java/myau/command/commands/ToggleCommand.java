@@ -37,7 +37,7 @@ public class ToggleCommand extends Command {
                         changed = module.isEnabled();
                     }
                 }
-                if (changed && module.toggle()) {
+                if (changed && module.toggle() && !((myau.module.modules.HUD) Myau.moduleManager.modules.get(myau.module.modules.HUD.class)).toggleAlerts.getValue()) {
                     ChatUtil.sendFormatted(String.format("%s%s: %s&r", Myau.clientName, module.getName(), module.isEnabled() ? "&a&lON" : "&c&lOFF"));
                 }
             }

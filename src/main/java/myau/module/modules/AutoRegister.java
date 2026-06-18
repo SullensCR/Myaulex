@@ -22,7 +22,7 @@ public class AutoRegister extends Module {
     private String lastTitleText = "";
 
     public AutoRegister() {
-        super("AutoRegister", false, true); // Hidden from ClickGUI
+        super("AutoRegister", false);
     }
 
     @EventTarget
@@ -108,7 +108,6 @@ public class AutoRegister extends Module {
         return false;
     }
 }
-
 
 
 

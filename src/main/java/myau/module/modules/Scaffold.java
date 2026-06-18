@@ -52,6 +52,7 @@ public class Scaffold extends Module {
     private int rotationTick = 0;
     private int lastSlot = -1;
     private int blockCount = -1;
+    private float blockCounterAlpha;
     private float yaw = -180.0F;
     private float pitch = 0.0F;
     private boolean canRotate = false;
@@ -677,8 +678,10 @@ public class Scaffold extends Module {
 
     @EventTarget
     public void onRender(Render2DEvent event) {
-        if (this.isEnabled()) {
-            if (this.blockCounter.getValue()) {
+        boolean shouldShow = this.isEnabled() && this.blockCounter.getValue() && mc.thePlayer != null;
+        this.blockCounterAlpha += ((shouldShow ? 1.0F : 0.0F) - this.blockCounterAlpha) * 0.22F;
+        if (this.blockCounterAlpha > 0.02F) {
+            if (mc.thePlayer != null) {
                 int count = 0;
                 for (int i = 0; i < 9; i++) {
                     ItemStack stack = mc.thePlayer.inventory.getStackInSlot(i);
@@ -704,7 +707,7 @@ public class Scaffold extends Module {
                                 String.format("%d block%s left", count, count != 1 ? "s" : ""),
                                 ((float) new ScaledResolution(mc).getScaledWidth() / 2.0F + (float) mc.fontRendererObj.FONT_HEIGHT * 1.5F) / scale,
                                 (float) new ScaledResolution(mc).getScaledHeight() / 2.0F / scale - (float) mc.fontRendererObj.FONT_HEIGHT / 2.0F + 1.0F,
-                                (count > 0 ? Color.WHITE.getRGB() : new Color(255, 85, 85).getRGB()) | -1090519040,
+                                RenderUtil.mergeAlpha(count > 0 ? Color.WHITE.getRGB() : new Color(255, 85, 85).getRGB(), (int) (190.0F * this.blockCounterAlpha)),
                                 hud.shadow.getValue()
                         );
                 GlStateManager.disableBlend();
