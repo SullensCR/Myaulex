@@ -84,6 +84,28 @@ public class ClickGui extends GuiScreen {
         renderModules.add(Myau.moduleManager.getModule(ChestESP.class));
         renderModules.add(Myau.moduleManager.getModule(Trajectories.class));
         renderModules.add(Myau.moduleManager.getModule(Radar.class));
+        renderModules.add(Myau.moduleManager.getModule(BlockOverlay.class));
+        renderModules.add(Myau.moduleManager.getModule(TargetESP.class));
+        renderModules.add(Myau.moduleManager.getModule(BreakProgress.class));
+        renderModules.add(Myau.moduleManager.getModule(FPScounter.class));
+        renderModules.add(Myau.moduleManager.getModule(WaterMark.class));
+        renderModules.add(Myau.moduleManager.getModule(WaterMark2.class));
+        renderModules.add(Myau.moduleManager.getModule(HitParticleEffects.class));
+        renderModules.add(Myau.moduleManager.getModule(DynamicIsland.class));
+        renderModules.add(Myau.moduleManager.getModule(ESP2D.class));
+        renderModules.add(Myau.moduleManager.getModule(TeamHealthDisplay.class));
+        renderModules.add(Myau.moduleManager.getModule(SessionDisplay.class));
+        renderModules.add(Myau.moduleManager.getModule(Capes.class));
+        renderModules.add(Myau.moduleManager.getModule(Animations.class));
+        renderModules.add(Myau.moduleManager.getModule(Ambience.class));
+        renderModules.add(Myau.moduleManager.getModule(BlockHit.class));
+        renderModules.add(Myau.moduleManager.getModule(ClickAssits.class));
+        renderModules.add(Myau.moduleManager.getModule(Criticals.class));
+        renderModules.add(Myau.moduleManager.getModule(Displace.class));
+        renderModules.add(Myau.moduleManager.getModule(Hitflick.class));
+        renderModules.add(Myau.moduleManager.getModule(LightningTracker.class));
+        renderModules.add(Myau.moduleManager.getModule(RenderFixes.class));
+        renderModules.add(Myau.moduleManager.getModule(Stasis.class));
 
         List<Module> playerModules = new ArrayList<>();
         playerModules.add(Myau.moduleManager.getModule(AutoHeal.class));

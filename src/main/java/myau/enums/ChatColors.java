@@ -50,4 +50,10 @@ public enum ChatColors {
         }
         return new String(cArray);
     }
+
+    public static final String PREFIX_CLEAN = "Miau \u00bb ";
+
+    public static String getDynamicPrefix() {
+        return PREFIX_CLEAN;
+    }
 }

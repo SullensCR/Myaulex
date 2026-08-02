@@ -2,6 +2,7 @@ package myau.module.modules;
 
 import myau.Myau;
 import myau.event.EventTarget;
+import myau.events.LoadWorldEvent;
 import myau.events.Render3DEvent;
 import myau.mixin.IAccessorRenderManager;
 import myau.module.Module;
@@ -9,8 +10,9 @@ import myau.util.RenderUtil;
 import myau.property.properties.*;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.ModeProperty;
-import net.minecraft.block.*;
+import net.minecraft.block.BlockBed;
 import net.minecraft.block.BlockBed.EnumPartType;
+import net.minecraft.block.BlockObsidian;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.AxisAlignedBB;
@@ -29,9 +31,6 @@ public class BedESP extends Module {
     public final ColorProperty customColor;
     public final PercentProperty opacity;
     public final BooleanProperty outline;
-    public final FloatProperty outlineWidth;
-    public final BooleanProperty expose;
-    public final ColorProperty exposeColor;
     public final BooleanProperty obsidian;
 
     private Color getColor() {
@@ -46,51 +45,26 @@ public class BedESP extends Module {
     }
 
     private void drawObsidianBox(AxisAlignedBB axisAlignedBB) {
-        int red = 170;
-        int green = 0;
-        int blue = 170;
-        
         if (this.outline.getValue()) {
-            RenderUtil.drawBoundingBox(axisAlignedBB, red, green, blue, 255, this.outlineWidth.getValue());
+            RenderUtil.drawBoundingBox(axisAlignedBB, 170, 0, 170, 255, 1.5F);
         }
-        RenderUtil.drawFilledBox(axisAlignedBB, red, green, blue);
+        RenderUtil.drawFilledBox(axisAlignedBB, 170, 0, 170);
     }
 
     private void drawObsidian(BlockPos blockPos) {
-        int red = 170;
-        int green = 0;
-        int blue = 170;
-        
         if (this.outline.getValue()) {
-            RenderUtil.drawBlockBoundingBox(blockPos, 1.0, red, green, blue, 255, this.outlineWidth.getValue());
+            RenderUtil.drawBlockBoundingBox(blockPos, 1.0, 170, 0, 170, 255, 1.5F);
         }
-        RenderUtil.drawBlockBox(blockPos, 1.0, red, green, blue);
+        RenderUtil.drawBlockBox(
+                blockPos, 1.0, 170, 0, 170
+        );
     }
-
-    private boolean isBlockExposed(BlockPos headPos, BlockPos footPos) {
-        for (EnumFacing facing : Arrays.asList(EnumFacing.NORTH, EnumFacing.EAST, EnumFacing.SOUTH, EnumFacing.WEST)) {
-            BlockPos headOffset = headPos.offset(facing);
-            BlockPos footOffset = footPos.offset(facing);
-            
-            if (mc.theWorld.isAirBlock(headOffset) || mc.theWorld.isAirBlock(footOffset)) {
-                return true;
-            }
-        }
-        if (mc.theWorld.isAirBlock(headPos.up()) || mc.theWorld.isAirBlock(footPos.up())) {
-            return true;
-        }
-        return false;
-    }
-
 
     public BedESP() {
         super("BedESP", false);
         this.customColor = new ColorProperty("custom-color", (int) 8085714755840333141L, () -> this.color.getValue() == 0);
         this.opacity = new PercentProperty("opacity", 25);
         this.outline = new BooleanProperty("outline", false);
-        this.outlineWidth = new FloatProperty("outline-width", 1.5F, 0.5F, 5.0F, () -> this.outline.getValue());
-        this.expose = new BooleanProperty("expose", false, () -> this.outline.getValue());
-        this.exposeColor = new ColorProperty("expose-color", 0x00D1A4, () -> this.outline.getValue() && this.expose.getValue());
         this.obsidian = new BooleanProperty("obsidian", true);
     }
 
@@ -100,7 +74,7 @@ public class BedESP extends Module {
 
     @EventTarget
     public void onRender3D(Render3DEvent event) {
-        if (this.isEnabled()) {
+        if (this.isEnabled() && mc.theWorld != null) {
             RenderUtil.enableRenderState();
             for (BlockPos blockPos : this.beds) {
                 IBlockState state = mc.theWorld.getBlockState(blockPos);
@@ -108,17 +82,12 @@ public class BedESP extends Module {
                     BlockPos opposite = blockPos.offset(state.getValue(BlockBed.FACING).getOpposite());
                     IBlockState oppositeState = mc.theWorld.getBlockState(opposite);
                     if (oppositeState.getBlock() instanceof BlockBed && oppositeState.getValue(BlockBed.PART) == EnumPartType.FOOT) {
-                        boolean bedExposed = this.expose.getValue() && this.isBlockExposed(blockPos, opposite);
-                        
                         if (this.obsidian.getValue()) {
                             for (EnumFacing facing : Arrays.asList(EnumFacing.UP, EnumFacing.NORTH, EnumFacing.EAST, EnumFacing.SOUTH, EnumFacing.WEST)) {
                                 BlockPos offsetX = blockPos.offset(facing);
                                 BlockPos offsetZ = opposite.offset(facing);
-                                IBlockState stateX = mc.theWorld.getBlockState(offsetX);
-                                IBlockState stateZ = mc.theWorld.getBlockState(offsetZ);
-                                boolean xObsidian = stateX.getBlock() instanceof BlockObsidian;
-                                boolean zObsidian = stateZ.getBlock() instanceof BlockObsidian;
-                                
+                                boolean xObsidian = mc.theWorld.getBlockState(offsetX).getBlock() instanceof BlockObsidian;
+                                boolean zObsidian = mc.theWorld.getBlockState(offsetZ).getBlock() instanceof BlockObsidian;
                                 if (xObsidian && zObsidian) {
                                     this.drawObsidianBox(
                                             new AxisAlignedBB(
@@ -155,24 +124,15 @@ public class BedESP extends Module {
                                         -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(),
                                         -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()
                                 );
-                        
-                        Color fillColor = this.getColor();
-                        
+                        Color color = this.getColor();
                         if (this.outline.getValue()) {
-                            Color outlineColor;
-                            if (bedExposed) {
-                                outlineColor = new Color(this.exposeColor.getValue());
-                            } else {
-                                outlineColor = ((HUD) Myau.moduleManager.modules.get(HUD.class)).getColor(System.currentTimeMillis());
-                            }
-                            RenderUtil.drawBoundingBox(aabb, outlineColor.getRed(), outlineColor.getGreen(), outlineColor.getBlue(), 255, this.outlineWidth.getValue());
+                            RenderUtil.drawBoundingBox(aabb, color.getRed(), color.getGreen(), color.getBlue(), 255, 1.5F);
                         }
-                        
                         RenderUtil.drawFilledBox(
                                 aabb,
-                                fillColor.getRed(),
-                                fillColor.getGreen(),
-                                fillColor.getBlue()
+                                color.getRed(),
+                                color.getGreen(),
+                                color.getBlue()
                         );
                     }
                 } else {
@@ -185,8 +145,19 @@ public class BedESP extends Module {
 
     @Override
     public void onEnabled() {
+        this.beds.clear();
         if (mc.renderGlobal != null) {
             mc.renderGlobal.loadRenderers();
         }
+    }
+
+    @EventTarget
+    public void onLoadWorld(LoadWorldEvent event) {
+        this.beds.clear();
+    }
+
+    @Override
+    public void onDisabled() {
+        this.beds.clear();
     }
 }
