@@ -196,6 +196,7 @@ public class ESP extends Module {
                     }
                     if (this.mode.getValue() == 4) {
                         Color color = this.getEntityColor(player);
+                        // is it me or this fucking line looks cursed
                         RenderUtil.drawCornerESP(player, color.getRed() / 255.0F, color.getGreen() / 255.0F, color.getBlue() / 255.0F);
                     }
                     if (this.mode.getValue() == 5) {

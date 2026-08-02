@@ -203,4 +203,11 @@ public class MoveUtil {
             MoveUtil.mc.thePlayer.movementInput.moveStrafe *= 0.3f;
         }
     }
+
+    public static boolean isMoving() {
+        return mc.thePlayer.movementInput.moveForward != 0.0F
+                || mc.thePlayer.movementInput.moveStrafe != 0.0F
+                || Math.abs(mc.thePlayer.motionX) > 0.01
+                || Math.abs(mc.thePlayer.motionZ) > 0.01;
+    }
 }

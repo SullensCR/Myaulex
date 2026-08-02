@@ -6,6 +6,7 @@ import me.ksyz.accountmanager.AccountManager;
 import myau.command.CommandManager;
 import myau.command.commands.*;
 import myau.config.Config;
+import myau.font.FontManagers;
 import myau.event.EventManager;
 import myau.management.*;
 import myau.module.Module;
@@ -35,6 +36,7 @@ public class Myau {
     public static ModuleManager moduleManager;
     public static NotificationManager notificationManager;
     public static CommandManager commandManager;
+    public static FontManagers fontManagers;
 
     public Myau() {
         this.init();
@@ -53,6 +55,8 @@ public class Myau {
         moduleManager = new ModuleManager();
         notificationManager = new NotificationManager();
         commandManager = new CommandManager();
+        fontManagers = new FontManagers();
+        fontManagers.load();
         EventManager.register(rotationManager);
         EventManager.register(floatManager);
         EventManager.register(blinkManager);
@@ -132,6 +136,28 @@ public class Myau {
         moduleManager.modules.put(ViewClip.class, new ViewClip());
         moduleManager.modules.put(Wtap.class, new Wtap());
         moduleManager.modules.put(Xray.class, new Xray());
+        moduleManager.modules.put(BlockOverlay.class, new BlockOverlay());
+        moduleManager.modules.put(TargetESP.class, new TargetESP());
+        moduleManager.modules.put(BreakProgress.class, new BreakProgress());
+        moduleManager.modules.put(FPScounter.class, new FPScounter());
+        moduleManager.modules.put(WaterMark.class, new WaterMark());
+        moduleManager.modules.put(WaterMark2.class, new WaterMark2());
+        moduleManager.modules.put(HitParticleEffects.class, new HitParticleEffects());
+        moduleManager.modules.put(DynamicIsland.class, new DynamicIsland());
+        moduleManager.modules.put(ESP2D.class, new ESP2D());
+        moduleManager.modules.put(TeamHealthDisplay.class, new TeamHealthDisplay());
+        moduleManager.modules.put(SessionDisplay.class, new SessionDisplay());
+        moduleManager.modules.put(Capes.class, new Capes());
+        moduleManager.modules.put(Animations.class, new Animations());
+        moduleManager.modules.put(Ambience.class, new Ambience());
+        moduleManager.modules.put(BlockHit.class, new BlockHit());
+        moduleManager.modules.put(ClickAssits.class, new ClickAssits());
+        moduleManager.modules.put(Criticals.class, new Criticals());
+        moduleManager.modules.put(Displace.class, new Displace());
+        moduleManager.modules.put(Hitflick.class, new Hitflick());
+        moduleManager.modules.put(LightningTracker.class, new LightningTracker());
+        moduleManager.modules.put(RenderFixes.class, new RenderFixes());
+        moduleManager.modules.put(Stasis.class, new Stasis());
         commandManager.commands.add(new BindCommand());
         commandManager.commands.add(new ClickGuiCommand());
         commandManager.commands.add(new ConfigCommand());

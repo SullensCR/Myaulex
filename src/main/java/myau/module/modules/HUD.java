@@ -77,6 +77,16 @@ public class HUD extends Module {
     public final ColorProperty notificationBackground = new ColorProperty("notification-background", new Color(10, 12, 16, 160).getRGB(), this.toggleAlerts::getValue);
     public final ColorProperty notificationEnabledColor = new ColorProperty("notification-enabled-color", new Color(65, 217, 130).getRGB(), this.toggleAlerts::getValue);
     public final ColorProperty notificationDisabledColor = new ColorProperty("notification-disabled-color", new Color(255, 92, 108).getRGB(), this.toggleAlerts::getValue);
+    public final BooleanProperty blur = new BooleanProperty("blur", false);
+    public final FloatProperty blurRadius = new FloatProperty("blur-radius", 10.0F, 1.0F, 30.0F, this.blur::getValue);
+    public final BooleanProperty glow = new BooleanProperty("glow", false);
+    public final ModeProperty glowColorMode = new ModeProperty("glow-color", 0, new String[]{"SYNC", "CUSTOM"}, this.glow::getValue);
+    public final ColorProperty glowCustomColor = new ColorProperty("glow-custom-color", Color.WHITE.getRGB() & 0xFFFFFF, () -> this.glow.getValue() && this.glowColorMode.getValue() == 1);
+    public final IntProperty glowAlpha = new IntProperty("glow-alpha", 100, 0, 255, this.glow::getValue);
+    public final FloatProperty glowRadius = new FloatProperty("glow-radius", 3.0F, 1.0F, 15.0F, this.glow::getValue);
+    public final BooleanProperty shaders = new BooleanProperty("Shaders", false);
+    public final FloatProperty colorDistance = new FloatProperty("color-dist", 50F, 10F, 100F);
+    public final ModeProperty fontMode = new ModeProperty("font-mode", 0, new String[]{"SANS", "MINECRAFT", "NUNITO"});
 
     private String getModuleName(Module module) {
         String moduleName = module.getName();

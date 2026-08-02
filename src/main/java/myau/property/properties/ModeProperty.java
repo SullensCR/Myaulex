@@ -6,7 +6,7 @@ import myau.property.Property;
 import java.util.function.BooleanSupplier;
 
 public class ModeProperty extends Property<Integer> {
-    private final String[] modes;
+    private String[] modes;
 
     public ModeProperty(String name, Integer value, String[] modes) {
         this(name, value, modes, null);
@@ -70,5 +70,12 @@ public class ModeProperty extends Property<Integer> {
             prev = this.modes.length - 1;
         }
         this.setValue(prev);
+    }
+
+    public void setModes(String[] modes) {
+        this.modes = modes;
+        if (this.getValue() >= modes.length) {
+            this.setValue(0);
+        }
     }
 }

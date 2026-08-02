@@ -18,4 +18,12 @@ public class TimerUtil {
     public void setTime() {
         this.lastMS = 0L;
     }
+
+    public long getTime() {
+        return System.currentTimeMillis() - this.lastMS;
+    }
+
+    public void setTime(long time) {
+        this.lastMS = time;
+    }
 }
