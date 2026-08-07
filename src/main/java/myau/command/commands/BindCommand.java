@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
+import myau.ui.modern.ModuleCatalog;
 
 public class BindCommand extends Command {
     public BindCommand() {
@@ -23,7 +24,7 @@ public class BindCommand extends Command {
     public void runCommand(ArrayList<String> args) {
         if (args.size() < 3) {
             if (args.size() == 2 && (args.get(1).equalsIgnoreCase("l") || args.get(1).equalsIgnoreCase("list"))) {
-                List<Module> modules = Myau.moduleManager.modules.values().stream().filter(module -> module.getKey() != 0).collect(Collectors.toList());
+                List<Module> modules = Myau.moduleManager.ordinaryModules().stream().filter(module -> module.getKey() != 0).collect(Collectors.toList());
                 if (modules.isEmpty()) {
                     ChatUtil.sendFormatted(String.format("%sNo binds&r", Myau.clientName));
                 } else {
@@ -61,7 +62,7 @@ public class BindCommand extends Command {
             }
 
             if (!args.get(1).equals("*")) {
-                Module module = Myau.moduleManager.getModule(args.get(1));
+                Module module = Myau.moduleManager.getOrdinaryModule(args.get(1));
                 if (module == null) {
                     ChatUtil.sendFormatted(String.format("%sModule not found (&o%s&r)&r", Myau.clientName, args.get(1)));
                 } else {
@@ -77,7 +78,7 @@ public class BindCommand extends Command {
                     }
                 }
             } else {
-                for (Module module : Myau.moduleManager.modules.values()) {
+                for (Module module : Myau.moduleManager.ordinaryModules()) {
                     module.setKey(keyIndex);
                 }
                 if (keyIndex == 0) {

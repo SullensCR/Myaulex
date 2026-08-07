@@ -22,7 +22,7 @@ public class MoreKB extends Module {
     private EntityLivingBase target;
 
     public MoreKB() {
-        super("MoreKB", false);
+        super("FastKB", false);
         this.shouldSprintReset = false;
         this.target = null;
     }

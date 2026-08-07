@@ -1,0 +1,57 @@
+
+Grim
+0 -1 -2 -3 ...
+
+Intave Old
+0 1 2 3, usually 0 and 1
+
+Polar
+Random negative, then goes down.
+
+Vulcan
+Starts near -3XXXX and goes down.
+
+Verus
+Random first transaction. Positive goes up, negative goes down.
+
+Frequency
+23767 spammed
+
+Sparky / Overflow 3.x (Moving)
+Two values: positive goes up, negative goes down.
+
+Karhu
+-3000 -3001 -3002 ...
+
+Matrix
+Starts at -1, drops to -14/-15, then sends 101+ every few seconds.
+
+AGC
+Starts at 1 and goes up every second.
+
+AAC
+Doesn't have any.
+
+NCP (Old / Spigot / Updated)
+Doesn't have any.
+
+Buzz
+Starts with any transaction negative or positive and goes up or down depending on the starting transaction.
+
+Kraken Old / Lumos / Demon Old
+Starts with a negative value. Every 19-20 transactions there’s one in positive.
+
+Sparky Old / Overflow 3.x
+Starts with a random positive number and then stays in a negative one.
+
+Kraken Recode
+Starts with a positive or negative huge random value and continues with the opposite (not number, only symbol). There’s almost no delay continuing to the next transaction.
+
+Demon
+First 0 and then goes negative
+
+Grim 3 Old
+Similar to Vulcan
+
+Grim 3 New
+Similar to the original Grim

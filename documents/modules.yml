@@ -1,0 +1,154 @@
+categories:
+  combat:
+    - AimAssist
+    - AutoClicker
+    - AntiFireball
+    - Aura # (Renamed from KillAura)
+    - Backtrack # (New) Allows to hit entities in previous positions, the logic is taken from LiquidBounce (/home/dragon/IdeaProjects/Myaulex/Other-Clients/LiquidBounce/src/main/java/net/ccbluex/liquidbounce/features/module/modules/combat/Backtrack.kt)
+    - LagRange
+    - FastKB
+    - Velocity # The module is okay but there are some things to change.
+    # Mode Hypixel should be renamed to "Prediction"
+    - VeloDelay # Performs an Inbound "blink" for a set amount of milliseconds setting `delay` is a slider with a minimum of 50ms and a maximum of 500ms with stops every 50ms.
+    # Similar logic/behavior similar to the Blink module.
+  movement:
+    - AntiVoid
+    - Blink
+    - Keep Sprint
+    - NoSlow # Tweak NoSlow to always work without Aura enabled
+    - InventoryMove (Renamed from InvWalk) # Add a new option that controls sprint while in a container "Sprint", if disabled then InventoryMove will automatically stop sprinting when on a container like a chest or inventory.
+    # If "Sprint" is enabled a new option should be available: "ClickSlowdown"
+    # When enabled the stop sprinting feature of "Sprint" will only work when performing a click/action on a container and the click/action itself will be delayed for a couple of ms to abuse this stop-sprint window.
+    # Add a mode called "Spoof"
+    # This mode spoofs your inventory open state (only tells the server your inventory is open when needed), which can help to prevent anti-cheat flags. It includes some additional settings that can be configured.
+    - Sprint # Since fov-fix is moved add modes for sprint:
+    # Legit (No changes, sprint as normal)
+    # Omnidirectional (Allows for backwards and sideways sprint)
+    # Omnirotational (Same as Omnidirectional but instead it uses Movement Corrections to perform silent rotations to the direction desired for the sprint, if the user presses the backwards key then this mode will perform a backwards rotation for a "legitimate" omnidirectional sprint without violating Vanilla Mechanics. This mode will enable an option called "AllowActions" which will stop the rotations and omnirotational sprint to perform whatever action the user desires like breaking a block or interacting in any way with an entity.)
+    - Stasis
+  visuals:
+    - Ambience
+    - Particles (Renamed from HitParticleEffects)
+    - Indicators
+    - EntityESP
+    - BlockESP
+    - BlockOverlay
+    - Nametags
+    - Trajectories
+    - AntiDebuff (Moved)
+    - Bedplates (New) # This module has something new and complex, basically this module will show the first 3 "layers" of a "bed defense"
+    # A Bed Defense is defined by: A Bed block with "layers", layers are adjacent blocks to the bed (right, left and above the bed block, blocks below the bed are ignored.
+    # This information is shown when the crosshair is on top of the "Bed indicator"
+    # The "Bed indicator" is just a small floating bed block visual element that shows where the bed block is, this is similar to how Nametags show the position and information of an entity.
+    # Example/Base for this module is provided at OpenRise. `/home/dragon/IdeaProjects/Myaulex/Other-Clients/OpenRise/Client/src/main/java/com/alan/clients/module/impl/render/BedPlates.java` and the exact design is provided in Figma. https://www.figma.com/design/7yHHQ49DjHhoR5LUr45E3o/MyaulexAssets?node-id=4036-37
+  player:
+    - AutoGapple (Renamed from AutoHeal)
+    - AutoTool
+    - ChestStealer
+    - InventoryManager (Renamed from InvManager)
+    - Scaffold
+    - BridgeAssist (New)
+    # Create this new module using this: `https://docs.slinky.gg/modules/block/bridge-assist/` as reference
+    - FastBreak (Renamed from SpeedMine)
+    - BedBreaker (Renamed from BedNuker and moved from Utilities)
+  utilities:
+    - AutoCaptcha
+    - AutoAuthentication (Renamed from AutoRegister)
+    - TransactionAnalyzer (New) # This module prints the transactions sent by the server to the client with all the transaction packet information, on top of that, the module will analyze an included pattern list (/Anticheat-Transactions.md) in the client to detect certain "patterns" in transaction IDs.
+    # Example/Base of this module is provided at OpenRise `/home/dragon/IdeaProjects/Myaulex/Other-Clients/OpenRise/Client/src/main/java/com/alan/clients/module/impl/other/Debugger.java`
+    # Keep in mind that in this Debugger.java file there are mentions for other debugging options such as keepalives, teleport etc. We are only interested in **Transactions**
+
+    # When enabled it detects a world change and runs the tests and uses a Notification + throbber + Progressbar to show the progress.
+    # No transactions = Vanilla/No Anticheat
+    # Test takes about 3 seconds + whatever it takes to analyze
+
+    - Notifications (Rework) # Notifications are now sent using this, including most of the notifications sent as chat messages
+    # A design will be provided along with examples and designs.
+    # https://www.figma.com/design/7yHHQ49DjHhoR5LUr45E3o/MyaulexAssets?node-id=4036-37
+    # The notifications examples provided contain gradient colors, change the gradients depending on the notification type (types depend on the notification icon, reasoning can be made from there)
+    - PacketDelay (Renamed from FakeLag)
+    # Inbound and Outbound toggles, both with their set of options, currently the FakeLag module only does Outbound packet delaying (Client -> Server), Inbound would be the exact opposite (Client <- Server)
+    # Both modes/toggles include a `delay` slider with a minimum of 50ms and a maximum of 1000ms with stops every 50ms
+    # On top of that implement an option on both modes called "Progressive", when enabled it will start the Packet delaying like normal, but over time it will be decreasing it until its 0 and the module disables itself.
+    # AutoDisables itself after a world change or disconnection
+    # No packets are excluded
+modules-to-be-removed: # The entire module must be removed. Including its settings.
+  - Hitbox
+  - Reach
+  - Refill
+  - TargetStrafe
+  - AntiAFK
+  - SafeWalk
+  - Fly
+  - Jesus
+  - NoFall
+  - Criticals
+  - Displace
+  - ClickAssits (Actual name, somehow)
+  - FKDRTracker
+  - HitFlick
+  - LightningTracker
+  - Radar
+  - RenderFixes
+  - SessionDisplay
+  - TargetESP
+  - TeamHealthDisplay
+  - Tracers
+  - Xray
+  - AutoBlockIn
+  - Clutch
+  - GhostHand
+  - MCF
+  - BedTracker
+  - Spammer
+  - Eagle
+  - Watermark
+  - Watermark2
+
+modules-to-be-modified:
+  - MoreKB + WTap -> FastKB
+  - Fpscounter + FloatingIsland + Dynamic Island + Animations + ClickGui -> Client (New hidden module that is not actually a module but rather features of the client itself, more of that later)
+  - ESP + ESP2D + Chams + ItemESP -> EntityESP
+  - AutoClicker + BlockHit (Should not be in Visuals) + InventoryClicker -> AutoClicker
+  - BedESP + ChestESP -> BlockESP
+  - BlockOverlay + BreakProgress -> BlockOverlay
+  - ServerHider + NickHider -> Privacy
+modules-to-be-integrated-into-client: # This means that all these modules and ideas now go into an internal/hidden module called "Client" which work like global settings that are not overwritten by configs.
+  - NoHitDelay # Default to 0, no delay
+  - NoJumpDelay # Default to 0, no delay
+  - NoPacketDelay (New) # The equivalent of this: https://github.com/prplz/TcpNoDelayMod
+  - NoUseDelay # The No Use Delay module removes the vanilla delay when you finish eating food or drinking potions. The higher your ping, the more noticeable the effect of this module will be.
+  # Allow desync abuse option:
+  # If enabled, the module will skip the eating animation entirely if your current item changes while it is being consumed. An example scenario is when you press the drop item key while eating food (also known as ‘Run and eat’ glitch).
+  - ClickGui # Mode and scale
+  - Animations # On top of the built-in ones, copy the ones from LiquidBounce (/home/dragon/IdeaProjects/Myaulex/Other-Clients/LiquidBounce/src/main/java/net/ccbluex/liquidbounce/features/module/modules/render/Animations.kt) and OpenRise (/home/dragon/IdeaProjects/Myaulex/Other-Clients/OpenRise/Client/src/main/java/com/alan/clients/module/impl/render/Animations.java)
+  - Capes # Copy and replace it with the one in "/home/dragon/IdeaProjects/Myaulex/Other-Clients/purple/build/classes/java/main/com/purple/client/module/modules/CustomCape.class"
+  - Fullbright
+  # Two modes:
+  # Potion Effect (Generates a client side Night Vision potion effect)
+  # Gamma (Already built into fullbright)
+  - HUD
+  # Arraylist
+  # TargetHUD
+  # ColorScheme
+  # Watermark (Pictures redered at the center of the screen)
+  - Camera Control (Renamed from NoHurtCam)
+  # Contols some camera settings ranging from:
+  # Damage intensity (From NoHurtCam)
+  # DynamicFOV (default false, controls if the FOV is affected by potion effects and sprint status)
+  # SprintControl (`client` and `game`) Controls who has control of the sprint state and FOV. This is ported and moved over from `fov-fix` from the Sprint module. Default is `client`
+  - AntiObfuscate
+  - Privacy # Options to hide your own name (Already implemented) and hide the Server's IP+Name (Needs reworking)
+  - MoveFix (New/Migration) # In ALL modules that use MoveFix or any kind of Movement correction. (Off, Silent, Strict already built in)
+  - BotFilter (New/Migration) # In ALL modules that use bot-check or similar.
+  # Acts as a popular module among utility clients like these "AntiBot" which detects and filters real players from bots/npcs.
+  # Modes:
+  # Tablist - Checks if the player entity shows up on the tablist
+  # Static - Checks if the player entity hasn't moved
+  - Targets (New/Migration) # In ALL modules that have some form of target/entity filtering or order, such as Aura
+  # Players, Golems, Wolves, Silverfish, Mobs, Animals
+  - Teams # In ALL modules that have some sort of "Team" detection such as Aura
+  # `Armor` mode: Detects your armor type and color to match you with your teammates with the same armor
+  # `Tab` mode: Detects if your name in the tablist is the same as what would be considered your teammate (This might be already implemented in Aura)
+  - NullMove # The Null Move module allows you to instantly switch directions when pressing multiple movement keys at once. This feature already exists for a lot of gaming keyboards (and can also be recreated using external tools), so if you are already using something like that then this module will add no real benefit. Other software may refer to the same feature as SOCD / Snap Tap / Null Binds.
+  - TargetHUD

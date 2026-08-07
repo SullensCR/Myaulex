@@ -1,6 +1,7 @@
 package myau.module;
 
 import myau.Myau;
+import myau.config.Config;
 import myau.module.modules.GuiModule;
 import myau.module.modules.HUD;
 import myau.util.KeyBindUtil;
@@ -64,6 +65,7 @@ public abstract class Module {
             } else {
                 this.onDisabled();
             }
+            Config.markDirty(this);
         }
     }
 
@@ -90,7 +92,10 @@ public abstract class Module {
     }
 
     public void setKey(int integer) {
-        this.key = integer;
+        if (this.key != integer) {
+            this.key = integer;
+            Config.markKeybindDirty();
+        }
     }
 
     public boolean isHidden() {
@@ -98,7 +103,10 @@ public abstract class Module {
     }
 
     public void setHidden(boolean boolean1) {
-        this.hidden = boolean1;
+        if (this.hidden != boolean1) {
+            this.hidden = boolean1;
+            Config.markDirty(this);
+        }
     }
 
     public void onEnabled() {

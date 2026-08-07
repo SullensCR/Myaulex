@@ -1,12 +1,9 @@
 package myau.mixin;
 
-import myau.Myau;
 import myau.event.EventManager;
 import myau.events.StrafeEvent;
 import myau.management.RotationState;
-import myau.module.modules.Jesus;
 import net.minecraft.client.entity.EntityPlayerSP;
-import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraftforge.fml.relauncher.Side;
@@ -58,21 +55,4 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
         }
     }
 
-    @ModifyVariable(
-            method = {"moveEntityWithHeading"},
-            name = {"f3"},
-            at = @At("STORE")
-    )
-    private float moveEntityWithHeading(float float1) {
-        if ((EntityLivingBase) ((Object) this) instanceof EntityPlayerSP && float1 == (float) EnchantmentHelper.getDepthStriderModifier((EntityLivingBase) ((Object) this))) {
-            if (Myau.moduleManager == null) {
-                return float1;
-            }
-            Jesus jesus = (Jesus) Myau.moduleManager.modules.get(Jesus.class);
-            if (jesus.isEnabled() && (!jesus.groundOnly.getValue() || this.onGround)) {
-                return Math.max(float1, jesus.speed.getValue());
-            }
-        }
-        return float1;
-    }
 }

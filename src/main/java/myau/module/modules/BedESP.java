@@ -61,7 +61,7 @@ public class BedESP extends Module {
     }
 
     public BedESP() {
-        super("BedESP", false);
+        super("BlockESP", false);
         this.customColor = new ColorProperty("custom-color", (int) 8085714755840333141L, () -> this.color.getValue() == 0);
         this.opacity = new PercentProperty("opacity", 25);
         this.outline = new BooleanProperty("outline", false);

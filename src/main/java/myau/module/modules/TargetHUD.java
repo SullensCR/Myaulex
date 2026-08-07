@@ -15,7 +15,7 @@ import myau.property.properties.ModeProperty;
 import myau.property.properties.PercentProperty;
 import myau.util.AnimationUtil;
 import myau.util.ColorUtil;
-import myau.util.RenderFixes;
+import myau.util.ShaderSupport;
 import myau.util.RenderUtil;
 import myau.util.TeamUtil;
 import myau.util.TimerUtil;
@@ -60,7 +60,7 @@ public class TargetHUD extends Module {
     private static final int MYAU_STYLE_START = 8;
 
     public final ModeProperty style = new ModeProperty("style", 0, new String[]{
-            "DEFAULT", "RAVENBS-MODERN", "RAVENBS-LEGACY", "FACE", "THREED", "SIMPLE", "CIRCLE", "BlueDEV",
+            "MYAULEX", "RAVENBS-MODERN", "RAVENBS-LEGACY", "FACE", "THREED", "SIMPLE", "CIRCLE", "BlueDEV",
             "ASTOLFO", "EXHIBITION", "MOON", "RISE", "NEVERLOSE", "TENACITY", "Astolfo"
     });
     public final ModeProperty color = new ModeProperty("color", 0, new String[]{"DEFAULT", "HUD"}, this::isOpenMyauStyle);
@@ -401,7 +401,7 @@ public class TargetHUD extends Module {
             case 0:
                 float bloomRadius = fadeTimer == null ? 2.0F : 2.0F * alpha / 255.0F;
                 float blurRadius = fadeTimer == null ? 3.0F : 3.0F * alpha / 255.0F;
-                if (RenderFixes.shouldUseShaders()) {
+                if (ShaderSupport.shouldUseShaders()) {
                     BlurUtils.prepareBloom();
                     RoundedUtils.drawRound(n6, n7, n8 - n6, n9 + 13 - n7, 8.0F, true, new Color(0, 0, 0, maxAlphaBackground));
                     BlurUtils.bloomEnd(3, bloomRadius);
@@ -752,7 +752,7 @@ public class TargetHUD extends Module {
         int maxAlphaOutline = (int) (alpha * 110);
         int maxAlphaBackground = (int) (alpha * 210);
 
-        if (RenderFixes.shouldUseShaders()) {
+        if (ShaderSupport.shouldUseShaders()) {
             BlurUtils.prepareBloom();
             RoundedUtils.drawRound(x, y, width, height, 10.0F, true, new Color(0, 0, 0, maxAlphaBackground));
             BlurUtils.bloomEnd(3, 2.0F);
@@ -817,7 +817,7 @@ public class TargetHUD extends Module {
         int cyan = new Color(0, 220, 255).getRGB();
         int blue = new Color(0, 120, 255).getRGB();
 
-        if (RenderFixes.shouldUseShaders()) {
+        if (ShaderSupport.shouldUseShaders()) {
             BlurUtils.prepareBloom();
             RoundedUtils.drawRound(barX, healthBarY, barWidth * healthPercent, 6, 3, true, new Color(0, 220, 255, 180));
             BlurUtils.bloomEnd(4, 3.0F);

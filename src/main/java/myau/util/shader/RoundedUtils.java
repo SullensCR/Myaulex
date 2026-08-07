@@ -57,6 +57,12 @@ public class RoundedUtils {
         }
     }
 
+    /** Used by shared UI adapters to select their compatibility path early. */
+    public static boolean isSupported() {
+        initShaders();
+        return roundedShader != null;
+    }
+
 
     public static void drawRound(float x, float y, float width, float height, float radius, Color color) {
         drawRound(x, y, width, height, radius, false, color);

@@ -99,14 +99,6 @@ public abstract class MixinEntityRenderer {
             }
         }
 
-        AutoBlockIn autoBlockIn = (AutoBlockIn) Myau.moduleManager.modules.get(AutoBlockIn.class);
-        if (autoBlockIn.isEnabled() && autoBlockIn.itemSpoof.getValue()) {
-            int slot = autoBlockIn.getSlot();
-            if (slot >= 0) {
-                this.slot = new Box<>(this.mc.thePlayer.inventory.currentItem);
-                this.mc.thePlayer.inventory.currentItem = slot;
-            }
-        }
     }
 
     @Inject(
@@ -172,39 +164,6 @@ public abstract class MixinEntityRenderer {
         return event.getRange();
     }
 
-    @Inject(
-            method = {"getMouseOver"},
-            at = {@At(
-                    value = "INVOKE",
-                    target = "Ljava/util/List;size()I",
-                    ordinal = 0
-            )},
-            locals = LocalCapture.CAPTURE_FAILSOFT
-    )
-    private void a(
-            float float1,
-            CallbackInfo callbackInfo,
-            Entity entity,
-            double double4,
-            double double5,
-            Vec3 vec36,
-            boolean boolean7,
-            int integer8,
-            Vec3 vec39,
-            Vec3 vec310,
-            Vec3 vec311,
-            float float12,
-            List<Entity> list,
-            double double14,
-            int integer15
-    ) {
-        if (Myau.moduleManager != null) {
-            GhostHand event = (GhostHand) Myau.moduleManager.modules.get(GhostHand.class);
-            if (event.isEnabled()) {
-                list.removeIf(event::shouldSkip);
-            }
-        }
-    }
 
     @Redirect(
             method = {"orientCamera"},

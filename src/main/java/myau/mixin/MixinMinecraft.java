@@ -6,6 +6,7 @@ import myau.event.EventManager;
 import myau.event.types.EventType;
 import myau.events.*;
 import myau.module.modules.NoHitDelay;
+import myau.ui.MyauPauseScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.GuiScreen;
@@ -52,6 +53,14 @@ public abstract class MixinMinecraft {
         new Myau();
     }
 
+    @Inject(method = {"displayInGameMenu"}, at = {@At("HEAD")}, cancellable = true)
+    private void displayMyauPauseMenu(CallbackInfo callbackInfo) {
+        if (Myau.moduleManager != null && this.currentScreen == null) {
+            ((Minecraft) (Object) this).displayGuiScreen(new MyauPauseScreen());
+            callbackInfo.cancel();
+        }
+    }
+
     @Inject(
             method = {"runTick"},
             at = {@At("HEAD")}
@@ -77,6 +86,9 @@ public abstract class MixinMinecraft {
             at = {@At("HEAD")}
     )
     private void loadWorld(WorldClient worldClient, String string, CallbackInfo callbackInfo) {
+        if (this.theWorld != null && worldClient != this.theWorld) {
+            myau.config.Config.savePersistent();
+        }
         EventManager.call(new LoadWorldEvent());
     }
 

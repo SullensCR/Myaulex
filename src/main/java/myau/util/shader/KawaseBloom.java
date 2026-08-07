@@ -50,6 +50,12 @@ public class KawaseBloom {
         return kawaseUp;
     }
 
+    /** Used by shared UI adapters to select their compatibility path early. */
+    public static boolean isSupported() {
+        initShaders();
+        return kawaseDown != null && kawaseUp != null;
+    }
+
     private static void initFramebuffers(float iterations) {
         for (Framebuffer framebuffer : framebufferList) {
             framebuffer.deleteFramebuffer();

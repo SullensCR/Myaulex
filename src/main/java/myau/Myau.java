@@ -6,6 +6,7 @@ import me.ksyz.accountmanager.AccountManager;
 import myau.command.CommandManager;
 import myau.command.commands.*;
 import myau.config.Config;
+import myau.config.ClientSettings;
 import myau.font.FontManagers;
 import myau.event.EventManager;
 import myau.management.*;
@@ -14,6 +15,8 @@ import myau.module.ModuleManager;
 import myau.module.modules.*;
 import myau.property.Property;
 import myau.property.PropertyManager;
+import myau.ui.modern.ModuleCatalog;
+import myau.media.MprisService;
 
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
@@ -37,6 +40,7 @@ public class Myau {
     public static NotificationManager notificationManager;
     public static CommandManager commandManager;
     public static FontManagers fontManagers;
+    public static ClientSettings clientSettings;
 
     public Myau() {
         this.init();
@@ -56,6 +60,7 @@ public class Myau {
         notificationManager = new NotificationManager();
         commandManager = new CommandManager();
         fontManagers = new FontManagers();
+        clientSettings = new ClientSettings();
         fontManagers.load();
         EventManager.register(rotationManager);
         EventManager.register(floatManager);
@@ -65,9 +70,9 @@ public class Myau {
         EventManager.register(moduleManager);
         EventManager.register(commandManager);
         moduleManager.modules.put(AimAssist.class, new AimAssist());
+        moduleManager.modules.put(Backtrack.class, new Backtrack());
         moduleManager.modules.put(AutoCaptcha.class, new AutoCaptcha());
         moduleManager.modules.put(AutoRegister.class, new AutoRegister());
-        moduleManager.modules.put(AntiAFK.class, new AntiAFK());
         moduleManager.modules.put(AntiDebuff.class, new AntiDebuff());
         moduleManager.modules.put(AntiFireball.class, new AntiFireball());
         moduleManager.modules.put(AntiObfuscate.class, new AntiObfuscate());
@@ -77,22 +82,20 @@ public class Myau {
         moduleManager.modules.put(AutoTool.class, new AutoTool());
         moduleManager.modules.put(BedNuker.class, new BedNuker());
         moduleManager.modules.put(BedESP.class, new BedESP());
-        moduleManager.modules.put(BedTracker.class, new BedTracker());
+        moduleManager.modules.put(Bedplates.class, new Bedplates());
         moduleManager.modules.put(Blink.class, new Blink());
+        moduleManager.modules.put(BridgeAssist.class, new BridgeAssist());
         moduleManager.modules.put(Chams.class, new Chams());
         moduleManager.modules.put(ChestESP.class, new ChestESP());
         moduleManager.modules.put(ChestStealer.class, new ChestStealer());
-        moduleManager.modules.put(Clutch.class, new Clutch());
-        moduleManager.modules.put(Eagle.class, new Eagle());
         moduleManager.modules.put(ESP.class, new ESP());
-        moduleManager.modules.put(FakeLag.class, new FakeLag());
+        moduleManager.modules.put(PacketDelay.class, new PacketDelay());
+        moduleManager.modules.put(VeloDelay.class, new VeloDelay());
+        moduleManager.modules.put(TransactionAnalyzer.class, new TransactionAnalyzer());
+        moduleManager.modules.put(Notifications.class, new Notifications());
         moduleManager.modules.put(FastPlace.class, new FastPlace());
-        moduleManager.modules.put(FKDRTracker.class, new FKDRTracker());
         moduleManager.modules.put(FloatingIsland.class, new FloatingIsland());
-        moduleManager.modules.put(Freeze.class, new Freeze());
-        moduleManager.modules.put(Fly.class, new Fly());
         moduleManager.modules.put(FullBright.class, new FullBright());
-        moduleManager.modules.put(GhostHand.class, new GhostHand());
         moduleManager.modules.put(GuiModule.class, new GuiModule());
         moduleManager.modules.put(HUD.class, new HUD());
         moduleManager.modules.put(MoreKB.class, new MoreKB());
@@ -101,63 +104,37 @@ public class Myau {
         moduleManager.modules.put(InvManager.class, new InvManager());
         moduleManager.modules.put(InvWalk.class, new InvWalk());
         moduleManager.modules.put(ItemESP.class, new ItemESP());
-        moduleManager.modules.put(Jesus.class, new Jesus());
         moduleManager.modules.put(KeepSprint.class, new KeepSprint());
-        moduleManager.modules.put(HitBox.class, new HitBox());
         moduleManager.modules.put(KillAura.class, new KillAura());
         moduleManager.modules.put(LagRange.class, new LagRange());
-        moduleManager.modules.put(LongJump.class, new LongJump());
-        moduleManager.modules.put(MCF.class, new MCF());
         moduleManager.modules.put(NameTags.class, new NameTags());
         moduleManager.modules.put(NickHider.class, new NickHider());
-        moduleManager.modules.put(NoFall.class, new NoFall());
         moduleManager.modules.put(NoHitDelay.class, new NoHitDelay());
         moduleManager.modules.put(NoHurtCam.class, new NoHurtCam());
         moduleManager.modules.put(NoJumpDelay.class, new NoJumpDelay());
         moduleManager.modules.put(NoRotate.class, new NoRotate());
         moduleManager.modules.put(NoSlow.class, new NoSlow());
-        moduleManager.modules.put(Radar.class, new Radar());
-        moduleManager.modules.put(Reach.class, new Reach());
-        moduleManager.modules.put(Refill.class, new Refill());
-        moduleManager.modules.put(SafeWalk.class, new SafeWalk());
         moduleManager.modules.put(Scaffold.class, new Scaffold());
-        moduleManager.modules.put(AutoBlockIn.class, new AutoBlockIn());
         moduleManager.modules.put(ServerHider.class, new ServerHider());
-        moduleManager.modules.put(Spammer.class, new Spammer());
         moduleManager.modules.put(Speed.class, new Speed());
         moduleManager.modules.put(SpeedMine.class, new SpeedMine());
         moduleManager.modules.put(Sprint.class, new Sprint());
         moduleManager.modules.put(TargetHUD.class, new TargetHUD());
-        moduleManager.modules.put(TargetStrafe.class, new TargetStrafe());
-        moduleManager.modules.put(Timer.class, new Timer());
-        moduleManager.modules.put(Tracers.class, new Tracers());
+        moduleManager.modules.put(Stasis.class, new Stasis());
         moduleManager.modules.put(Trajectories.class, new Trajectories());
         moduleManager.modules.put(Velocity.class, new Velocity());
         moduleManager.modules.put(ViewClip.class, new ViewClip());
         moduleManager.modules.put(Wtap.class, new Wtap());
-        moduleManager.modules.put(Xray.class, new Xray());
         moduleManager.modules.put(BlockOverlay.class, new BlockOverlay());
-        moduleManager.modules.put(TargetESP.class, new TargetESP());
         moduleManager.modules.put(BreakProgress.class, new BreakProgress());
         moduleManager.modules.put(FPScounter.class, new FPScounter());
-        moduleManager.modules.put(WaterMark.class, new WaterMark());
-        moduleManager.modules.put(WaterMark2.class, new WaterMark2());
         moduleManager.modules.put(HitParticleEffects.class, new HitParticleEffects());
         moduleManager.modules.put(DynamicIsland.class, new DynamicIsland());
         moduleManager.modules.put(ESP2D.class, new ESP2D());
-        moduleManager.modules.put(TeamHealthDisplay.class, new TeamHealthDisplay());
-        moduleManager.modules.put(SessionDisplay.class, new SessionDisplay());
         moduleManager.modules.put(Capes.class, new Capes());
         moduleManager.modules.put(Animations.class, new Animations());
         moduleManager.modules.put(Ambience.class, new Ambience());
         moduleManager.modules.put(BlockHit.class, new BlockHit());
-        moduleManager.modules.put(ClickAssits.class, new ClickAssits());
-        moduleManager.modules.put(Criticals.class, new Criticals());
-        moduleManager.modules.put(Displace.class, new Displace());
-        moduleManager.modules.put(Hitflick.class, new Hitflick());
-        moduleManager.modules.put(LightningTracker.class, new LightningTracker());
-        moduleManager.modules.put(RenderFixes.class, new RenderFixes());
-        moduleManager.modules.put(Stasis.class, new Stasis());
         commandManager.commands.add(new BindCommand());
         commandManager.commands.add(new ClickGuiCommand());
         commandManager.commands.add(new ConfigCommand());
@@ -192,17 +169,18 @@ public class Myau {
             propertyManager.properties.put(module.getClass(), properties);
             EventManager.register(module);
         }
-        Config config = new Config("default", true);
-        if (config.file.exists()) {
-            config.load();
-        }
+        ModuleCatalog.validate(moduleManager.modules.values());
+        Config.initialize();
         if (friendManager.file.exists()) {
             friendManager.load();
         }
         if (targetManager.file.exists()) {
             targetManager.load();
         }
-        Runtime.getRuntime().addShutdownHook(new Thread(config::save));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            Config.savePersistent();
+            MprisService.getInstance().close();
+        }, "Myaulex-Shutdown"));
 
         try (InputStreamReader reader = new InputStreamReader(Objects.requireNonNull(Myau.class.getResourceAsStream("/version.json")), StandardCharsets.UTF_8)) {
             JsonObject modInfo = new JsonParser().parse(reader).getAsJsonObject();

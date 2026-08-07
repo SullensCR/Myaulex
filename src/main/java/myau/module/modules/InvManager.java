@@ -72,7 +72,7 @@ public class InvManager extends Module {
     }
 
     public InvManager() {
-        super("InvManager", false);
+        super("InventoryManager", false);
     }
 
     @EventTarget

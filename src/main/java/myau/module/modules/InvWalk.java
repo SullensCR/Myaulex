@@ -40,6 +40,8 @@ public class InvWalk extends Module {
     private int delayTicks = 0;
     private int openDelayTicks = -1;
     private int closeDelayTicks = -1;
+    private int sprintPauseTicks;
+    private boolean serverInventoryOpen;
     private final Map<KeyBinding, Boolean> movementKeys = new HashMap<KeyBinding, Boolean>(8) {{
         put(mc.gameSettings.keyBindForward, false);
         put(mc.gameSettings.keyBindBack, false);
@@ -50,22 +52,30 @@ public class InvWalk extends Module {
         put(mc.gameSettings.keyBindSprint, false);
     }};
 
-    public final ModeProperty mode = new ModeProperty("mode", 1, new String[]{"VANILLA", "LEGIT", "HYPIXEL", "LEGIT+"});
+    public final ModeProperty mode = new ModeProperty("mode", 1,
+            new String[]{"VANILLA", "LEGIT", "HYPIXEL", "LEGIT+", "SPOOF"});
     public final BooleanProperty guiEnabled = new BooleanProperty("click-gui", true);
+    public final BooleanProperty sprint = new BooleanProperty("sprint", false);
+    public final BooleanProperty clickSlowdown = new BooleanProperty("click-slowdown", true,
+            sprint::getValue).childOf(sprint);
+    public final BooleanProperty reopenOnClick = new BooleanProperty("reopen-on-click", true,
+            () -> mode.getValue() == 4).childOf(mode);
     public final IntProperty openDelay = new IntProperty("open-delay", 0, 0, 20, () -> mode.getValue() == 3);
     public final IntProperty closeDelay = new IntProperty("close-delay", 4, 0, 20, () -> mode.getValue() == 3);
     public final BooleanProperty lockMoveKey = new BooleanProperty("lock-move-dey", false);
 
     public InvWalk() {
-        super("InvWalk", false);
+        super("InventoryMove", false);
     }
 
     public void pressMovementKeys(boolean skipSneak) {
         this.movementKeys.keySet().stream()
                 .filter(key -> !skipSneak || key != mc.gameSettings.keyBindSneak)
                 .forEach(key -> KeyBindUtil.updateKeyState(key.getKeyCode()));
-        if (Myau.moduleManager.modules.get(Sprint.class).isEnabled()) {
+        if (shouldForceSprintKey()) {
             KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
+        } else if (isContainerOpen() && (!sprint.getValue() || sprintPauseTicks > 0)) {
+            stopSprintingNow();
         }
         this.keysPressed = true;
     }
@@ -86,8 +96,10 @@ public class InvWalk extends Module {
         for (Map.Entry<KeyBinding, Boolean> keyBinding : movementKeys.entrySet()) {
             KeyBindUtil.setKeyBindState(keyBinding.getKey().getKeyCode(), keyBinding.getValue());
         }
-        if (Myau.moduleManager.modules.get(Sprint.class).isEnabled()) {
+        if (shouldForceSprintKey()) {
             KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
+        } else if (isContainerOpen() && (!sprint.getValue() || sprintPauseTicks > 0)) {
+            stopSprintingNow();
         }
         this.keysPressed = true;
     }
@@ -107,9 +119,38 @@ public class InvWalk extends Module {
             case 3: // Legit+
                 if (!(mc.currentScreen instanceof GuiInventory)) return false;
                 return this.closeDelayTicks == -1 && this.clickQueue.isEmpty();
+            case 4: // Spoof
+                return true;
             default:
                 return false;
         }
+    }
+
+    /** True while InventoryMove owns sprint and the Sprint option is off. */
+    public boolean blocksSprint() {
+        return isEnabled() && isContainerOpen() && !sprint.getValue();
+    }
+
+    private boolean isContainerOpen() {
+        return mc.currentScreen instanceof GuiContainer
+                && !(mc.currentScreen instanceof GuiContainerCreative);
+    }
+
+    private boolean shouldForceSprintKey() {
+        Sprint sprintModule = (Sprint) Myau.moduleManager.modules.get(Sprint.class);
+        return sprint.getValue() && sprintPauseTicks <= 0
+                && sprintModule != null && sprintModule.isEnabled()
+                && !isBlockedByScaffold();
+    }
+
+    private boolean isBlockedByScaffold() {
+        Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
+        return scaffold != null && scaffold.blocksSprint();
+    }
+
+    private void stopSprintingNow() {
+        KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), false);
+        if (mc.thePlayer != null) mc.thePlayer.setSprinting(false);
     }
 
     public boolean temporaryStackIsEmpty() {
@@ -129,12 +170,21 @@ public class InvWalk extends Module {
     @EventTarget(Priority.LOWEST)
     public void onTick(TickEvent event) {
         if (event.getType() == EventType.PRE) {
+            if (this.sprintPauseTicks > 0) this.sprintPauseTicks--;
             if (this.openDelayTicks >= 0) {
                 this.openDelayTicks--;
                 return;
             }
-            while (!this.clickQueue.isEmpty()) {
-                PacketUtil.sendPacketNoEvent(this.clickQueue.poll());
+            if (this.delayTicks == 0) {
+                while (!this.clickQueue.isEmpty()) {
+                    PacketUtil.sendPacketNoEvent(this.clickQueue.poll());
+                }
+                if (this.mode.getValue() == 4 && this.serverInventoryOpen && !this.reopenOnClick.getValue()) {
+                    PacketUtil.sendPacketNoEvent(new C0DPacketCloseWindow(0));
+                    this.serverInventoryOpen = false;
+                }
+            } else {
+                this.delayTicks--;
             }
             if (this.closeDelayTicks > 0) {
                 if (this.temporaryStackIsEmpty()) {
@@ -152,9 +202,17 @@ public class InvWalk extends Module {
     public void onUpdate(UpdateEvent event) {
         if (!this.isEnabled() || event.getType() != EventType.PRE) return;
 
-        if ((mc.currentScreen instanceof myau.ui.ClickGui || mc.currentScreen instanceof myau.ui.ModernClickGui) && this.guiEnabled.getValue()) {
-            this.pressMovementKeys(true);
+        if (mc.currentScreen instanceof myau.ui.ClickGuiScreen && this.guiEnabled.getValue()) {
+            if (isBlockedByScaffold()) {
+                this.stopSprintingNow();
+            } else {
+                this.pressMovementKeys(true);
+            }
             return;
+        }
+
+        if (isContainerOpen() && (!sprint.getValue() || sprintPauseTicks > 0)) {
+            stopSprintingNow();
         }
 
         if (this.canInvWalk()) {
@@ -177,9 +235,6 @@ public class InvWalk extends Module {
                 PacketUtil.sendPacketNoEvent(this.pendingStatus);
                 this.pendingStatus = null;
             }
-            if (this.delayTicks > 0) {
-                this.delayTicks--;
-            }
         }
     }
 
@@ -192,6 +247,12 @@ public class InvWalk extends Module {
             if (this.mode.getValue() == 1 || this.mode.getValue() == 3) {
                 C16PacketClientStatus packet = (C16PacketClientStatus) event.getPacket();
                 if (packet.getStatus() == EnumState.OPEN_INVENTORY_ACHIEVEMENT) {
+                    if (this.mode.getValue() == 4) {
+                        event.setCancelled(true);
+                        this.serverInventoryOpen = false;
+                        return;
+                    }
+                    this.serverInventoryOpen = true;
                     event.setCancelled(true);
                     if (this.mode.getValue() == 1){
                         this.pendingStatus = packet;
@@ -202,6 +263,12 @@ public class InvWalk extends Module {
             if (event.getPacket() instanceof C0DPacketCloseWindow) {
                 C0DPacketCloseWindow packet = (C0DPacketCloseWindow) event.getPacket();
                 if (((IAccessorC0DPacketCloseWindow) packet).getWindowId() == 0) {
+                    this.serverInventoryOpen = false;
+                    if (this.mode.getValue() == 4) {
+                        event.setCancelled(true);
+                        this.clickQueue.clear();
+                        return;
+                    }
                     if (this.mode.getValue() == 3) {
                         if (!this.clickQueue.isEmpty()) {
                             this.clickQueue.clear();
@@ -232,6 +299,15 @@ public class InvWalk extends Module {
             }
         } else {
             C0EPacketClickWindow packet = (C0EPacketClickWindow) event.getPacket();
+            if (sprint.getValue() && clickSlowdown.getValue()
+                    && isContainerOpen()) {
+                stopSprintingNow();
+                event.setCancelled(true);
+                this.clickQueue.offer(packet);
+                this.delayTicks = Math.max(this.delayTicks, 2);
+                this.sprintPauseTicks = Math.max(this.sprintPauseTicks, 2);
+                return;
+            }
             switch (this.mode.getValue()) {
                 case 1: // Legit
                     if (packet.getWindowId() == 0) {
@@ -245,6 +321,15 @@ public class InvWalk extends Module {
                             this.clickQueue.offer(packet);
                         }
                     }
+                    break;
+                case 4: // Spoof
+                    event.setCancelled(true);
+                    if (!this.serverInventoryOpen || this.reopenOnClick.getValue()) {
+                        PacketUtil.sendPacketNoEvent(new C16PacketClientStatus(EnumState.OPEN_INVENTORY_ACHIEVEMENT));
+                        this.serverInventoryOpen = true;
+                    }
+                    this.clickQueue.offer(packet);
+                    this.delayTicks = Math.max(this.delayTicks, 1);
                     break;
                 case 2: // Hypixel
                     if ((packet.getMode() == 3 || packet.getMode() == 4) && packet.getSlotId() == -999) {
@@ -293,6 +378,12 @@ public class InvWalk extends Module {
             this.pendingStatus = null;
         }
         this.delayTicks = 0;
+        this.sprintPauseTicks = 0;
+        while (!this.clickQueue.isEmpty()) PacketUtil.sendPacketNoEvent(this.clickQueue.poll());
+        if (this.serverInventoryOpen && mc.getNetHandler() != null) {
+            PacketUtil.sendPacketNoEvent(new C0DPacketCloseWindow(0));
+        }
+        this.serverInventoryOpen = false;
     }
 
     @Override

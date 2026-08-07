@@ -1,5 +1,8 @@
 package myau.util.font.impl;
 
+import myau.util.font.variable.FontAxes;
+import myau.util.font.variable.FreeTypeFace;
+import myau.util.font.variable.OpenTypeVariableFont;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.opengl.GL11;
@@ -25,6 +28,16 @@ public class CharRenderer {
         this.tex = this.setupTexture(font, antiAlias, fractionalMetrics, this.charData);
     }
 
+    protected CharRenderer(OpenTypeVariableFont variableFont, int size, FontAxes axes,
+                           boolean antiAlias, boolean fractionalMetrics) {
+        this.font = new Font("SansSerif", Font.PLAIN, Math.max(1, size));
+        this.antiAlias = antiAlias;
+        this.fractionalMetrics = fractionalMetrics;
+        this.imgSize = size >= 48 ? 1024 : 512;
+        DynamicTexture variableTexture = this.setupVariableTexture(variableFont, size, axes, this.charData);
+        this.tex = variableTexture != null ? variableTexture : this.setupTexture(this.font, antiAlias, fractionalMetrics, this.charData);
+    }
+
     public void destroy() {
         if (this.tex != null) {
             this.tex.deleteGlTexture();
@@ -34,6 +47,55 @@ public class CharRenderer {
     protected DynamicTexture setupTexture(Font font, boolean antiAlias, boolean fractionalMetrics, CharData[] chars) {
         BufferedImage img = this.generateFontImage(font, antiAlias, fractionalMetrics, chars);
         return new DynamicTexture(img);
+    }
+
+    protected DynamicTexture setupVariableTexture(OpenTypeVariableFont variableFont, int size,
+                                                  FontAxes axes, CharData[] chars) {
+        FreeTypeFace face = FreeTypeFace.open(variableFont, axes, size);
+        if (face == null) return null;
+        try {
+            int atlasSize = (int) imgSize;
+            BufferedImage image = new BufferedImage(atlasSize, atlasSize, BufferedImage.TYPE_INT_ARGB);
+            int lineHeight = Math.max(1, (int) Math.ceil(face.lineHeight()));
+            int ascent = Math.max(1, (int) Math.ceil(face.ascent()));
+            int positionX = 0;
+            int positionY = 1;
+            int rowHeight = 0;
+            for (int index = 0; index < chars.length; index++) {
+                FreeTypeFace.GlyphBitmap glyph = face.glyph(index);
+                int charWidth = Math.max(8, (int) Math.ceil(glyph.advance) + 8);
+                if (positionX + charWidth >= atlasSize) {
+                    positionX = 0;
+                    positionY += rowHeight;
+                    rowHeight = 0;
+                }
+                CharData data = new CharData();
+                data.width = charWidth;
+                data.height = lineHeight;
+                data.storedX = positionX;
+                data.storedY = positionY;
+                chars[index] = data;
+                fontHeight = Math.max(fontHeight, data.height);
+                rowHeight = Math.max(rowHeight, data.height);
+
+                int drawX = positionX + 2 + glyph.left;
+                int drawY = positionY + ascent - glyph.top;
+                for (int glyphY = 0; glyphY < glyph.height; glyphY++) {
+                    for (int glyphX = 0; glyphX < glyph.width; glyphX++) {
+                        int targetX = drawX + glyphX;
+                        int targetY = drawY + glyphY;
+                        if (targetX >= 0 && targetX < atlasSize && targetY >= 0 && targetY < atlasSize) {
+                            int alpha = glyph.alpha[glyphY * glyph.width + glyphX] & 0xFF;
+                            image.setRGB(targetX, targetY, alpha << 24 | 0xFFFFFF);
+                        }
+                    }
+                }
+                positionX += charWidth;
+            }
+            return new DynamicTexture(image);
+        } finally {
+            face.close();
+        }
     }
 
     protected BufferedImage generateFontImage(Font font, boolean antiAlias, boolean fractionalMetrics, CharData @NotNull [] chars) {
@@ -144,4 +206,3 @@ public class CharRenderer {
         }
     }
 }
-

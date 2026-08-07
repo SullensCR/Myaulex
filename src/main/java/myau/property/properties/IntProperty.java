@@ -2,10 +2,11 @@ package myau.property.properties;
 
 import com.google.gson.JsonObject;
 import myau.property.Property;
+import myau.property.RecommendedRange;
 
 import java.util.function.BooleanSupplier;
 
-public class IntProperty extends Property<Integer> {
+public class IntProperty extends Property<Integer> implements RecommendedRange {
     private final Integer minimum;
     private final Integer maximum;
 
@@ -16,7 +17,7 @@ public class IntProperty extends Property<Integer> {
     public IntProperty(
             String name, Integer value, Integer minimum, Integer maximum, BooleanSupplier check
     ) {
-        super(name, value, v -> v >= minimum && v <= maximum, check);
+        super(name, value, v -> v != null && v >= -1_000_000_000 && v <= 1_000_000_000, check);
         this.minimum = minimum;
         this.maximum = maximum;
     }
@@ -53,4 +54,10 @@ public class IntProperty extends Property<Integer> {
     public Integer getMaximum() {
         return maximum;
     }
+
+    @Override
+    public double getRecommendedMinimum() { return minimum; }
+
+    @Override
+    public double getRecommendedMaximum() { return maximum; }
 }

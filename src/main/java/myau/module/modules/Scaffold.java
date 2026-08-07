@@ -8,10 +8,17 @@ import myau.events.*;
 import myau.management.RotationState;
 import myau.module.Module;
 import myau.property.properties.BooleanProperty;
+import myau.property.properties.IntProperty;
 import myau.property.properties.ModeProperty;
 import myau.property.properties.PercentProperty;
+import myau.render.ui.ProgressbarRenderer;
+import myau.render.ui.ProgressbarSizes;
+import myau.render.ui.UiRenderer;
+import myau.render.ui.UiTransform;
 import myau.util.*;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockIce;
+import net.minecraft.block.BlockPackedIce;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
@@ -28,6 +35,7 @@ import org.lwjgl.opengl.GL11;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.function.Predicate;
 
 public class Scaffold extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
@@ -51,7 +59,12 @@ public class Scaffold extends Module {
     };
     private int rotationTick = 0;
     private int lastSlot = -1;
+    // Item spoof temporarily changes currentItem while rendering; keep the real placement slot separately.
+    private int placementSlot = -1;
     private int blockCount = -1;
+    private int blockCounterInitialCount = -1;
+    private float animatedBlockCounterProgress = -1.0F;
+    private long blockCounterLastRenderNanos;
     private float blockCounterAlpha;
     private float yaw = -180.0F;
     private float pitch = 0.0F;
@@ -62,7 +75,12 @@ public class Scaffold extends Module {
     private int startY = 256;
     private boolean shouldKeepY = false;
     private boolean towering = false;
+    private boolean towerSelectionActive = false;
+    private int towerRestoreSlot = -1;
+    private boolean towerRestoreWasIce = false;
     private EnumFacing targetFacing = null;
+    private static UiRenderer progressbarRenderer;
+    private static boolean progressbarRendererUnavailable;
     public final ModeProperty rotationMode = new ModeProperty("rotations", 2, new String[]{"NONE", "DEFAULT", "BACKWARDS", "SIDEWAYS"});
     public final ModeProperty moveFix = new ModeProperty("move-fix", 1, new String[]{"NONE", "SILENT"});
     public final ModeProperty sprintMode = new ModeProperty("sprint", 0, new String[]{"NONE", "VANILLA"});
@@ -79,6 +97,8 @@ public class Scaffold extends Module {
     public final BooleanProperty swing = new BooleanProperty("swing", true);
     public final BooleanProperty itemSpoof = new BooleanProperty("item-spoof", false);
     public final BooleanProperty blockCounter = new BooleanProperty("block-counter", true);
+    public final IntProperty switchAmount = new IntProperty("switch", 3, 0, 64);
+    public final BooleanProperty avoidIceOnTower = new BooleanProperty("avoid-ice-on-tower", false);
 
     private boolean shouldStopSprint() {
         if (this.isTowering()) {
@@ -89,14 +109,116 @@ public class Scaffold extends Module {
         }
     }
 
+    public boolean blocksSprint() {
+        return this.isEnabled() && this.shouldStopSprint();
+    }
+
     private boolean canPlace() {
         BedNuker bedNuker = (BedNuker) Myau.moduleManager.modules.get(BedNuker.class);
         if (bedNuker.isEnabled() && bedNuker.isReady()) {
             return false;
-        } else {
-            LongJump longJump = (LongJump) Myau.moduleManager.modules.get(LongJump.class);
-            return !longJump.isEnabled() || !longJump.isAutoMode() || longJump.isJumping();
         }
+        return true;
+    }
+
+    private static boolean isIceBlock(Block block) {
+        return block instanceof BlockIce || block instanceof BlockPackedIce;
+    }
+
+    private static boolean isIceBlock(ItemStack stack) {
+        return stack != null && stack.getItem() instanceof ItemBlock
+                && isIceBlock(((ItemBlock) stack.getItem()).getBlock());
+    }
+
+    static boolean shouldSwitch(int remaining, int threshold) {
+        return remaining <= threshold;
+    }
+
+    private boolean isSelectableBlock(ItemStack stack, boolean avoidIce) {
+        return ItemUtil.isBlock(stack) && (!avoidIce || !isIceBlock(stack));
+    }
+
+    private int findHotbarSlot(int currentSlot, Predicate<ItemStack> predicate, boolean includeCurrent) {
+        int offset = includeCurrent ? 0 : 1;
+        for (; offset < 9; offset++) {
+            int hotbarSlot = (currentSlot + offset) % 9;
+            ItemStack candidate = mc.thePlayer.inventory.getStackInSlot(hotbarSlot);
+            if (predicate.test(candidate)) {
+                return hotbarSlot;
+            }
+        }
+        return -1;
+    }
+
+    private void selectHotbarSlot(int slot) {
+        if (slot < 0) {
+            return;
+        }
+        ItemStack candidate = mc.thePlayer.inventory.getStackInSlot(slot);
+        if (!ItemUtil.isBlock(candidate)) {
+            return;
+        }
+        mc.thePlayer.inventory.currentItem = slot;
+        this.placementSlot = slot;
+        this.blockCount = candidate.stackSize;
+    }
+
+    private boolean isToweringForBlockSelection() {
+        if (this.tower.getValue() == 0 || !mc.gameSettings.keyBindJump.isKeyDown()) {
+            return false;
+        }
+        if (this.tower.getValue() == 3) {
+            return this.towering || this.isTowering();
+        }
+        return this.towerTick > 0;
+    }
+
+    private void enterTowerBlockSelection() {
+        this.towerRestoreSlot = mc.thePlayer.inventory.currentItem;
+        ItemStack current = mc.thePlayer.inventory.getCurrentItem();
+        this.towerRestoreWasIce = isIceBlock(current);
+
+        if (this.avoidIceOnTower.getValue() && this.towerRestoreWasIce) {
+            int nonIceSlot = this.findHotbarSlot(
+                    this.towerRestoreSlot,
+                    stack -> this.isSelectableBlock(stack, true),
+                    false
+            );
+            this.selectHotbarSlot(nonIceSlot);
+        }
+    }
+
+    private void restoreScaffoldBlockAfterTower() {
+        if (this.towerRestoreSlot < 0) {
+            return;
+        }
+
+        ItemStack saved = mc.thePlayer.inventory.getStackInSlot(this.towerRestoreSlot);
+        if ((this.towerRestoreWasIce && isIceBlock(saved))
+                || (!this.towerRestoreWasIce && ItemUtil.isBlock(saved))) {
+            this.selectHotbarSlot(this.towerRestoreSlot);
+            return;
+        }
+
+        if (this.towerRestoreWasIce) {
+            int iceSlot = this.findHotbarSlot(
+                    this.towerRestoreSlot,
+                    Scaffold::isIceBlock,
+                    false
+            );
+            this.selectHotbarSlot(iceSlot);
+        }
+    }
+
+    private void updateTowerBlockSelection(boolean towerActive) {
+        if (towerActive && !this.towerSelectionActive) {
+            this.enterTowerBlockSelection();
+        } else if (!towerActive && this.towerSelectionActive) {
+            this.restoreScaffoldBlockAfterTower();
+            this.towerRestoreSlot = -1;
+            this.towerRestoreWasIce = false;
+        }
+        this.towerSelectionActive = towerActive;
     }
 
     private EnumFacing getBestFacing(BlockPos blockPos1, BlockPos blockPos3) {
@@ -280,23 +402,29 @@ public class Scaffold extends Module {
                 this.shouldKeepY = false;
                 this.towering = false;
             }
+            boolean towerActive = this.isToweringForBlockSelection();
+            this.updateTowerBlockSelection(towerActive);
+            this.placementSlot = mc.thePlayer.inventory.currentItem;
             if (this.canPlace()) {
                 ItemStack stack = mc.thePlayer.getHeldItem();
                 int count = ItemUtil.isBlock(stack) ? stack.stackSize : 0;
-                this.blockCount = Math.min(this.blockCount, count);
-                if (this.blockCount <= 0) {
-                    int slot = mc.thePlayer.inventory.currentItem;
-                    if (this.blockCount == 0) {
-                        slot--;
-                    }
-                    for (int i = slot; i > slot - 9; i--) {
-                        int hotbarSlot = (i % 9 + 9) % 9;
-                        ItemStack candidate = mc.thePlayer.inventory.getStackInSlot(hotbarSlot);
-                        if (ItemUtil.isBlock(candidate)) {
-                            mc.thePlayer.inventory.currentItem = hotbarSlot;
-                            this.blockCount = candidate.stackSize;
-                            break;
+                boolean avoidIce = this.towerSelectionActive && this.avoidIceOnTower.getValue();
+                Predicate<ItemStack> selectable = candidate -> this.isSelectableBlock(candidate, avoidIce);
+                boolean wasUninitialized = this.blockCount < 0;
+                this.blockCount = wasUninitialized ? count : Math.min(this.blockCount, count);
+                if (wasUninitialized || shouldSwitch(this.blockCount, this.switchAmount.getValue())) {
+                    int currentSlot = mc.thePlayer.inventory.currentItem;
+                    boolean currentIsSelectable = selectable.test(stack);
+                    if (!currentIsSelectable || shouldSwitch(this.blockCount, this.switchAmount.getValue())) {
+                        int nextSlot = this.findHotbarSlot(currentSlot, selectable, false);
+                        if (nextSlot < 0 && !ItemUtil.isBlock(stack)) {
+                            nextSlot = this.findHotbarSlot(
+                                    currentSlot,
+                                    candidate -> ItemUtil.isBlock(candidate),
+                                    false
+                            );
                         }
+                        this.selectHotbarSlot(nextSlot);
                     }
                 }
                 float currentYaw = this.getCurrentYaw();
@@ -679,42 +807,95 @@ public class Scaffold extends Module {
     @EventTarget
     public void onRender(Render2DEvent event) {
         boolean shouldShow = this.isEnabled() && this.blockCounter.getValue() && mc.thePlayer != null;
-        this.blockCounterAlpha += ((shouldShow ? 1.0F : 0.0F) - this.blockCounterAlpha) * 0.22F;
-        if (this.blockCounterAlpha > 0.02F) {
-            if (mc.thePlayer != null) {
-                int count = 0;
-                for (int i = 0; i < 9; i++) {
-                    ItemStack stack = mc.thePlayer.inventory.getStackInSlot(i);
-                    if (stack != null && stack.stackSize > 0) {
-                        Item item = stack.getItem();
-                        if (item instanceof ItemBlock) {
-                            Block block = ((ItemBlock) item).getBlock();
-                            if (!BlockUtil.isInteractable(block) && BlockUtil.isSolid(block)) {
-                                count += stack.stackSize;
-                            }
-                        }
-                    }
-                }
-                HUD hud = (HUD) Myau.moduleManager.modules.get(HUD.class);
-                float scale = hud.scale.getValue();
-                GlStateManager.pushMatrix();
-                GlStateManager.scale(scale, scale, 0.0F);
-                GlStateManager.disableDepth();
-                GlStateManager.enableBlend();
-                GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-                mc.fontRendererObj
-                        .drawString(
-                                String.format("%d block%s left", count, count != 1 ? "s" : ""),
-                                ((float) new ScaledResolution(mc).getScaledWidth() / 2.0F + (float) mc.fontRendererObj.FONT_HEIGHT * 1.5F) / scale,
-                                (float) new ScaledResolution(mc).getScaledHeight() / 2.0F / scale - (float) mc.fontRendererObj.FONT_HEIGHT / 2.0F + 1.0F,
-                                RenderUtil.mergeAlpha(count > 0 ? Color.WHITE.getRGB() : new Color(255, 85, 85).getRGB(), (int) (190.0F * this.blockCounterAlpha)),
-                                hud.shadow.getValue()
-                        );
-                GlStateManager.disableBlend();
-                GlStateManager.enableDepth();
-                GlStateManager.popMatrix();
-            }
+        this.blockCounterAlpha += ((shouldShow ? 1.0F : 0.0F) - this.blockCounterAlpha) * ProgressbarSizes.FADE_SPEED;
+        if (this.blockCounterAlpha <= 0.02F || mc.thePlayer == null) return;
+
+        int count = ProgressbarRenderer.countableBlockCount(mc.thePlayer);
+        if (this.blockCounterInitialCount < 0) this.blockCounterInitialCount = count;
+        float targetProgress = this.blockCounterInitialCount <= 0
+                ? 0.0F
+                : count / (float) this.blockCounterInitialCount;
+        long now = System.nanoTime();
+        if (this.animatedBlockCounterProgress < 0.0F) {
+            this.animatedBlockCounterProgress = targetProgress;
+        } else {
+            float deltaTime = this.blockCounterLastRenderNanos == 0L
+                    ? 1.0F / 60.0F
+                    : (now - this.blockCounterLastRenderNanos) / 1_000_000_000.0F;
+            deltaTime = Math.max(0.001F, Math.min(0.1F, deltaTime));
+            this.animatedBlockCounterProgress = AnimationUtil.animateSmooth(
+                    targetProgress,
+                    this.animatedBlockCounterProgress,
+                    ProgressbarSizes.PROGRESS_ANIMATION_SPEED,
+                    deltaTime
+            );
         }
+        this.blockCounterLastRenderNanos = now;
+        int alpha = Math.round(ProgressbarSizes.MAX_ALPHA * this.blockCounterAlpha);
+
+        if (!this.renderProgressbar(this.animatedBlockCounterProgress, alpha)) {
+            this.renderLegacyBlockCounter(count);
+        }
+    }
+
+    private boolean renderProgressbar(float progress, int alpha) {
+        if (progressbarRendererUnavailable) return false;
+        try {
+            if (progressbarRenderer == null) progressbarRenderer = new UiRenderer();
+            if (!progressbarRenderer.isSupported()) {
+                progressbarRendererUnavailable = true;
+                return false;
+            }
+
+            UiTransform transform = new UiTransform(
+                    mc,
+                    ProgressbarSizes.DESIGN_WIDTH,
+                    ProgressbarSizes.DESIGN_HEIGHT,
+                    ProgressbarSizes.USER_SCALE * ((HUD) Myau.moduleManager.modules.get(HUD.class)).progressbarSize.getValue(),
+                    0.0F
+            );
+            progressbarRenderer.beginFrame(transform, ProgressbarSizes.BACKDROP_BLUR_RADIUS);
+            try {
+                float x = (ProgressbarSizes.DESIGN_WIDTH - ProgressbarSizes.COMPONENT_WIDTH) * 0.5F
+                        + ProgressbarSizes.OFFSET_X;
+                float y = (ProgressbarSizes.DESIGN_HEIGHT - ProgressbarSizes.COMPONENT_HEIGHT) * 0.5F
+                        + ProgressbarSizes.OFFSET_Y;
+                ProgressbarRenderer.render(
+                        progressbarRenderer,
+                        x,
+                        y,
+                        progress,
+                        ProgressbarRenderer.displayStack(mc.thePlayer, this.placementSlot),
+                        alpha
+                );
+            } finally {
+                progressbarRenderer.endFrame();
+            }
+            return progressbarRenderer.isSupported();
+        } catch (Throwable failure) {
+            progressbarRendererUnavailable = true;
+            return false;
+        }
+    }
+
+    private void renderLegacyBlockCounter(int count) {
+        HUD hud = (HUD) Myau.moduleManager.modules.get(HUD.class);
+        float scale = hud.scale.getValue();
+        GlStateManager.pushMatrix();
+        GlStateManager.scale(scale, scale, 0.0F);
+        GlStateManager.disableDepth();
+        GlStateManager.enableBlend();
+        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        mc.fontRendererObj.drawString(
+                String.format("%d block%s left", count, count != 1 ? "s" : ""),
+                ((float) new ScaledResolution(mc).getScaledWidth() / 2.0F + (float) mc.fontRendererObj.FONT_HEIGHT * 1.5F) / scale,
+                (float) new ScaledResolution(mc).getScaledHeight() / 2.0F / scale - (float) mc.fontRendererObj.FONT_HEIGHT / 2.0F + 1.0F,
+                RenderUtil.mergeAlpha(count > 0 ? Color.WHITE.getRGB() : new Color(255, 85, 85).getRGB(), (int) (190.0F * this.blockCounterAlpha)),
+                hud.shadow.getValue()
+        );
+        GlStateManager.disableBlend();
+        GlStateManager.enableDepth();
+        GlStateManager.popMatrix();
     }
 
     @EventTarget
@@ -753,7 +934,11 @@ public class Scaffold extends Module {
         } else {
             this.lastSlot = -1;
         }
+        this.placementSlot = mc.thePlayer != null ? mc.thePlayer.inventory.currentItem : -1;
         this.blockCount = -1;
+        this.blockCounterInitialCount = ProgressbarRenderer.countableBlockCount(mc.thePlayer);
+        this.animatedBlockCounterProgress = -1.0F;
+        this.blockCounterLastRenderNanos = 0L;
         this.rotationTick = 3;
         this.yaw = -180.0F;
         this.pitch = 0.0F;
@@ -761,6 +946,9 @@ public class Scaffold extends Module {
         this.towerTick = 0;
         this.towerDelay = 0;
         this.towering = false;
+        this.towerSelectionActive = false;
+        this.towerRestoreSlot = -1;
+        this.towerRestoreWasIce = false;
     }
 
     @Override
@@ -768,6 +956,13 @@ public class Scaffold extends Module {
         if (mc.thePlayer != null && this.lastSlot != -1) {
             mc.thePlayer.inventory.currentItem = this.lastSlot;
         }
+        this.towerSelectionActive = false;
+        this.towerRestoreSlot = -1;
+        this.towerRestoreWasIce = false;
+        this.placementSlot = -1;
+        this.blockCounterInitialCount = -1;
+        this.animatedBlockCounterProgress = -1.0F;
+        this.blockCounterLastRenderNanos = 0L;
     }
 
     public static class BlockData {

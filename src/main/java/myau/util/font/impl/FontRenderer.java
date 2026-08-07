@@ -3,6 +3,8 @@ package myau.util.font.impl;
 import myau.util.font.CenterMode;
 import myau.util.font.FontResourceManager;
 import myau.util.font.IFont;
+import myau.util.font.variable.FontAxes;
+import myau.util.font.variable.OpenTypeVariableFont;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
@@ -23,6 +25,12 @@ public class FontRenderer extends CharRenderer implements IFont {
 
     public FontRenderer(Font font) {
         super(font, true, true);
+        this.setupMinecraftColorcodes();
+        FontResourceManager.registerFont(this);
+    }
+
+    public FontRenderer(OpenTypeVariableFont variableFont, int size, FontAxes axes) {
+        super(variableFont, size, axes, true, true);
         this.setupMinecraftColorcodes();
         FontResourceManager.registerFont(this);
     }
@@ -237,4 +245,3 @@ public class FontRenderer extends CharRenderer implements IFont {
         }
     }
 }
-

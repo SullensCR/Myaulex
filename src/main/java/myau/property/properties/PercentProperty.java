@@ -2,10 +2,11 @@ package myau.property.properties;
 
 import com.google.gson.JsonObject;
 import myau.property.Property;
+import myau.property.RecommendedRange;
 
 import java.util.function.BooleanSupplier;
 
-public class PercentProperty extends Property<Integer> {
+public class PercentProperty extends Property<Integer> implements RecommendedRange {
     private final Integer minimum;
     private final Integer maximum;
 
@@ -18,7 +19,7 @@ public class PercentProperty extends Property<Integer> {
     }
 
     public PercentProperty(String name, Integer value, Integer minimum, Integer maximum, BooleanSupplier booleanSupplier) {
-        super(name, value, value1 -> value1 >= minimum && value1 <= maximum, booleanSupplier);
+        super(name, value, value1 -> value1 != null && value1 >= -1000 && value1 <= 1000, booleanSupplier);
         this.minimum = minimum;
         this.maximum = maximum;
     }
@@ -55,4 +56,10 @@ public class PercentProperty extends Property<Integer> {
     public Integer getMinimum() {
         return minimum;
     }
+
+    @Override
+    public double getRecommendedMinimum() { return minimum; }
+
+    @Override
+    public double getRecommendedMaximum() { return maximum; }
 }

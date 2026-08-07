@@ -14,6 +14,7 @@ val mixinGroup = "$baseGroup.mixin"
 val modid: String by project
 val jarName: String by project
 val transformerFile = file("src/main/resources/accesstransformer.cfg")
+val freetypeVersion = "3.3.3"
 // Toolchains:
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(8))
@@ -74,9 +75,23 @@ dependencies {
     shadowImpl("org.spongepowered:mixin:0.7.11-SNAPSHOT") {
         isTransitive = false
     }
+    // Java 8 compatible D-Bus client used by the optional Linux MPRIS pause widget.
+    shadowImpl("com.github.hypfvieh:dbus-java:3.2.4")
+    // Bundle only the official FreeType natives. The Java adapter uses the
+    // JNA version already supplied by Minecraft, avoiding a LWJGL 2/3 clash.
+    shadowImpl("org.lwjgl:lwjgl-freetype:$freetypeVersion:natives-linux") {
+        isTransitive = false
+    }
+    shadowImpl("org.lwjgl:lwjgl-freetype:$freetypeVersion:natives-windows") {
+        isTransitive = false
+    }
+    shadowImpl("org.lwjgl:lwjgl-freetype:$freetypeVersion:natives-macos") {
+        isTransitive = false
+    }
     annotationProcessor("org.spongepowered:mixin:0.8.5-SNAPSHOT")
     // If you don't want to log in with your real minecraft account, remove this line
     runtimeOnly("me.djtheredstoner:DevAuth-forge-legacy:1.2.1")
+    testImplementation("junit:junit:4.13.2")
 }
 // Tasks:
 tasks.withType(JavaCompile::class) {
@@ -118,10 +133,11 @@ tasks.shadowJar {
     archiveClassifier.set("non-obfuscated-with-deps")
     configurations = listOf(shadowImpl)
     doLast {
-        configurations.forEach {
+    configurations.forEach {
             println("Copying dependencies into mod: ${it.files}")
         }
     }
+    relocate("org.freedesktop", "$baseGroup.deps.freedesktop")
     // If you want to include other dependencies and shadow them, you can relocate them in here
     fun relocate(name: String) = relocate(name, "$baseGroup.deps.$name")
 }

@@ -16,7 +16,7 @@ public class SpeedMine extends Module {
     public final IntProperty delay = new IntProperty("delay", 0, 0, 4);
 
     public SpeedMine() {
-        super("SpeedMine", false);
+        super("FastBreak", false);
     }
 
     @EventTarget

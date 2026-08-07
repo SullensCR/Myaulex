@@ -1,7 +1,6 @@
 package myau.mixin;
 
 import myau.Myau;
-import myau.module.modules.AutoBlockIn;
 import myau.module.modules.Scaffold;
 import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.entity.player.InventoryPlayer;
@@ -26,13 +25,6 @@ public abstract class MixinGuiIngame {
         Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
         if (scaffold.isEnabled() && scaffold.itemSpoof.getValue()) {
             int slot = scaffold.getSlot();
-            if (slot >= 0) {
-                return inventoryPlayer.getStackInSlot(slot);
-            }
-        }
-        AutoBlockIn autoBlockIn = (AutoBlockIn) Myau.moduleManager.modules.get(AutoBlockIn.class);
-        if(autoBlockIn.itemSpoof.getValue() && autoBlockIn.isEnabled()){
-            int slot = autoBlockIn.getSlot();
             if (slot >= 0) {
                 return inventoryPlayer.getStackInSlot(slot);
             }

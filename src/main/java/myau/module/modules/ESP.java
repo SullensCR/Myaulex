@@ -86,7 +86,7 @@ public class ESP extends Module {
     }
 
     public ESP() {
-        super("ESP", false);
+        super("EntityESP", false);
     }
 
     public boolean isOutlineEnabled() {

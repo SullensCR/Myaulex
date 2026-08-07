@@ -12,7 +12,7 @@ public class KeepSprint extends Module {
     public final BooleanProperty reachOnly = new BooleanProperty("reach-only", false);
 
     public KeepSprint() {
-        super("KeepSprint", false);
+        super("Keep Sprint", false);
     }
 
     public boolean shouldKeepSprint() {

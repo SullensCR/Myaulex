@@ -1,5 +1,6 @@
 package myau.module.modules;
 
+import myau.Myau;
 import myau.event.EventTarget;
 import myau.events.TickEvent;
 import myau.mixin.IAccessorEntityLivingBase;
@@ -37,12 +38,29 @@ public class Sprint extends Module {
         if (this.isEnabled()) {
             switch (event.getType()) {
                 case PRE:
+                    if (isBlockedByInventoryMove() || isBlockedByScaffold()) {
+                        KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), false);
+                        if (mc.thePlayer != null) {
+                            mc.thePlayer.setSprinting(false);
+                        }
+                        break;
+                    }
                     KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
                     break;
                 case POST:
                     this.wasSprinting = mc.thePlayer.isSprinting();
             }
         }
+    }
+
+    private boolean isBlockedByInventoryMove() {
+        InvWalk inventoryMove = (InvWalk) Myau.moduleManager.modules.get(InvWalk.class);
+        return inventoryMove != null && inventoryMove.blocksSprint();
+    }
+
+    private boolean isBlockedByScaffold() {
+        Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
+        return scaffold != null && scaffold.blocksSprint();
     }
 
     @Override

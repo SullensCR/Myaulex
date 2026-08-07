@@ -70,7 +70,7 @@ public class AutoHeal extends Module {
     }
 
     public AutoHeal() {
-        super("AutoHeal", false);
+        super("AutoGapple", false);
     }
 
     public boolean isSwitching() {

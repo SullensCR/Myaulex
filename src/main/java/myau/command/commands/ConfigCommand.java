@@ -23,7 +23,8 @@ import java.util.Arrays;
 import java.util.Locale;
 
 public class ConfigCommand extends Command {
-    private static final FileFilter FILE_FILTER = new WildcardFileFilter("*.json", IOCase.INSENSITIVE);
+    private static final FileFilter FILE_FILTER = file ->
+            new WildcardFileFilter("*.json", IOCase.INSENSITIVE).accept(file) && Config.isNamedConfigFile(file);
 
     public ConfigCommand() {
         super(new ArrayList<>(Arrays.asList("config", "cfg", "c")));
@@ -47,7 +48,7 @@ public class ConfigCommand extends Command {
                 case "reload":
                     if (args.size() < 3) {
                         ChatUtil.sendFormatted(
-                                String.format("%sMissing config name (use '&odefault&r' or '&o!&r' to load default config)&r", Myau.clientName)
+                                String.format("%sMissing config name&r", Myau.clientName)
                         );
                         return;
                     }
@@ -56,7 +57,11 @@ public class ConfigCommand extends Command {
                 case "s":
                 case "save":
                     if (args.size() < 3) {
-                        new Config(Config.lastConfig, true).save();
+                        if (Config.lastConfig == null) {
+                            ChatUtil.sendFormatted(Myau.clientName + "Missing config name&r");
+                        } else {
+                            new Config(Config.lastConfig, true).save();
+                        }
                         return;
                     }
                     new Config(args.get(2), true).save();

@@ -3,7 +3,6 @@ package myau.mixin;
 import myau.Myau;
 import myau.module.modules.Chams;
 import myau.module.modules.ViewClip;
-import myau.module.modules.Xray;
 import net.minecraft.client.renderer.chunk.SetVisibility;
 import net.minecraft.client.renderer.chunk.VisGraph;
 import net.minecraftforge.fml.relauncher.Side;
@@ -25,8 +24,7 @@ public abstract class MixinVisGraph {
     private void func_178606_a(CallbackInfo callbackInfo) {
         if (Myau.moduleManager != null) {
             if (Myau.moduleManager.modules.get(Chams.class).isEnabled()
-                    || Myau.moduleManager.modules.get(ViewClip.class).isEnabled()
-                    || Myau.moduleManager.modules.get(Xray.class).isEnabled()) {
+                    || Myau.moduleManager.modules.get(ViewClip.class).isEnabled()) {
                 callbackInfo.cancel();
             }
         }
@@ -40,8 +38,7 @@ public abstract class MixinVisGraph {
     private void computeVisibility(CallbackInfoReturnable<SetVisibility> callbackInfoReturnable) {
         if (Myau.moduleManager != null) {
             if (Myau.moduleManager.modules.get(Chams.class).isEnabled()
-                    || Myau.moduleManager.modules.get(ViewClip.class).isEnabled()
-                    || Myau.moduleManager.modules.get(Xray.class).isEnabled()) {
+                    || Myau.moduleManager.modules.get(ViewClip.class).isEnabled()) {
                 SetVisibility setVisibility = new SetVisibility();
                 setVisibility.setAllVisible(true);
                 callbackInfoReturnable.setReturnValue(setVisibility);

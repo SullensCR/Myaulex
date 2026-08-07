@@ -8,6 +8,9 @@ public class KeyBindUtil {
     public static String getKeyName(int keyCode) {
         if (keyCode < 0) {
             int mouseButton = keyCode + 100;
+            if (mouseButton < 0) {
+                return "KEY" + keyCode;
+            }
             switch (mouseButton) {
                 case 0:
                     return "LMB";
@@ -26,11 +29,15 @@ public class KeyBindUtil {
                 case 7:
                     return "MOUSE7";
                 default:
-                    String buttonName = Mouse.getButtonName(mouseButton);
+                    String buttonName = mouseButton < Mouse.getButtonCount() ? Mouse.getButtonName(mouseButton) : null;
                     return buttonName != null ? buttonName : "MOUSE" + mouseButton;
             }
         }
-        return Keyboard.getKeyName(keyCode);
+        if (keyCode >= Keyboard.KEYBOARD_SIZE) {
+            return "KEY" + keyCode;
+        }
+        String keyName = Keyboard.getKeyName(keyCode);
+        return keyName == null ? "KEY" + keyCode : keyName;
     }
 
     public static boolean isKeyDown(int keyCode) {

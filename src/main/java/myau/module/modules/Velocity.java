@@ -57,7 +57,7 @@ public class Velocity extends Module {
     private boolean inventory = false;
     private boolean dig = false;
 
-    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"Vanilla", "Jump", "Hypixel", "Slap_Attack"});
+    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"Vanilla", "Jump", "Prediction", "Slap_Attack"});
 
     public final PercentProperty chance = new PercentProperty("chance", 100, () -> mode.getValue() <= 1);
     public final PercentProperty horizontal = new PercentProperty("horizontal", 0, () -> mode.getValue() <= 1);

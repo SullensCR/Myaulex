@@ -13,12 +13,12 @@ import java.util.stream.Collectors;
 
 public class ModuleCommand extends Command {
     public ModuleCommand() {
-        super(new ArrayList<>(Myau.moduleManager.modules.values().stream().<String>map(Module::getName).collect(Collectors.<String>toList())));
+        super(new ArrayList<>(Myau.moduleManager.ordinaryModules().stream().<String>map(Module::getName).collect(Collectors.<String>toList())));
     }
 
     @Override
     public void runCommand(ArrayList<String> args) {
-        Module module = Myau.moduleManager.getModule(args.get(0));
+        Module module = Myau.moduleManager.getOrdinaryModule(args.get(0));
         if (args.size() >= 2) {
             Property<?> property = Myau.propertyManager.getProperty(module, args.get(1));
             if (property == null) {

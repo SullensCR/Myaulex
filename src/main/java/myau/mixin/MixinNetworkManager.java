@@ -1,6 +1,7 @@
 package myau.mixin;
 
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelOption;
 import io.netty.util.concurrent.GenericFutureListener;
 import myau.Myau;
 import myau.event.EventManager;
@@ -21,6 +22,22 @@ import java.util.concurrent.Future;
 @SideOnly(Side.CLIENT)
 @Mixin(value = {NetworkManager.class}, priority = 9999)
 public abstract class MixinNetworkManager {
+    /**
+     * Minecraft 1.8.9 already requests TCP_NODELAY. This only verifies and
+     * idempotently enforces that socket option; it does not advertise an
+     * additional latency reduction.
+     */
+    @Inject(method = {"channelActive"}, at = {@At("TAIL")})
+    private void verifyTcpNoDelay(ChannelHandlerContext context, CallbackInfo callbackInfo) {
+        if (Myau.clientSettings != null && Myau.clientSettings.isVerifyTcpNoDelay()) {
+            try {
+                context.channel().config().setOption(ChannelOption.TCP_NODELAY, true);
+            } catch (RuntimeException ignored) {
+                // Local/embedded channels may not expose a TCP socket option.
+            }
+        }
+    }
+
     @Inject(
             method = {"channelRead0*"},
             at = {@At("HEAD")},

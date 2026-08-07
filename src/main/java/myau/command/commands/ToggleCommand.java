@@ -21,7 +21,7 @@ public class ToggleCommand extends Command {
                     String.format("%sUsage: .%s <&omodule&r>&r", Myau.clientName, args.get(0).toLowerCase(Locale.ROOT))
             );
         } else {
-            Module module = Myau.moduleManager.getModule(args.get(1));
+            Module module = Myau.moduleManager.getOrdinaryModule(args.get(1));
             if (module == null) {
                 ChatUtil.sendFormatted(String.format("%sModule not found (&o%s&r)&r", Myau.clientName, args.get(1)));
             } else {

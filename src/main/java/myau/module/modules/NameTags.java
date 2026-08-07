@@ -57,26 +57,26 @@ public class NameTags extends Module {
     private static final String[] TOOL_ENCHANT_ABBR = {"E", "Fo", "U"};
     private static final int[] MISC_ENCHANT_IDS = {19};
     private static final String[] MISC_ENCHANT_ABBR = {"K"};
-    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"Default", "Raven"});
-    public final FloatProperty scale = new FloatProperty("scale", 1.0F, 0.5F, 2.0F, () -> this.mode.getValue() == 0);
-    public final BooleanProperty autoScale = new BooleanProperty("auto-scale", true, () -> this.mode.getValue() == 0);
-    public final PercentProperty backgroundOpacity = new PercentProperty("background", 25, () -> this.mode.getValue() == 0);
-    public final BooleanProperty shadow = new BooleanProperty("shadow", true, () -> this.mode.getValue() == 0);
-    public final ModeProperty distanceMode = new ModeProperty("distance", 0, new String[]{"NONE", "DEFAULT", "VAPE"}, () -> this.mode.getValue() == 0);
-    public final ModeProperty healthMode = new ModeProperty("health", 2, new String[]{"NONE", "HP", "HEARTS", "TAB"}, () -> this.mode.getValue() == 0);
-    public final BooleanProperty armor = new BooleanProperty("armor", true, () -> this.mode.getValue() == 0);
-    public final BooleanProperty effects = new BooleanProperty("effects", true, () -> this.mode.getValue() == 0);
-    public final BooleanProperty players = new BooleanProperty("players", true, () -> this.mode.getValue() == 0);
-    public final BooleanProperty friends = new BooleanProperty("friends", true, () -> this.mode.getValue() == 0);
-    public final BooleanProperty enemies = new BooleanProperty("enemies", true, () -> this.mode.getValue() == 0);
-    public final BooleanProperty bossees = new BooleanProperty("bosses", false, () -> this.mode.getValue() == 0);
-    public final BooleanProperty mobs = new BooleanProperty("mobs", false, () -> this.mode.getValue() == 0);
-    public final BooleanProperty creepers = new BooleanProperty("creepers", false, () -> this.mode.getValue() == 0);
-    public final BooleanProperty endermans = new BooleanProperty("endermen", false, () -> this.mode.getValue() == 0);
-    public final BooleanProperty blazes = new BooleanProperty("blazes", false, () -> this.mode.getValue() == 0);
-    public final BooleanProperty animals = new BooleanProperty("animals", false, () -> this.mode.getValue() == 0);
-    public final BooleanProperty self = new BooleanProperty("self", false, () -> this.mode.getValue() == 0);
-    public final BooleanProperty bots = new BooleanProperty("bots", false, () -> this.mode.getValue() == 0);
+    public final ModeProperty mode = new ModeProperty("mode", 2, new String[]{"Default", "Raven", "Myaulex"});
+    public final FloatProperty scale = new FloatProperty("scale", 1.0F, 0.5F, 2.0F, () -> this.mode.getValue() != 1);
+    public final BooleanProperty autoScale = new BooleanProperty("auto-scale", true, () -> this.mode.getValue() != 1);
+    public final PercentProperty backgroundOpacity = new PercentProperty("background", 25, () -> this.mode.getValue() != 1);
+    public final BooleanProperty shadow = new BooleanProperty("shadow", true, () -> this.mode.getValue() != 1);
+    public final ModeProperty distanceMode = new ModeProperty("distance", 0, new String[]{"NONE", "DEFAULT", "VAPE"}, () -> this.mode.getValue() != 1);
+    public final ModeProperty healthMode = new ModeProperty("health", 2, new String[]{"NONE", "HP", "HEARTS", "TAB"}, () -> this.mode.getValue() != 1);
+    public final BooleanProperty armor = new BooleanProperty("armor", true, () -> this.mode.getValue() != 1);
+    public final BooleanProperty effects = new BooleanProperty("effects", true, () -> this.mode.getValue() != 1);
+    public final BooleanProperty players = new BooleanProperty("players", true, () -> this.mode.getValue() != 1);
+    public final BooleanProperty friends = new BooleanProperty("friends", true, () -> this.mode.getValue() != 1);
+    public final BooleanProperty enemies = new BooleanProperty("enemies", true, () -> this.mode.getValue() != 1);
+    public final BooleanProperty bossees = new BooleanProperty("bosses", false, () -> this.mode.getValue() != 1);
+    public final BooleanProperty mobs = new BooleanProperty("mobs", false, () -> this.mode.getValue() != 1);
+    public final BooleanProperty creepers = new BooleanProperty("creepers", false, () -> this.mode.getValue() != 1);
+    public final BooleanProperty endermans = new BooleanProperty("endermen", false, () -> this.mode.getValue() != 1);
+    public final BooleanProperty blazes = new BooleanProperty("blazes", false, () -> this.mode.getValue() != 1);
+    public final BooleanProperty animals = new BooleanProperty("animals", false, () -> this.mode.getValue() != 1);
+    public final BooleanProperty self = new BooleanProperty("self", false, () -> this.mode.getValue() != 1);
+    public final BooleanProperty bots = new BooleanProperty("bots", false, () -> this.mode.getValue() != 1);
     // raven mode's settings
     public final FloatProperty ravenScale = new FloatProperty("scale", 1.0F, 0.5F, 2.0F, () -> this.mode.getValue() == 1);
     public final BooleanProperty ravenAutoScale = new BooleanProperty("auto-scale", true, () -> this.mode.getValue() == 1);
@@ -101,7 +101,7 @@ public class NameTags extends Module {
     private UFontRenderer ravenFontRenderer;
 
     public NameTags() {
-        super("NameTags", false, true);
+        super("Nametags", false, true);
     }
 
     public boolean shouldRenderTags(EntityLivingBase entityLivingBase) {

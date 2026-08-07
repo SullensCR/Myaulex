@@ -1,6 +1,7 @@
 package myau.property;
 
 import com.google.gson.JsonObject;
+import myau.config.Config;
 import myau.module.Module;
 
 import java.util.function.BooleanSupplier;
@@ -13,6 +14,7 @@ public abstract class Property<T> {
     private final BooleanSupplier visibleChecker;
     private T value;
     private Module owner;
+    private Property<?> parent;
 
     protected Property(String name, Object value, BooleanSupplier visibleChecker) {
         this(name, value, null, visibleChecker);
@@ -50,6 +52,7 @@ public abstract class Property<T> {
             this.value = (T) object;
             if (this.owner != null) {
                 this.owner.verifyValue(this.name);
+                Config.markDirty(this.owner);
             }
             return true;
         }
@@ -60,6 +63,20 @@ public abstract class Property<T> {
 
     public void setOwner(Module module) {
         this.owner = module;
+    }
+
+    public Property<?> getParent() {
+        return parent;
+    }
+
+    /**
+     * Adds explicit UI hierarchy metadata without changing the property's
+     * existing visibility supplier.
+     */
+    @SuppressWarnings("unchecked")
+    public <P extends Property<T>> P childOf(Property<?> parent) {
+        this.parent = parent;
+        return (P) this;
     }
 
     public abstract boolean parseString(String string);

@@ -9,10 +9,13 @@ import myau.events.Render2DEvent;
 import myau.events.TickEvent;
 import myau.mixin.IAccessorGuiChat;
 import myau.module.Module;
+import myau.render.ui.UiFont;
+import myau.render.ui.UiFonts;
 import myau.util.ColorUtil;
 import myau.util.RenderUtil;
 import myau.util.font.FontManager;
 import myau.util.font.IFont;
+import myau.util.shader.RoundedUtils;
 import myau.property.properties.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiChat;
@@ -31,6 +34,8 @@ import java.util.stream.Collectors;
 
 public class HUD extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
+    private static final UiFonts WATERMARK_FONTS = new UiFonts();
+    private UiFont watermarkFont;
     public static int targetHUDX = 100;
     public static int targetHUDY = 100;
 
@@ -62,6 +67,7 @@ public class HUD extends Module {
     public final IntProperty offsetX = new IntProperty("offset-x", 2, 0, 255);
     public final IntProperty offsetY = new IntProperty("offset-y", 2, 0, 255);
     public final FloatProperty scale = new FloatProperty("scale", 1.0F, 0.5F, 1.5F);
+    public final FloatProperty progressbarSize = new FloatProperty("progressbar-size", 1.0F, 0.5F, 2.0F);
     public final PercentProperty background = new PercentProperty("background", 25);
     public final BooleanProperty showBar = new BooleanProperty("bar", true);
     public final BooleanProperty shadow = new BooleanProperty("shadow", true);
@@ -69,6 +75,13 @@ public class HUD extends Module {
     public final BooleanProperty lowerCase = new BooleanProperty("lower-case", false);
     public final BooleanProperty chatOutline = new BooleanProperty("chat-outline", true);
     public final BooleanProperty blinkTimer = new BooleanProperty("blink-timer", true);
+    public final BooleanProperty watermark = new BooleanProperty("watermark", true);
+    public final FloatProperty watermarkScale = new FloatProperty("watermark-scale", 1.0F, 0.25F, 2.0F,
+            this.watermark::getValue);
+    public final IntProperty watermarkOffsetX = new IntProperty("watermark-offset-x", 8, 0, 512,
+            this.watermark::getValue);
+    public final IntProperty watermarkOffsetY = new IntProperty("watermark-offset-y", 8, 0, 512,
+            this.watermark::getValue);
     public final BooleanProperty toggleSound = new BooleanProperty("toggle-sounds", true);
     public final BooleanProperty toggleAlerts = new BooleanProperty("toggle-alerts", false);
     public final ModeProperty notificationPosition = new ModeProperty("notification-position", 0, new String[]{"BOTTOM_RIGHT", "TOP_RIGHT", "BOTTOM_LEFT", "TOP_LEFT"}, this.toggleAlerts::getValue);
@@ -200,7 +213,7 @@ public class HUD extends Module {
     @EventTarget
     public void onTick(TickEvent event) {
         if (this.isEnabled() && event.getType() == EventType.POST) {
-            for (Module module : Myau.moduleManager.modules.values()) {
+            for (Module module : Myau.moduleManager.ordinaryModules()) {
                 float current = this.moduleAnimations.containsKey(module) ? this.moduleAnimations.get(module) : 0.0F;
                 float target = module.isEnabled() && !module.isHidden() ? 1.0F : 0.0F;
                 float next = current + (target - current) * 0.22F;
@@ -213,7 +226,7 @@ public class HUD extends Module {
                     this.moduleAnimations.remove(module);
                 }
             }
-            this.activeModules = Myau.moduleManager.modules.values().stream().filter(module -> this.moduleAnimations.containsKey(module)).sorted(Comparator.comparingInt(this::getModuleWidth).reversed()).collect(Collectors.<Module>toList());
+            this.activeModules = Myau.moduleManager.ordinaryModules().stream().filter(module -> this.moduleAnimations.containsKey(module)).sorted(Comparator.comparingInt(this::getModuleWidth).reversed()).collect(Collectors.<Module>toList());
         }
     }
 
@@ -236,6 +249,7 @@ public class HUD extends Module {
             }
         }
         if (this.isEnabled() && !mc.gameSettings.showDebugInfo) {
+            this.renderWatermark();
             IFont renderer = this.getHudFont();
             float height = (float) renderer.height() - 1.0F;
             float x = (float) this.offsetX.getValue()
@@ -347,8 +361,62 @@ public class HUD extends Module {
         }
     }
 
+    /** Resolution-independent vector recreation of the exported watermark. */
+    private void renderWatermark() {
+        if (!this.watermark.getValue()) return;
+
+        float scale = this.watermarkScale.getValue();
+        int x = this.watermarkOffsetX.getValue();
+        int y = this.watermarkOffsetY.getValue();
+
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(x, y, 0.0F);
+        GlStateManager.scale(scale, scale, 1.0F);
+
+        RoundedUtils.drawRound(0, 0, 293, 85, 20, 0x631A1A24);
+        RoundedUtils.drawRound(0, 0, 293, 85, 20, 0x801A1A24);
+        RoundedUtils.drawRound(5, 5, 75, 75, 15, 0xCC1A1A24);
+        this.renderWatermarkCat();
+        if (this.watermarkFont == null) {
+            this.watermarkFont = WATERMARK_FONTS.snPro(32, UiFonts.BLACK);
+        }
+        String wordmark = "Myaulex";
+        // UiFont glyph quads include a small atlas-cell overhang beyond their
+        // advance width; account for it so the visible ink is centered.
+        float visualWidth = this.watermarkFont.width(wordmark) + 14.0F;
+        float wordmarkX = 98.0F + (185.0F - visualWidth) / 2.0F;
+        this.watermarkFont.draw(wordmark, wordmarkX, 20, 0xFFD4CFFE, true);
+        GlStateManager.popMatrix();
+    }
+
+    /** Cat mark traced from the supplied SVG paths; no bitmap is used. */
+    private void renderWatermarkCat() {
+        GlStateManager.pushMatrix();
+        GlStateManager.enableBlend();
+        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GlStateManager.disableTexture2D();
+        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        GL11.glLineWidth(4.0F);
+        RenderUtil.glColor(0xFFD4CFFE);
+        drawWatermarkPath(new float[][]{{46.6F, 66.3F}, {54.0F, 65.8F}, {61.5F, 61.8F}, {66.5F, 54.8F}, {69.1F, 48.5F}});
+        drawWatermarkPath(new float[][]{{18.4F, 65.2F}, {18.5F, 45.0F}, {20.8F, 29.4F}, {25.0F, 19.0F}, {29.1F, 18.5F}, {33.0F, 24.7F}, {37.6F, 32.8F}});
+        drawWatermarkPath(new float[][]{{45.0F, 27.9F}, {49.5F, 28.2F}, {54.0F, 31.3F}, {58.2F, 36.5F}, {62.3F, 40.2F}, {67.9F, 41.8F}});
+        drawWatermarkPath(new float[][]{{53.1F, 23.8F}, {50.8F, 18.7F}, {47.0F, 16.3F}, {43.7F, 20.2F}, {40.0F, 24.1F}});
+        drawWatermarkPath(new float[][]{{47.8F, 41.0F}, {49.6F, 40.8F}, {51.0F, 42.7F}, {50.0F, 45.0F}, {48.0F, 44.7F}, {47.2F, 42.8F}});
+        GL11.glDisable(GL11.GL_LINE_SMOOTH);
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+        GlStateManager.popMatrix();
+    }
+
+    private void drawWatermarkPath(float[][] points) {
+        GL11.glBegin(GL11.GL_LINE_STRIP);
+        for (float[] point : points) GL11.glVertex2f(point[0], point[1]);
+        GL11.glEnd();
+    }
+
     private void renderNotifications() {
-        if (!this.toggleAlerts.getValue() || Myau.notificationManager == null) {
+        if (Myau.notificationManager == null) {
             return;
         }
 

@@ -3,6 +3,7 @@ package myau.command.commands;
 import myau.Myau;
 import myau.command.Command;
 import myau.module.modules.GuiModule;
+import myau.ui.ClickGuiScreen;
 import myau.util.ChatUtil;
 import net.minecraft.client.Minecraft;
 
@@ -39,17 +40,21 @@ public class ClickGuiCommand extends Command {
 
         if (subCommand.equals("clickgui-style") || subCommand.equals("style")) {
             if (args.size() < 3) {
-                ChatUtil.sendFormatted(String.format("%sCurrent ClickGUI style: &o%s&r", Myau.clientName, guiModule.clickGuiStyle.getModeString()));
+                ChatUtil.sendFormatted(String.format("%sCurrent ClickGUI style: &o%s&r", Myau.clientName,
+                        Myau.clientSettings.getClickGuiStyle()));
                 return;
             }
 
-            if (!guiModule.clickGuiStyle.parseString(args.get(2))) {
+            String requested = args.get(2);
+            if (!requested.equalsIgnoreCase("old") && !requested.equalsIgnoreCase("modern")) {
                 ChatUtil.sendFormatted(String.format("%sInvalid ClickGUI style (&o%s&r). Use old or modern&r", Myau.clientName, args.get(2)));
                 return;
             }
 
-            ChatUtil.sendFormatted(String.format("%sClickGUI style set to &o%s&r", Myau.clientName, guiModule.clickGuiStyle.getModeString()));
-            if (mc.currentScreen instanceof myau.ui.ClickGui || mc.currentScreen instanceof myau.ui.ModernClickGui) {
+            Myau.clientSettings.setClickGuiStyle(requested);
+            ChatUtil.sendFormatted(String.format("%sClickGUI style set to &o%s&r", Myau.clientName,
+                    Myau.clientSettings.getClickGuiStyle()));
+            if (mc.currentScreen instanceof ClickGuiScreen) {
                 guiModule.openSelectedGui();
             }
             return;

@@ -1,0 +1,843 @@
+{
+  "assets": {
+    "components": {
+      "2012:2": {
+        "id": "2012:2",
+        "key": "4319782cbce5ebb87b5086c7dd05e25cc35f6bab",
+        "name": "Watermark",
+        "parentId": "0:1",
+        "remote": false,
+        "type": "COMPONENT"
+      }
+    },
+    "variables": {
+      "collections": {
+        "VariableCollectionId:2005:45": {
+          "defaultModeId": "2005:0",
+          "hiddenFromPublishing": false,
+          "id": "VariableCollectionId:2005:45",
+          "key": "bf1e2005d50d3d35cf202008659de8930ab03dd5",
+          "modes": [
+            {
+              "modeId": "2005:0",
+              "name": "Mode 1"
+            }
+          ],
+          "name": "Variable collection",
+          "variableIds": [
+            "VariableID:2005:46"
+          ]
+        }
+      },
+      "variables": {
+        "VariableID:2005:46": {
+          "id": "VariableID:2005:46",
+          "key": "4d03ff4ed88565c3e10f77e10ba7f06a44ee7814",
+          "name": "Bar Color",
+          "resolvedType": "COLOR",
+          "scopes": [
+            "ALL_SCOPES"
+          ],
+          "valuesByMode": {
+            "2005:0": {
+              "a": 1,
+              "b": 0.1106,
+              "g": 0.1106,
+              "r": 0.1106
+            }
+          },
+          "variableCollectionId": "VariableCollectionId:2005:45"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "exportedAt": "2026-08-07T02:56:41.308Z",
+    "fileName": "Untitled (Copy)",
+    "format": "canonical",
+    "options": {
+      "includeChildrenDeeply": true,
+      "includeStyledTextSegments": true
+    },
+    "pageId": "0:1",
+    "pageName": "Page 1",
+    "pluginVersion": "0.1.0",
+    "rootNodeIds": [
+      "2012:2"
+    ],
+    "selectionIds": [
+      "2012:2"
+    ]
+  },
+  "nodesById": {
+    "2012:10": {
+      "absoluteBoundingBox": {
+        "height": 13.885,
+        "width": 22.8805,
+        "x": 5890.0005,
+        "y": 2556.9304
+      },
+      "absoluteRenderBounds": {
+        "height": 17.885,
+        "width": 26.8804,
+        "x": 5888.0005,
+        "y": 2554.9304
+      },
+      "appearance": {
+        "cornerRadius": {
+          "all": 0
+        },
+        "strokeAlign": "CENTER",
+        "strokeGeometry": [
+          {
+            "data": "M0 -2 C-1.10457 -2 -2 -1.10457 -2 0 C-2 1.10457 -1.10457 2 0 2 L0 0 L0 -2 Z M22.8805 15.885 C23.985 15.885 24.8805 14.9896 24.8805 13.885 C24.8805 12.7805 23.985 11.885 22.8805 11.885 L22.8805 13.885 L22.8805 15.885 Z M0 0 L0 2 C4.79225 2 7.80418 4.82414 11.0023 8.29729 C12.5331 9.9597 14.1867 11.8595 16.0059 13.2884 C17.8849 14.7642 20.1114 15.885 22.8805 15.885 L22.8805 13.885 L22.8805 11.885 C21.2911 11.885 19.9123 11.2703 18.4766 10.1426 C16.9811 8.96806 15.6105 7.3966 13.9448 5.58775 C10.7502 2.11838 6.68035 -2 0 -2 L0 0 Z",
+            "windingRule": "NONZERO"
+          }
+        ],
+        "strokeJoin": "ROUND",
+        "strokeWeight": 4,
+        "strokes": [
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 1,
+              "b": 0.9958,
+              "g": 0.812,
+              "hex": "#D4CFFEFF",
+              "r": 0.8324
+            },
+            "opacity": 1,
+            "type": "SOLID",
+            "visible": true
+          }
+        ]
+      },
+      "autoLayout": {
+        "sizing": {
+          "horizontal": "fixed",
+          "vertical": "fixed"
+        }
+      },
+      "clipsContent": false,
+      "height": 13.885,
+      "id": "2012:10",
+      "isMask": false,
+      "name": "Vector",
+      "parentId": "2012:6",
+      "relativeBoundingBox": {
+        "height": 13.885,
+        "width": 22.8805,
+        "x": 45.0005,
+        "y": 27.9304
+      },
+      "rotation": 0,
+      "type": "VECTOR",
+      "visible": true,
+      "width": 22.8805,
+      "x": 45.0005,
+      "y": 27.9304
+    },
+    "2012:11": {
+      "absoluteBoundingBox": {
+        "height": 7.8654,
+        "width": 13.0528,
+        "x": 5885.0225,
+        "y": 2545.25
+      },
+      "absoluteRenderBounds": {
+        "height": 11.8657,
+        "width": 17.0537,
+        "x": 5883.022,
+        "y": 2543.25
+      },
+      "appearance": {
+        "cornerRadius": {
+          "all": 0
+        },
+        "strokeAlign": "CENTER",
+        "strokeGeometry": [
+          {
+            "data": "M11.2187 8.35535 C11.6592 9.36829 12.8375 9.83234 13.8504 9.39184 C14.8633 8.95134 15.3274 7.7731 14.8869 6.76017 L13.0528 7.55776 L11.2187 8.35535 Z M-1.77416 6.94215 C-2.28405 7.92199 -1.90307 9.12965 -0.923232 9.63954 C0.0566094 10.1494 1.26427 9.76845 1.77416 8.78861 L0 7.86538 L-1.77416 6.94215 Z M13.0528 7.55776 C14.8869 6.76017 14.8867 6.75985 14.8866 6.75951 C14.8865 6.75936 14.8864 6.75899 14.8862 6.75869 C14.886 6.75808 14.8856 6.75735 14.8853 6.75651 C14.8845 6.75483 14.8836 6.75269 14.8825 6.7501 C14.8802 6.74492 14.8771 6.73792 14.8733 6.72918 C14.8656 6.71169 14.8547 6.68718 14.8408 6.65612 C14.813 6.59402 14.7731 6.50563 14.7218 6.39468 C14.6195 6.17298 14.4716 5.86008 14.2856 5.48612 C13.9156 4.74231 13.3851 3.73771 12.7528 2.72189 C12.13 1.72155 11.3604 0.631729 10.4987 -0.231794 C9.71247 -1.01972 8.47805 -2 6.92954 -2 L6.92954 0 L6.92954 2 C6.79932 2 7.03945 1.96444 7.66725 2.59359 C8.21962 3.14715 8.80352 3.94677 9.35701 4.83586 C9.90087 5.70949 10.3693 6.59433 10.7042 7.2676 C10.8707 7.60218 11.0017 7.87973 11.0902 8.07134 C11.1344 8.16705 11.1678 8.24103 11.1896 8.28964 C11.2004 8.31393 11.2084 8.33187 11.2133 8.34298 C11.2157 8.34853 11.2174 8.35238 11.2183 8.35446 C11.2188 8.3555 11.219 8.3561 11.2191 8.35625 C11.2191 8.35633 11.2191 8.35629 11.2191 8.35614 C11.219 8.35607 11.2189 8.35587 11.2189 8.35583 C11.2188 8.35561 11.2187 8.35535 13.0528 7.55776 Z M6.92954 0 L6.92954 -2 C5.39318 -2 4.1078 -1.00797 3.27859 -0.226687 C2.35294 0.645469 1.48543 1.75417 0.763126 2.785 C0.0312413 3.82951 -0.600068 4.8644 -1.04585 5.63235 C-1.26977 6.01809 -1.44929 6.34066 -1.57388 6.56878 C-1.63622 6.68293 -1.68494 6.77369 -1.71873 6.83715 C-1.73563 6.8689 -1.74881 6.89384 -1.7581 6.91149 C-1.76274 6.92032 -1.76642 6.92733 -1.7691 6.93246 C-1.77044 6.93502 -1.77154 6.93711 -1.77238 6.93873 C-1.7728 6.93954 -1.77316 6.94023 -1.77346 6.9408 C-1.77361 6.94108 -1.77378 6.94142 -1.77386 6.94156 C-1.77402 6.94187 -1.77416 6.94215 0 7.86538 C1.77416 8.78861 1.77405 8.78883 1.77395 8.78901 C1.77394 8.78903 1.77386 8.78919 1.77383 8.78924 C1.77379 8.78933 1.7738 8.7893 1.77387 8.78916 C1.77402 8.78887 1.77442 8.78811 1.77506 8.7869 C1.77633 8.78446 1.77857 8.78019 1.78175 8.77414 C1.78813 8.76203 1.79828 8.7428 1.81205 8.71694 C1.8396 8.66519 1.88158 8.58696 1.9367 8.48604 C2.04702 8.28403 2.20943 7.99211 2.41355 7.64047 C2.82384 6.93367 3.39305 6.00222 4.03898 5.08038 C4.69449 4.14486 5.38208 3.28722 6.02164 2.68462 C6.75766 1.99114 7.04762 2 6.92954 2 L6.92954 0 Z",
+            "windingRule": "NONZERO"
+          }
+        ],
+        "strokeJoin": "ROUND",
+        "strokeWeight": 4,
+        "strokes": [
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 1,
+              "b": 0.9958,
+              "g": 0.812,
+              "hex": "#D4CFFEFF",
+              "r": 0.8324
+            },
+            "opacity": 1,
+            "type": "SOLID",
+            "visible": true
+          }
+        ]
+      },
+      "autoLayout": {
+        "sizing": {
+          "horizontal": "fixed",
+          "vertical": "fixed"
+        }
+      },
+      "clipsContent": false,
+      "height": 7.8654,
+      "id": "2012:11",
+      "isMask": false,
+      "name": "Vector",
+      "parentId": "2012:6",
+      "relativeBoundingBox": {
+        "height": 7.8654,
+        "width": 13.0528,
+        "x": 40.0226,
+        "y": 16.25
+      },
+      "rotation": 0,
+      "type": "VECTOR",
+      "visible": true,
+      "width": 13.0528,
+      "x": 40.0226,
+      "y": 16.25
+    },
+    "2012:2": {
+      "absoluteBoundingBox": {
+        "height": 85,
+        "width": 293,
+        "x": 5845,
+        "y": 2529
+      },
+      "absoluteRenderBounds": {
+        "height": 105,
+        "width": 313,
+        "x": 5835,
+        "y": 2522
+      },
+      "autoLayout": {
+        "layoutMode": "NONE",
+        "sizing": {
+          "horizontal": "fixed",
+          "vertical": "fixed"
+        }
+      },
+      "childIds": [
+        "2012:3",
+        "2012:4",
+        "2012:5",
+        "2012:6"
+      ],
+      "clipsContent": false,
+      "component": {
+        "key": "4319782cbce5ebb87b5086c7dd05e25cc35f6bab",
+        "remote": false
+      },
+      "height": 85,
+      "id": "2012:2",
+      "isMask": false,
+      "name": "Watermark",
+      "parentId": "0:1",
+      "relativeBoundingBox": {
+        "height": 85,
+        "width": 293,
+        "x": 5845,
+        "y": 2529
+      },
+      "rotation": 0,
+      "type": "COMPONENT",
+      "visible": true,
+      "width": 293,
+      "x": 5845,
+      "y": 2529
+    },
+    "2012:3": {
+      "absoluteBoundingBox": {
+        "height": 85,
+        "width": 293,
+        "x": 5845,
+        "y": 2529
+      },
+      "absoluteRenderBounds": {
+        "height": 105,
+        "width": 313,
+        "x": 5835,
+        "y": 2522
+      },
+      "appearance": {
+        "cornerRadius": {
+          "all": 20,
+          "bottomLeft": 20,
+          "bottomRight": 20,
+          "topLeft": 20,
+          "topRight": 20
+        },
+        "effects": [
+          {
+            "radius": 31,
+            "type": "BACKGROUND_BLUR",
+            "visible": true
+          },
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 0.39,
+              "b": 0,
+              "g": 0,
+              "hex": "#00000063",
+              "r": 0
+            },
+            "offset": {
+              "x": 0,
+              "y": 3
+            },
+            "radius": 10,
+            "spread": 0,
+            "type": "DROP_SHADOW",
+            "visible": true
+          }
+        ],
+        "fills": [
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 0.5,
+              "b": 0.1412,
+              "g": 0.102,
+              "hex": "#1A1A2480",
+              "r": 0.102
+            },
+            "opacity": 0.5,
+            "type": "SOLID",
+            "visible": true
+          }
+        ]
+      },
+      "autoLayout": {
+        "sizing": {
+          "horizontal": "fixed",
+          "vertical": "fixed"
+        }
+      },
+      "clipsContent": false,
+      "height": 85,
+      "id": "2012:3",
+      "isMask": false,
+      "name": "Rectangle 10",
+      "parentId": "2012:2",
+      "relativeBoundingBox": {
+        "height": 85,
+        "width": 293,
+        "x": 0,
+        "y": 0
+      },
+      "rotation": 0,
+      "type": "RECTANGLE",
+      "visible": true,
+      "width": 293,
+      "x": 0,
+      "y": 0
+    },
+    "2012:4": {
+      "absoluteBoundingBox": {
+        "height": 62,
+        "width": 183,
+        "x": 5940,
+        "y": 2541
+      },
+      "absoluteRenderBounds": {
+        "height": 51.376,
+        "width": 186.6426,
+        "x": 5938.3599,
+        "y": 2553.4561
+      },
+      "appearance": {
+        "effects": [
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 0.53,
+              "b": 0,
+              "g": 0,
+              "hex": "#00000087",
+              "r": 0
+            },
+            "offset": {
+              "x": 0,
+              "y": 3
+            },
+            "radius": 5,
+            "spread": 0,
+            "type": "DROP_SHADOW",
+            "visible": true
+          }
+        ],
+        "fills": [
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 1,
+              "b": 0.9961,
+              "g": 0.8118,
+              "hex": "#D4CFFEFF",
+              "r": 0.8314
+            },
+            "opacity": 1,
+            "type": "SOLID",
+            "visible": true
+          }
+        ]
+      },
+      "autoLayout": {
+        "sizing": {
+          "horizontal": "hug",
+          "vertical": "hug"
+        }
+      },
+      "clipsContent": false,
+      "height": 62,
+      "id": "2012:4",
+      "isMask": false,
+      "name": "Myaulex",
+      "parentId": "2012:2",
+      "relativeBoundingBox": {
+        "height": 62,
+        "width": 183,
+        "x": 95,
+        "y": 12
+      },
+      "rotation": 0,
+      "text": {
+        "characters": "Myaulex",
+        "fontName": {
+          "family": "SN Pro",
+          "style": "SemiBold"
+        },
+        "fontSize": 48,
+        "fontWeight": 600,
+        "letterSpacing": {
+          "unit": "PERCENT",
+          "value": 0
+        },
+        "lineHeight": {
+          "unit": "AUTO"
+        },
+        "paragraphIndent": 0,
+        "paragraphSpacing": 0,
+        "textAlignHorizontal": "LEFT",
+        "textAlignVertical": "TOP",
+        "textAutoResize": "WIDTH_AND_HEIGHT",
+        "textCase": "ORIGINAL",
+        "textDecoration": "NONE",
+        "textTruncation": "DISABLED"
+      },
+      "type": "TEXT",
+      "visible": true,
+      "width": 183,
+      "x": 95,
+      "y": 12
+    },
+    "2012:5": {
+      "absoluteBoundingBox": {
+        "height": 75,
+        "width": 75,
+        "x": 5850,
+        "y": 2534
+      },
+      "absoluteRenderBounds": {
+        "height": 84.6001,
+        "width": 84.5996,
+        "x": 5845.2002,
+        "y": 2531.2
+      },
+      "appearance": {
+        "cornerRadius": {
+          "all": 15,
+          "bottomLeft": 15,
+          "bottomRight": 15,
+          "topLeft": 15,
+          "topRight": 15
+        },
+        "effects": [
+          {
+            "radius": 31,
+            "type": "BACKGROUND_BLUR",
+            "visible": true
+          },
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 0.39,
+              "b": 0,
+              "g": 0,
+              "hex": "#00000063",
+              "r": 0
+            },
+            "offset": {
+              "x": 0,
+              "y": 2
+            },
+            "radius": 4.8,
+            "spread": 0,
+            "type": "DROP_SHADOW",
+            "visible": true
+          }
+        ],
+        "fills": [
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 0.8,
+              "b": 0.1412,
+              "g": 0.102,
+              "hex": "#1A1A24CC",
+              "r": 0.102
+            },
+            "opacity": 0.8,
+            "type": "SOLID",
+            "visible": true
+          }
+        ]
+      },
+      "autoLayout": {
+        "sizing": {
+          "horizontal": "fixed",
+          "vertical": "fixed"
+        }
+      },
+      "clipsContent": false,
+      "height": 75,
+      "id": "2012:5",
+      "isMask": false,
+      "name": "box",
+      "parentId": "2012:2",
+      "relativeBoundingBox": {
+        "height": 75,
+        "width": 75,
+        "x": 5,
+        "y": 5
+      },
+      "rotation": 0,
+      "type": "RECTANGLE",
+      "visible": true,
+      "width": 75,
+      "x": 5,
+      "y": 5
+    },
+    "2012:6": {
+      "absoluteBoundingBox": {
+        "height": 50.0107,
+        "width": 50.6251,
+        "x": 5863.4346,
+        "y": 2545.25
+      },
+      "absoluteRenderBounds": {
+        "height": 54.011,
+        "width": 54.6255,
+        "x": 5861.4346,
+        "y": 2543.25
+      },
+      "autoLayout": {
+        "sizing": {
+          "horizontal": "fixed",
+          "vertical": "fixed"
+        }
+      },
+      "childIds": [
+        "2012:7",
+        "2012:8",
+        "2012:9",
+        "2012:10",
+        "2012:11"
+      ],
+      "clipsContent": false,
+      "height": 50.0107,
+      "id": "2012:6",
+      "isMask": false,
+      "name": "cat",
+      "parentId": "2012:2",
+      "relativeBoundingBox": {
+        "height": 50.0107,
+        "width": 50.6251,
+        "x": 18.4348,
+        "y": 16.2501
+      },
+      "rotation": 0,
+      "type": "GROUP",
+      "visible": true,
+      "width": 50.6251,
+      "x": 18.4348,
+      "y": 16.2501
+    },
+    "2012:7": {
+      "absoluteBoundingBox": {
+        "height": 17.776,
+        "width": 22.437,
+        "x": 5891.6226,
+        "y": 2577.4849
+      },
+      "absoluteRenderBounds": {
+        "height": 21.7766,
+        "width": 26.4375,
+        "x": 5889.6226,
+        "y": 2575.4844
+      },
+      "appearance": {
+        "cornerRadius": {
+          "all": 0
+        },
+        "strokeAlign": "CENTER",
+        "strokeGeometry": [
+          {
+            "data": "M-0.0723867 15.7773 C-1.17623 15.8173 -2.03867 16.7445 -1.99869 17.8484 C-1.95871 18.9522 -1.03146 19.8147 0.0723867 19.7747 L0 17.776 L-0.0723867 15.7773 Z M24.3897 0.432254 C24.6285 -0.646209 23.9477 -1.714 22.8693 -1.95273 C21.7908 -2.19146 20.723 -1.51072 20.4843 -0.432254 L22.437 0 L24.3897 0.432254 Z M0 17.776 C0.0723867 19.7747 0.0733458 19.7747 0.0743758 19.7746 C0.0748145 19.7746 0.0759185 19.7746 0.0767964 19.7745 C0.0785536 19.7745 0.0805975 19.7744 0.0829261 19.7743 C0.0875832 19.7741 0.0933794 19.7739 0.100299 19.7736 C0.114136 19.773 0.132469 19.7721 0.155166 19.771 C0.200557 19.7687 0.263434 19.7651 0.342759 19.7599 C0.50137 19.7493 0.726001 19.7319 1.00834 19.7036 C1.57257 19.647 2.36987 19.5468 3.33318 19.3706 C5.25405 19.0194 7.86662 18.3609 10.6183 17.1252 C16.1497 14.6412 22.3226 9.77081 24.3897 0.432254 L22.437 0 L20.4843 -0.432254 C18.7661 7.32968 13.7205 11.3473 8.97969 13.4762 C6.59529 14.547 4.30836 15.126 2.61375 15.4359 C1.76933 15.5903 1.07989 15.6764 0.609328 15.7235 C0.374262 15.7471 0.194478 15.7609 0.0780228 15.7686 C0.0198154 15.7725 -0.0225034 15.7748 -0.0479249 15.7761 C-0.0606335 15.7768 -0.0691114 15.7771 -0.0732325 15.7773 C-0.0752927 15.7774 -0.076263 15.7775 -0.0761276 15.7774 C-0.0760598 15.7774 -0.0757155 15.7774 -0.0750928 15.7774 C-0.074782 15.7774 -0.074104 15.7774 -0.0739494 15.7774 C-0.0732035 15.7773 -0.0723867 15.7773 0 17.776 Z",
+            "windingRule": "NONZERO"
+          }
+        ],
+        "strokeJoin": "ROUND",
+        "strokeWeight": 4,
+        "strokes": [
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 1,
+              "b": 0.9958,
+              "g": 0.812,
+              "hex": "#D4CFFEFF",
+              "r": 0.8324
+            },
+            "opacity": 1,
+            "type": "SOLID",
+            "visible": true
+          }
+        ]
+      },
+      "autoLayout": {
+        "sizing": {
+          "horizontal": "fixed",
+          "vertical": "fixed"
+        }
+      },
+      "clipsContent": false,
+      "height": 17.776,
+      "id": "2012:7",
+      "isMask": false,
+      "name": "Vector",
+      "parentId": "2012:6",
+      "relativeBoundingBox": {
+        "height": 17.776,
+        "width": 22.437,
+        "x": 46.6229,
+        "y": 48.4849
+      },
+      "rotation": 0,
+      "type": "VECTOR",
+      "visible": true,
+      "width": 22.437,
+      "x": 46.6229,
+      "y": 48.4849
+    },
+    "2012:8": {
+      "absoluteBoundingBox": {
+        "height": 46.7195,
+        "width": 19.1631,
+        "x": 5863.4346,
+        "y": 2547.4966
+      },
+      "absoluteRenderBounds": {
+        "height": 50.7195,
+        "width": 23.1636,
+        "x": 5861.4346,
+        "y": 2545.4966
+      },
+      "appearance": {
+        "cornerRadius": {
+          "all": 0
+        },
+        "strokeAlign": "CENTER",
+        "strokeGeometry": [
+          {
+            "data": "M-2 46.7195 C-2 47.8241 -1.10457 48.7195 0 48.7195 C1.10457 48.7195 2 47.8241 2 46.7195 L0 46.7195 L-2 46.7195 Z M17.2593 14.8896 C17.5977 15.941 18.7244 16.5191 19.7758 16.1807 C20.8273 15.8423 21.4053 14.7156 21.0669 13.6641 L19.1631 14.2769 L17.2593 14.8896 Z M10.6825 0 L10.6825 -2 C9.40203 -2 8.38443 -1.2578 7.68544 -0.550644 C6.94376 0.199709 6.2546 1.21708 5.61544 2.39719 C4.32984 4.77084 3.06691 8.14083 1.95202 12.309 C-0.283869 20.6681 -2 32.5241 -2 46.7195 L0 46.7195 L2 46.7195 C2 32.8243 3.68225 21.3205 5.81618 13.3426 C6.8862 9.34216 8.05103 6.29927 9.13269 4.30217 C9.67715 3.2969 10.1565 2.63943 10.5303 2.26129 C10.9467 1.83996 10.9915 2 10.6825 2 L10.6825 0 Z M19.1631 14.2769 C21.0669 13.6641 21.0668 13.6638 21.0667 13.6635 C21.0667 13.6633 21.0665 13.6629 21.0664 13.6626 C21.0662 13.6618 21.0659 13.6608 21.0655 13.6597 C21.0647 13.6573 21.0637 13.6541 21.0624 13.6501 C21.0598 13.6419 21.056 13.6304 21.0512 13.6156 C21.0415 13.586 21.0275 13.5432 21.0093 13.4882 C20.9729 13.3781 20.9196 13.2189 20.8509 13.0174 C20.7134 12.6147 20.5136 12.0424 20.2619 11.3567 C19.7598 9.98932 19.0443 8.15309 18.1984 6.30573 C17.3611 4.47745 16.3569 2.55087 15.2622 1.05143 C14.716 0.303393 14.0938 -0.413308 13.3971 -0.959983 C12.7122 -1.49744 11.788 -2 10.6825 -2 L10.6825 0 L10.6825 2 C10.5485 2 10.6178 1.94359 10.9279 2.1869 C11.2262 2.42099 11.6005 2.81967 12.0316 3.41008 C12.8912 4.58755 13.7643 6.23019 14.5615 7.97112 C15.35 9.69298 16.0261 11.426 16.507 12.7355 C16.7467 13.3883 16.9363 13.9313 17.0653 14.3094 C17.1298 14.4983 17.179 14.6458 17.2118 14.7448 C17.2282 14.7944 17.2405 14.8318 17.2484 14.8562 C17.2524 14.8684 17.2553 14.8774 17.2571 14.883 C17.258 14.8858 17.2587 14.8877 17.259 14.8888 C17.2592 14.8894 17.2593 14.8897 17.2594 14.8899 C17.2594 14.8899 17.2594 14.8898 17.2594 14.8899 C17.2593 14.8898 17.2593 14.8896 19.1631 14.2769 Z",
+            "windingRule": "NONZERO"
+          }
+        ],
+        "strokeJoin": "ROUND",
+        "strokeWeight": 4,
+        "strokes": [
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 1,
+              "b": 0.9958,
+              "g": 0.812,
+              "hex": "#D4CFFEFF",
+              "r": 0.8324
+            },
+            "opacity": 1,
+            "type": "SOLID",
+            "visible": true
+          }
+        ]
+      },
+      "autoLayout": {
+        "sizing": {
+          "horizontal": "fixed",
+          "vertical": "fixed"
+        }
+      },
+      "clipsContent": false,
+      "height": 46.7195,
+      "id": "2012:8",
+      "isMask": false,
+      "name": "Vector",
+      "parentId": "2012:6",
+      "relativeBoundingBox": {
+        "height": 46.7195,
+        "width": 19.1631,
+        "x": 18.4348,
+        "y": 18.4966
+      },
+      "rotation": 0,
+      "type": "VECTOR",
+      "visible": true,
+      "width": 19.1631,
+      "x": 18.4348,
+      "y": 18.4966
+    },
+    "2012:9": {
+      "absoluteBoundingBox": {
+        "height": 9.3166,
+        "width": 7.2389,
+        "x": 5888.9404,
+        "y": 2568.9351
+      },
+      "absoluteRenderBounds": {
+        "height": 9.0579,
+        "width": 7.5645,
+        "x": 5890.2554,
+        "y": 2567.3757
+      },
+      "appearance": {
+        "cornerRadius": {
+          "all": 0
+        },
+        "fillGeometry": [
+          {
+            "data": "M3.61942 9.3166 C5.61837 9.3166 7.23887 7.231 7.23887 4.6583 C7.23887 2.08559 5.61837 0 3.61942 0 C1.62047 0 0 2.08559 0 4.6583 C0 7.231 1.62047 9.3166 3.61942 9.3166 Z",
+            "windingRule": "NONZERO"
+          }
+        ],
+        "fills": [
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 1,
+              "b": 0.9521,
+              "g": 0.8163,
+              "hex": "#D4D0F3FF",
+              "r": 0.8314
+            },
+            "opacity": 1,
+            "type": "SOLID",
+            "visible": true
+          }
+        ],
+        "strokeAlign": "INSIDE",
+        "strokeGeometry": [
+          {
+            "data": "M7.23887 4.6583 L3.23887 4.6583 C3.23887 5.12907 3.08648 5.41261 3.02014 5.498 C2.99177 5.5345 3.01222 5.49372 3.11581 5.43733 C3.22902 5.3757 3.40629 5.3166 3.61942 5.3166 L3.61942 9.3166 L3.61942 13.3166 C8.70801 13.3166 11.2389 8.44224 11.2389 4.6583 L7.23887 4.6583 Z M3.61942 9.3166 L3.61942 5.3166 C3.83255 5.3166 4.00982 5.3757 4.12304 5.43734 C4.22664 5.49373 4.24709 5.53452 4.21873 5.49801 C4.15239 5.41263 4 5.12909 4 4.6583 L0 4.6583 L-4 4.6583 C-4 8.44219 -1.4692 13.3166 3.61942 13.3166 L3.61942 9.3166 Z M0 4.6583 L4 4.6583 C4 4.18751 4.15239 3.90396 4.21873 3.81858 C4.24709 3.78208 4.22664 3.82286 4.12304 3.87926 C4.00982 3.94089 3.83255 4 3.61942 4 L3.61942 0 L3.61942 -4 C-1.4692 -4 -4 0.874394 -4 4.6583 L0 4.6583 Z M3.61942 0 L3.61942 4 C3.40629 4 3.22903 3.94089 3.11581 3.87926 C3.01222 3.82287 2.99178 3.78209 3.02014 3.8186 C3.08648 3.90398 3.23887 4.18752 3.23887 4.6583 L7.23887 4.6583 L11.2389 4.6583 C11.2389 0.874352 8.70801 -4 3.61942 -4 L3.61942 0 Z",
+            "windingRule": "NONZERO"
+          }
+        ],
+        "strokeJoin": "MITER",
+        "strokeWeight": 4,
+        "strokes": [
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 1,
+              "b": 0.9958,
+              "g": 0.812,
+              "hex": "#D4CFFEFF",
+              "r": 0.8324
+            },
+            "opacity": 1,
+            "type": "SOLID",
+            "visible": true
+          }
+        ]
+      },
+      "autoLayout": {
+        "sizing": {
+          "horizontal": "fixed",
+          "vertical": "fixed"
+        }
+      },
+      "clipsContent": false,
+      "height": 9.3166,
+      "id": "2012:9",
+      "isMask": false,
+      "name": "Vector",
+      "parentId": "2012:6",
+      "relativeBoundingBox": {
+        "height": 9.3166,
+        "width": 7.2389,
+        "x": 43.9408,
+        "y": 39.9351
+      },
+      "rotation": 21.9285,
+      "type": "VECTOR",
+      "visible": true,
+      "width": 7.2389,
+      "x": 43.9408,
+      "y": 39.9351
+    }
+  },
+  "schemaVersion": "2.0.0",
+  "textRuns": {
+    "2012:4": [
+      {
+        "characters": "Myaulex",
+        "end": 7,
+        "fills": [
+          {
+            "blendMode": "NORMAL",
+            "color": {
+              "a": 1,
+              "b": 0.9961,
+              "g": 0.8118,
+              "hex": "#D4CFFEFF",
+              "r": 0.8314
+            },
+            "opacity": 1,
+            "type": "SOLID",
+            "visible": true
+          }
+        ],
+        "fontName": {
+          "family": "SN Pro",
+          "style": "SemiBold"
+        },
+        "fontSize": 48,
+        "fontWeight": 600,
+        "indentation": 0,
+        "letterSpacing": {
+          "unit": "PERCENT",
+          "value": 0
+        },
+        "lineHeight": {
+          "unit": "AUTO"
+        },
+        "listOptions": {
+          "type": "NONE"
+        },
+        "paragraphIndent": 0,
+        "paragraphSpacing": 0,
+        "start": 0,
+        "textCase": "ORIGINAL",
+        "textDecoration": "NONE"
+      }
+    ]
+  }
+}

@@ -8,6 +8,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityArmorStand;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.monster.EntityMob;
+import net.minecraft.entity.passive.EntityAnimal;
+import net.minecraft.item.ItemArmor;
+import net.minecraft.item.ItemStack;
 import net.minecraft.scoreboard.ScorePlayerTeam;
 
 import java.awt.*;
@@ -60,6 +64,16 @@ public class TeamUtil {
         if (player == TeamUtil.mc.thePlayer) {
             return false;
         }
+        if (Myau.clientSettings != null) {
+            int mode = Myau.clientSettings.getBotFilterMode();
+            if (mode == 2) return false;
+            if (mode == 1) {
+                return player.ticksExisted > 40
+                        && Math.abs(player.posX - player.lastTickPosX) < 1.0E-4
+                        && Math.abs(player.posY - player.lastTickPosY) < 1.0E-4
+                        && Math.abs(player.posZ - player.lastTickPosZ) < 1.0E-4;
+            }
+        }
         NetworkPlayerInfo playerInfo = mc.getNetHandler().getPlayerInfo(player.getName());
         if (playerInfo == null) {
             return true;
@@ -80,6 +94,11 @@ public class TeamUtil {
     public static boolean isSameTeam(EntityPlayer player) {
         if (player == TeamUtil.mc.thePlayer) {
             return true;
+        }
+        if (Myau.clientSettings != null) {
+            int mode = Myau.clientSettings.getTeamsMode();
+            if (mode == 2) return false;
+            if (mode == 0) return hasMatchingArmor(player);
         }
         NetworkPlayerInfo selfInfo = mc.getNetHandler().getPlayerInfo(TeamUtil.mc.thePlayer.getUniqueID());
         if (selfInfo == null) {
@@ -142,5 +161,31 @@ public class TeamUtil {
 
     public static boolean isTarget(EntityPlayer player) {
         return Myau.targetManager.isFriend(player.getName());
+    }
+
+    public static boolean isAllowedTarget(EntityLivingBase entity) {
+        if (entity == null || Myau.clientSettings == null) return entity != null;
+        if (entity instanceof EntityPlayer) return Myau.clientSettings.isTargetPlayers();
+        if (entity instanceof EntityAnimal) return Myau.clientSettings.isTargetAnimals();
+        if (entity instanceof EntityMob) return Myau.clientSettings.isTargetMobs();
+        return true;
+    }
+
+    private static boolean hasMatchingArmor(EntityPlayer player) {
+        if (mc.thePlayer == null) return false;
+        for (int slot = 0; slot < 4; slot++) {
+            ItemStack self = mc.thePlayer.inventory.armorInventory[slot];
+            ItemStack other = player.inventory.armorInventory[slot];
+            if (self == null || other == null) continue;
+            if (!(self.getItem() instanceof ItemArmor) || !(other.getItem() instanceof ItemArmor)) continue;
+            if (self.getItem() != other.getItem()) return false;
+            ItemArmor selfArmor = (ItemArmor) self.getItem();
+            ItemArmor otherArmor = (ItemArmor) other.getItem();
+            if (selfArmor.getArmorMaterial() == ItemArmor.ArmorMaterial.LEATHER
+                    && otherArmor.getArmorMaterial() == ItemArmor.ArmorMaterial.LEATHER
+                    && selfArmor.getColor(self) != otherArmor.getColor(other)) return false;
+            return true;
+        }
+        return false;
     }
 }

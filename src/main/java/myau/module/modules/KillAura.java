@@ -142,7 +142,7 @@ public class KillAura extends Module {
     private long lastRotationUpdateTime = 0;
 
     public KillAura() {
-        super("KillAura", false, false, "Kill +999999 Aura");
+        super("Aura", false, false, "Automatically attacks valid nearby targets.");
         this.lastTickProcessed = 0;
 
         // 新增CPS模式属性
@@ -358,7 +358,9 @@ public class KillAura extends Module {
     }
 
     private boolean isValidTarget(EntityLivingBase entityLivingBase) {
-        if (!mc.theWorld.loadedEntityList.contains(entityLivingBase)) {
+        if (!TeamUtil.isAllowedTarget(entityLivingBase)) {
+            return false;
+        } else if (!mc.theWorld.loadedEntityList.contains(entityLivingBase)) {
             return false;
         } else if (entityLivingBase != mc.thePlayer && entityLivingBase != mc.thePlayer.ridingEntity) {
             if (entityLivingBase == mc.getRenderViewEntity() || entityLivingBase == mc.getRenderViewEntity().ridingEntity) {
@@ -1454,7 +1456,11 @@ public class KillAura extends Module {
             this.hitRegistered = false;
             this.attackDelayMS = 0L;
             this.blockTick = 0;
-            this.serverRotation = new Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch);
+            // Config is loaded before Minecraft has created the local player.
+            // Keep the default rotation until the first in-game tick initializes it.
+            if (mc.thePlayer != null) {
+                this.serverRotation = new Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch);
+            }
             this.currentAimVec = null;
             this.isSmoothBacking = false;
             this.lastRotationUpdateTime = 0;
@@ -1508,5 +1514,11 @@ public class KillAura extends Module {
             this.y = entity.posY;
             this.z = entity.posZ;
         }
+
+        public AxisAlignedBB getBox() { return this.box; }
+        public EntityLivingBase getEntity() { return this.entity; }
+        public double getX() { return this.x; }
+        public double getY() { return this.y; }
+        public double getZ() { return this.z; }
     }
 }

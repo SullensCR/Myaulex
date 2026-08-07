@@ -3,6 +3,8 @@ package myau.util.font;
 import myau.util.font.impl.FontRenderer;
 import myau.util.font.impl.FontUtil;
 import myau.util.font.impl.MinecraftFontRenderer;
+import myau.util.font.variable.FontAxes;
+import myau.util.font.variable.OpenTypeVariableFont;
 import net.minecraft.client.gui.ScaledResolution;
 
 import java.util.HashMap;
@@ -24,6 +26,8 @@ public class FontManager {
             nunitoBold12, nunitoBold16, nunitoBold18, nunitoBold20, nunitoBold24, nunitoBold28, nunitoBold32, nunitoBold48, nunitoBold80, harmonyOS_Sans20;
 
     private static int prevScale;
+    private static final Map<String, OpenTypeVariableFont> variableFamilies = new HashMap<>();
+    private static final Map<String, FontRenderer> variableRenderers = new HashMap<>();
 
     static {
         initializeFonts();
@@ -390,6 +394,37 @@ public class FontManager {
             nunitoBold80.destroy();
             nunitoBold80 = null;
         }
+        for (FontRenderer renderer : variableRenderers.values()) {
+            renderer.destroy();
+        }
+        variableRenderers.clear();
+        variableFamilies.clear();
+    }
+
+    /** Returns a variable-font renderer keyed by resource, size, and axis tuple. */
+    public static FontRenderer variable(String resourcePath, int size, FontAxes axes) {
+        ScaledResolution sr = new ScaledResolution(mc);
+        int scaledSize = Math.max(1, (int) (size * ((double) sr.getScaleFactor() / 2)));
+        OpenTypeVariableFont family = variableFamilies.get(resourcePath);
+        if (family == null) {
+            try {
+                family = OpenTypeVariableFont.load(resourcePath);
+                variableFamilies.put(resourcePath, family);
+            } catch (Exception exception) {
+                System.err.println("[Myaulex] Failed to load variable font: " + resourcePath);
+                FontRenderer fallback = new FontRenderer(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, scaledSize));
+                variableRenderers.put(resourcePath + ":" + scaledSize + ":fallback", fallback);
+                return fallback;
+            }
+        }
+        FontAxes clamped = family.clamp(axes);
+        String key = resourcePath + ':' + scaledSize + ':' + clamped.cacheKey();
+        FontRenderer renderer = variableRenderers.get(key);
+        if (renderer == null) {
+            renderer = new FontRenderer(family, scaledSize, clamped);
+            variableRenderers.put(key, renderer);
+        }
+        return renderer;
     }
 
     public static float getStringWidth(FontRenderer font, String text) {
@@ -405,4 +440,3 @@ public class FontManager {
     }
 
 }
-

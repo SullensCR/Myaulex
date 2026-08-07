@@ -34,6 +34,7 @@ public class AimAssist extends Module {
     public final BooleanProperty team = new BooleanProperty("teams", true);
 
     private boolean isValidTarget(EntityPlayer entityPlayer) {
+        if (!TeamUtil.isAllowedTarget(entityPlayer)) return false;
         if (entityPlayer != mc.thePlayer && entityPlayer != mc.thePlayer.ridingEntity) {
             if (entityPlayer == mc.getRenderViewEntity() || entityPlayer == mc.getRenderViewEntity().ridingEntity) {
                 return false;
@@ -56,9 +57,7 @@ public class AimAssist extends Module {
     }
 
     private boolean isInReach(EntityPlayer entityPlayer) {
-        Reach reach = (Reach) Myau.moduleManager.modules.get(Reach.class);
-        double distance = reach.isEnabled() ? (double) reach.range.getValue() : 3.0;
-        return RotationUtil.distanceToEntity(entityPlayer) <= distance;
+        return RotationUtil.distanceToEntity(entityPlayer) <= 3.0;
     }
 
     private boolean isLookingAtBlock() {

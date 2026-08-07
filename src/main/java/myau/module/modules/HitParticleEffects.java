@@ -25,7 +25,7 @@ public class HitParticleEffects extends Module {
     public final BooleanProperty onlyCrits = new BooleanProperty("only-crits", false);
 
     public HitParticleEffects() {
-        super("HitParticleEffects", false);
+        super("Particles", false);
     }
 
     @EventTarget
@@ -36,8 +36,7 @@ public class HitParticleEffects extends Module {
         EntityLivingBase target = (EntityLivingBase) event.getTarget();
 
         if (this.onlyCrits.getValue()) {
-            // A more robust critical check might involve looking at the Criticals module state or damage type.
-            // For simplicity, this is a basic vanilla-like critical hit indicator.
+            // This is a basic vanilla-like critical-hit indicator.
             boolean isCritical = mc.thePlayer.fallDistance > 0.0F && !mc.thePlayer.onGround && !mc.thePlayer.isInWater() && !mc.thePlayer.isRiding();
             if (!isCritical) return;
         }
@@ -83,4 +82,3 @@ public class HitParticleEffects extends Module {
         }
     }
 }
-

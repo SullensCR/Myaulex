@@ -10,6 +10,9 @@ import myau.module.modules.HUD;
 import myau.util.SoundUtil;
 
 import java.util.LinkedHashMap;
+import java.util.Collection;
+import java.util.stream.Collectors;
+import myau.ui.modern.ModuleCatalog;
 
 public class ModuleManager {
     private boolean sound = false;
@@ -19,8 +22,20 @@ public class ModuleManager {
         return this.modules.values().stream().filter(mD -> mD.getName().equalsIgnoreCase(string)).findFirst().orElse(null);
     }
 
+    public Module getOrdinaryModule(String name) {
+        return ordinaryModules().stream()
+                .filter(module -> module.getName().equalsIgnoreCase(name))
+                .findFirst().orElse(null);
+    }
+
     public Module getModule(Class<?> clazz){
         return this.modules.get(clazz);
+    }
+
+    public Collection<Module> ordinaryModules() {
+        return this.modules.values().stream()
+                .filter(ModuleCatalog::isOrdinary)
+                .collect(Collectors.toList());
     }
 
     public void playSound() {

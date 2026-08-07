@@ -32,8 +32,7 @@ public class AntiVoid extends Module {
     }
 
     private boolean canUseAntiVoid() {
-        LongJump longJump = (LongJump) Myau.moduleManager.modules.get(LongJump.class);
-        return !longJump.isJumping();
+        return true;
     }
 
     public AntiVoid() {

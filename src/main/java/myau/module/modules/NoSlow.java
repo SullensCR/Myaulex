@@ -38,13 +38,8 @@ public class NoSlow extends Module {
         super("NoSlow", false);
     }
 
-    private boolean isKillAuraEnabled() {
-        KillAura killAura = (KillAura) Myau.moduleManager.modules.get(KillAura.class);
-        return killAura != null && killAura.isEnabled();
-    }
-
     public boolean isSwordActive() {
-        return this.swordMode.getValue() != 0 && ItemUtil.isHoldingSword() && this.isKillAuraEnabled();
+        return this.swordMode.getValue() != 0 && ItemUtil.isHoldingSword();
     }
 
     public boolean isFoodActive() {
@@ -71,7 +66,7 @@ public class NoSlow extends Module {
     }
 
     public int getMotionMultiplier() {
-        if (ItemUtil.isHoldingSword() && this.isKillAuraEnabled()) {
+        if (ItemUtil.isHoldingSword()) {
             return this.swordMotion.getValue();
         } else if (ItemUtil.isEating()) {
             return this.foodMotion.getValue();

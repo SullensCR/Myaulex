@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import myau.Myau;
 import myau.config.Config;
 import myau.module.Module;
+import myau.ui.modern.ModuleCatalog;
 import myau.module.modules.*;
 import myau.ui.components.CategoryComponent;
 import myau.util.font.FontManager;
@@ -22,7 +23,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.List;
 
-public class ClickGui extends GuiScreen {
+public class ClickGui extends GuiScreen implements ClickGuiScreen {
     private static ClickGui instance;
     private final File configFile = new File(Config.CONFIG_DIR, "clickgui.txt");
     private final ArrayList<CategoryComponent> categoryList;
@@ -36,31 +37,19 @@ public class ClickGui extends GuiScreen {
         combatModules.add(Myau.moduleManager.getModule(KillAura.class));
         combatModules.add(Myau.moduleManager.getModule(Wtap.class));
         combatModules.add(Myau.moduleManager.getModule(Velocity.class));
-        combatModules.add(Myau.moduleManager.getModule(Freeze.class));
-        combatModules.add(Myau.moduleManager.getModule(Reach.class));
-        combatModules.add(Myau.moduleManager.getModule(TargetStrafe.class));
         combatModules.add(Myau.moduleManager.getModule(NoHitDelay.class));
         combatModules.add(Myau.moduleManager.getModule(AntiFireball.class));
         combatModules.add(Myau.moduleManager.getModule(LagRange.class));
-        combatModules.add(Myau.moduleManager.getModule(HitBox.class));
         combatModules.add(Myau.moduleManager.getModule(MoreKB.class));
-        combatModules.add(Myau.moduleManager.getModule(Refill.class));
 
         List<Module> movementModules = new ArrayList<>();
-        movementModules.add(Myau.moduleManager.getModule(AntiAFK.class));
-        movementModules.add(Myau.moduleManager.getModule(Fly.class));
         movementModules.add(Myau.moduleManager.getModule(Speed.class));
-        movementModules.add(Myau.moduleManager.getModule(myau.module.modules.Timer.class));
-        movementModules.add(Myau.moduleManager.getModule(LongJump.class));
+        movementModules.add(Myau.moduleManager.getModule(Stasis.class));
         movementModules.add(Myau.moduleManager.getModule(Sprint.class));
-        movementModules.add(Myau.moduleManager.getModule(SafeWalk.class));
-        movementModules.add(Myau.moduleManager.getModule(Jesus.class));
         movementModules.add(Myau.moduleManager.getModule(Blink.class));
         movementModules.add(Myau.moduleManager.getModule(FakeLag.class));
-        movementModules.add(Myau.moduleManager.getModule(NoFall.class));
         movementModules.add(Myau.moduleManager.getModule(NoSlow.class));
         movementModules.add(Myau.moduleManager.getModule(KeepSprint.class));
-        movementModules.add(Myau.moduleManager.getModule(Eagle.class));
         movementModules.add(Myau.moduleManager.getModule(NoJumpDelay.class));
         movementModules.add(Myau.moduleManager.getModule(AntiVoid.class));
 
@@ -68,11 +57,8 @@ public class ClickGui extends GuiScreen {
         renderModules.add(Myau.moduleManager.getModule(ESP.class));
         renderModules.add(Myau.moduleManager.getModule(Chams.class));
         renderModules.add(Myau.moduleManager.getModule(FullBright.class));
-        renderModules.add(Myau.moduleManager.getModule(FKDRTracker.class));
         renderModules.add(Myau.moduleManager.getModule(FloatingIsland.class));
-        renderModules.add(Myau.moduleManager.getModule(Tracers.class));
         renderModules.add(Myau.moduleManager.getModule(NameTags.class));
-        renderModules.add(Myau.moduleManager.getModule(Xray.class));
         renderModules.add(Myau.moduleManager.getModule(TargetHUD.class));
         renderModules.add(Myau.moduleManager.getModule(Indicators.class));
         renderModules.add(Myau.moduleManager.getModule(BedESP.class));
@@ -83,29 +69,16 @@ public class ClickGui extends GuiScreen {
         renderModules.add(Myau.moduleManager.getModule(GuiModule.class));
         renderModules.add(Myau.moduleManager.getModule(ChestESP.class));
         renderModules.add(Myau.moduleManager.getModule(Trajectories.class));
-        renderModules.add(Myau.moduleManager.getModule(Radar.class));
         renderModules.add(Myau.moduleManager.getModule(BlockOverlay.class));
-        renderModules.add(Myau.moduleManager.getModule(TargetESP.class));
         renderModules.add(Myau.moduleManager.getModule(BreakProgress.class));
         renderModules.add(Myau.moduleManager.getModule(FPScounter.class));
-        renderModules.add(Myau.moduleManager.getModule(WaterMark.class));
-        renderModules.add(Myau.moduleManager.getModule(WaterMark2.class));
         renderModules.add(Myau.moduleManager.getModule(HitParticleEffects.class));
         renderModules.add(Myau.moduleManager.getModule(DynamicIsland.class));
         renderModules.add(Myau.moduleManager.getModule(ESP2D.class));
-        renderModules.add(Myau.moduleManager.getModule(TeamHealthDisplay.class));
-        renderModules.add(Myau.moduleManager.getModule(SessionDisplay.class));
         renderModules.add(Myau.moduleManager.getModule(Capes.class));
         renderModules.add(Myau.moduleManager.getModule(Animations.class));
         renderModules.add(Myau.moduleManager.getModule(Ambience.class));
         renderModules.add(Myau.moduleManager.getModule(BlockHit.class));
-        renderModules.add(Myau.moduleManager.getModule(ClickAssits.class));
-        renderModules.add(Myau.moduleManager.getModule(Criticals.class));
-        renderModules.add(Myau.moduleManager.getModule(Displace.class));
-        renderModules.add(Myau.moduleManager.getModule(Hitflick.class));
-        renderModules.add(Myau.moduleManager.getModule(LightningTracker.class));
-        renderModules.add(Myau.moduleManager.getModule(RenderFixes.class));
-        renderModules.add(Myau.moduleManager.getModule(Stasis.class));
 
         List<Module> playerModules = new ArrayList<>();
         playerModules.add(Myau.moduleManager.getModule(AutoHeal.class));
@@ -114,26 +87,25 @@ public class ClickGui extends GuiScreen {
         playerModules.add(Myau.moduleManager.getModule(InvManager.class));
         playerModules.add(Myau.moduleManager.getModule(InvWalk.class));
         playerModules.add(Myau.moduleManager.getModule(Scaffold.class));
-        playerModules.add(Myau.moduleManager.getModule(Clutch.class));
-        playerModules.add(Myau.moduleManager.getModule(AutoBlockIn.class));
         playerModules.add(Myau.moduleManager.getModule(SpeedMine.class));
         playerModules.add(Myau.moduleManager.getModule(FastPlace.class));
-        playerModules.add(Myau.moduleManager.getModule(GhostHand.class));
-        playerModules.add(Myau.moduleManager.getModule(MCF.class));
         playerModules.add(Myau.moduleManager.getModule(AntiDebuff.class));
 
         List<Module> miscModules = new ArrayList<>();
         miscModules.add(Myau.moduleManager.getModule(AutoCaptcha.class));
         miscModules.add(Myau.moduleManager.getModule(AutoRegister.class));
-        miscModules.add(Myau.moduleManager.getModule(Spammer.class));
         miscModules.add(Myau.moduleManager.getModule(BedNuker.class));
-        miscModules.add(Myau.moduleManager.getModule(BedTracker.class));
         miscModules.add(Myau.moduleManager.getModule(NoRotate.class));
         miscModules.add(Myau.moduleManager.getModule(NickHider.class));
         miscModules.add(Myau.moduleManager.getModule(ServerHider.class));
         miscModules.add(Myau.moduleManager.getModule(AntiObfuscate.class));
         miscModules.add(Myau.moduleManager.getModule(InventoryClicker.class));
 
+        combatModules.removeIf(module -> !ModuleCatalog.isOrdinary(module));
+        movementModules.removeIf(module -> !ModuleCatalog.isOrdinary(module));
+        renderModules.removeIf(module -> !ModuleCatalog.isOrdinary(module));
+        playerModules.removeIf(module -> !ModuleCatalog.isOrdinary(module));
+        miscModules.removeIf(module -> !ModuleCatalog.isOrdinary(module));
         Comparator<Module> comparator = Comparator.comparing(m -> m.getName().toLowerCase());
         combatModules.sort(comparator);
         movementModules.sort(comparator);
@@ -148,7 +120,7 @@ public class ClickGui extends GuiScreen {
         registered.addAll(playerModules);
         registered.addAll(miscModules);
 
-        for (Module module : Myau.moduleManager.modules.values()) {
+        for (Module module : Myau.moduleManager.ordinaryModules()) {
             if (module != null && !module.isHidden() && !registered.contains(module)) {
                 // Some modules may be toggled visible via config but not yet categorized in the click GUI lists.
                 // Instead of throwing, add them to the misc category so they remain reachable in the GUI.
