@@ -6,7 +6,6 @@ import myau.event.types.EventType;
 import myau.events.LoadWorldEvent;
 import myau.events.PacketEvent;
 import myau.events.TickEvent;
-import myau.management.NotificationManager;
 import myau.module.Module;
 import myau.util.ChatUtil;
 import net.minecraft.network.play.server.S32PacketConfirmTransaction;
@@ -62,8 +61,7 @@ public final class TransactionAnalyzer extends Module {
             }
             detected = classify(copy);
             if (Myau.notificationManager != null) {
-                Myau.notificationManager.add(NotificationManager.NotificationType.ANALYSIS,
-                        "Transaction analysis", detected, 5000, false);
+                Myau.notificationManager.completeAnalysis(detected);
             }
         }
     }
@@ -79,8 +77,7 @@ public final class TransactionAnalyzer extends Module {
         analysisStarted = System.currentTimeMillis();
         analyzing = true;
         if (Myau.notificationManager != null) {
-            Myau.notificationManager.add(NotificationManager.NotificationType.ANALYSIS,
-                    "Analyzing", "Collecting transaction samples…", 3000, false);
+            Myau.notificationManager.beginAnalysis();
         }
     }
 

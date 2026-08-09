@@ -10,8 +10,14 @@ import myau.property.properties.BooleanProperty;
 import myau.property.properties.IntProperty;
 import myau.util.PacketUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.INetHandlerPlayClient;
+import net.minecraft.network.play.server.S21PacketChunkData;
+import net.minecraft.network.play.server.S22PacketMultiBlockChange;
+import net.minecraft.network.play.server.S23PacketBlockChange;
+import net.minecraft.network.play.server.S26PacketMapChunkBulk;
+import net.minecraft.network.play.server.S38PacketPlayerListItem;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -33,6 +39,7 @@ public final class PacketDelay extends Module {
     private final ConcurrentLinkedQueue<TimedPacket> inboundQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<TimedPacket> outboundQueue = new ConcurrentLinkedQueue<>();
     private boolean replaying;
+    private boolean discardOnDisable;
     private long progressiveStarted;
 
     public PacketDelay() {
@@ -42,24 +49,42 @@ public final class PacketDelay extends Module {
     @Override
     public void onEnabled() {
         clearQueues();
+        discardOnDisable = false;
         progressiveStarted = System.currentTimeMillis();
     }
 
     @Override
     public void onDisabled() {
-        flushQueues();
+        if (discardOnDisable) {
+            clearQueues();
+            discardOnDisable = false;
+        } else {
+            flushQueues();
+        }
     }
 
     @EventTarget
     public void onPacket(PacketEvent event) {
-        if (!isEnabled() || replaying || mc.thePlayer == null || mc.theWorld == null) return;
+        if (!isEnabled() || replaying || mc.thePlayer == null || mc.theWorld == null || mc.getNetHandler() == null) return;
         if (event.getType() == EventType.SEND && outbound.getValue()) {
             event.setCancelled(true);
-            outboundQueue.offer(new TimedPacket(event.getPacket(), System.currentTimeMillis()));
-        } else if (event.getType() == EventType.RECEIVE && inbound.getValue()) {
+            outboundQueue.offer(new TimedPacket(
+                    event.getPacket(), System.currentTimeMillis(), mc.theWorld, mc.getNetHandler()));
+        } else if (event.getType() == EventType.RECEIVE
+                && inbound.getValue()
+                && shouldDelayInbound(event.getPacket())) {
             event.setCancelled(true);
-            inboundQueue.offer(new TimedPacket(event.getPacket(), System.currentTimeMillis()));
+            inboundQueue.offer(new TimedPacket(
+                    event.getPacket(), System.currentTimeMillis(), mc.theWorld, mc.getNetHandler()));
         }
+    }
+
+    static boolean shouldDelayInbound(Packet<?> packet) {
+        return !(packet instanceof S38PacketPlayerListItem)
+                && !(packet instanceof S21PacketChunkData)
+                && !(packet instanceof S22PacketMultiBlockChange)
+                && !(packet instanceof S23PacketBlockChange)
+                && !(packet instanceof S26PacketMapChunkBulk);
     }
 
     @EventTarget
@@ -80,6 +105,7 @@ public final class PacketDelay extends Module {
     @EventTarget
     public void onWorldChange(LoadWorldEvent event) {
         if (isEnabled()) {
+            discardOnDisable = true;
             clearQueues();
             setEnabled(false);
         }
@@ -93,20 +119,19 @@ public final class PacketDelay extends Module {
         TimedPacket next;
         while ((next = queue.peek()) != null && now - next.created >= delay) {
             queue.poll();
-            replay(next.packet, incoming);
+            replay(next, incoming);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void replay(Packet<?> packet, boolean incoming) {
+    private void replay(TimedPacket delayed, boolean incoming) {
         replaying = true;
         try {
+            if (mc.theWorld != delayed.world || mc.getNetHandler() != delayed.netHandler) return;
             if (incoming) {
-                if (mc.getNetHandler() != null) {
-                    ((Packet<INetHandlerPlayClient>) packet).processPacket(mc.getNetHandler());
-                }
-            } else if (mc.getNetHandler() != null) {
-                PacketUtil.sendPacketNoEvent(packet);
+                ((Packet<INetHandlerPlayClient>) delayed.packet).processPacket(delayed.netHandler);
+            } else {
+                PacketUtil.sendPacketNoEvent(delayed.packet);
             }
         } finally {
             replaying = false;
@@ -115,8 +140,8 @@ public final class PacketDelay extends Module {
 
     private void flushQueues() {
         TimedPacket packet;
-        while ((packet = inboundQueue.poll()) != null) replay(packet.packet, true);
-        while ((packet = outboundQueue.poll()) != null) replay(packet.packet, false);
+        while ((packet = inboundQueue.poll()) != null) replay(packet, true);
+        while ((packet = outboundQueue.poll()) != null) replay(packet, false);
     }
 
     private void clearQueues() {
@@ -128,10 +153,14 @@ public final class PacketDelay extends Module {
     private static final class TimedPacket {
         private final Packet<?> packet;
         private final long created;
+        private final WorldClient world;
+        private final INetHandlerPlayClient netHandler;
 
-        private TimedPacket(Packet<?> packet, long created) {
+        private TimedPacket(Packet<?> packet, long created, WorldClient world, INetHandlerPlayClient netHandler) {
             this.packet = packet;
             this.created = created;
+            this.world = world;
+            this.netHandler = netHandler;
         }
     }
 }

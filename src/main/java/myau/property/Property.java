@@ -15,6 +15,7 @@ public abstract class Property<T> {
     private T value;
     private Module owner;
     private Property<?> parent;
+    private String displayName;
 
     protected Property(String name, Object value, BooleanSupplier visibleChecker) {
         this(name, value, null, visibleChecker);
@@ -27,10 +28,22 @@ public abstract class Property<T> {
         this.visibleChecker = visibleChecker;
         this.value = (T) value;
         this.owner = null;
+        this.displayName = null;
     }
 
     public String getName() {
         return this.name;
+    }
+
+    /**
+     * Optional UI label. The persistence and command name remains {@link #getName()}.
+     */
+    public String getDisplayName() {
+        return this.displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
     }
 
     public abstract String getValuePrompt();

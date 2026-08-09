@@ -13,8 +13,15 @@ public final class UiTexture {
     private final int height;
 
     public UiTexture(String resourcePath) {
-        try (InputStream input = UiResource.open(resourcePath)) {
-            BufferedImage image = ImageIO.read(input);
+        try {
+            BufferedImage image;
+            if (resourcePath.toLowerCase(java.util.Locale.ROOT).endsWith(".svg")) {
+                image = SvgRasterizer.render(resourcePath);
+            } else {
+                try (InputStream input = UiResource.open(resourcePath)) {
+                    image = ImageIO.read(input);
+                }
+            }
             if (image == null) throw new IOException("Unsupported UI image: /assets/myau/" + resourcePath);
             width = image.getWidth();
             height = image.getHeight();
@@ -23,6 +30,14 @@ public final class UiTexture {
         } catch (IOException e) {
             throw new IllegalStateException("Unable to load UI texture /assets/myau/" + resourcePath, e);
         }
+    }
+
+    public UiTexture(BufferedImage image) {
+        if (image == null) throw new IllegalArgumentException("image");
+        width = image.getWidth();
+        height = image.getHeight();
+        texture = new DynamicTexture(image);
+        UiTextureSampling.configure(texture);
     }
 
     public int id() {

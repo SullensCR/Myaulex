@@ -10,24 +10,23 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class UiRenderer {
-    private static final int CORNER_SEGMENTS = 10;
+    // Backdrop textures use this path as their rounded mask. More segments
+    // keep the blur edge smooth even when the shape shader is unavailable.
+    private static final int CORNER_SEGMENTS = 24;
 
     private final Minecraft mc = Minecraft.getMinecraft();
     private final UiFonts fonts = new UiFonts();
-    private final UiBackdropBlur gaussianFallback = new UiBackdropBlur();
-    private final UiRavenBackdropBlur ravenBackdrop = new UiRavenBackdropBlur();
+    private final UiBackdropBlur blur = new UiBackdropBlur();
     private final UiShadowRenderer shadows = new UiShadowRenderer();
     private final UiShapeRenderer shapes = new UiShapeRenderer();
     private final Map<String, UiTexture> textures = new HashMap<>();
     private final Deque<UiBounds> clips = new ArrayDeque<>();
     private UiTransform transform;
+    private UiGlStateSnapshot stateSnapshot;
     private boolean frameActive;
-    private boolean ravenFrame;
-    private boolean gaussianFrame;
 
     public boolean isSupported() {
-        return ravenBackdrop.isSupported()
-                || (UiRavenBlurConfig.ENABLE_GAUSSIAN_FALLBACK && gaussianFallback.isSupported());
+        return blur.isSupported();
     }
 
     public UiFonts fonts() {
@@ -43,25 +42,14 @@ public final class UiRenderer {
         return texture;
     }
 
-    public void beginFrame(UiTransform transform, float legacyBlurRadius) {
+    public void beginFrame(UiTransform transform, float blurRadius) {
         if (frameActive) throw new IllegalStateException("UI frame already active");
         this.transform = transform;
+        this.stateSnapshot = UiGlStateSnapshot.capture();
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
         boolean initialized = false;
         try {
-            ravenFrame = ravenBackdrop.isSupported();
-            gaussianFrame = !ravenFrame
-                    && UiRavenBlurConfig.ENABLE_GAUSSIAN_FALLBACK
-                    && gaussianFallback.isSupported();
-            if (gaussianFrame) {
-                try {
-                    // The old per-screen radius is retained only for this
-                    // compatibility path. Raven uses UiRavenBlurConfig.
-                    gaussianFallback.capture(legacyBlurRadius);
-                } catch (Throwable failure) {
-                    gaussianFrame = false;
-                }
-            }
+            blur.capture(blurRadius);
             GL11.glMatrixMode(GL11.GL_MODELVIEW);
             GL11.glPushMatrix();
             GL11.glTranslatef(transform.getLogicalX(), transform.getLogicalY(), 0);
@@ -77,9 +65,8 @@ public final class UiRenderer {
         } finally {
             if (!initialized) {
                 GL11.glPopAttrib();
+                restoreState();
                 this.transform = null;
-                ravenFrame = false;
-                gaussianFrame = false;
             }
         }
     }
@@ -92,20 +79,19 @@ public final class UiRenderer {
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glPopMatrix();
         GL11.glPopAttrib();
+        restoreState();
         frameActive = false;
-        ravenFrame = false;
-        gaussianFrame = false;
         transform = null;
     }
 
+    private void restoreState() {
+        if (stateSnapshot != null) stateSnapshot.restore();
+        stateSnapshot = null;
+    }
+
     public void backdrop(float x, float y, float width, float height, float radius, int tint) {
-        if (ravenFrame) {
-            if (!ravenBackdrop.render(transform, x, y, width, height, radius)) {
-                ravenFrame = false;
-                gaussianFrame = false;
-            }
-        } else if (gaussianFrame && gaussianFallback.texture() != 0) {
-            texturedRounded(gaussianFallback.texture(), x, y, width, height, radius, radius, radius, radius,
+        if (blur.texture() != 0) {
+            texturedRounded(blur.texture(), x, y, width, height, radius, radius, radius, radius,
                     framebufferU(x), framebufferV(y),
                     framebufferU(x + width), framebufferV(y + height), 0xFFFFFFFF);
         }
@@ -209,6 +195,10 @@ public final class UiRenderer {
         drawImage(texture, x, y, width, height, color);
     }
 
+    public void image(UiTexture texture, float x, float y, float width, float height, int color) {
+        if (texture != null) drawImage(texture, x, y, width, height, color);
+    }
+
     /** Draw an image from a path relative to /assets/myau/. */
     public void imageResource(String resourcePath, float x, float y, float width, float height, int color) {
         String key = "resource:" + resourcePath;
@@ -222,6 +212,11 @@ public final class UiRenderer {
 
     public void imageContained(String name, float x, float y, float width, float height, int color) {
         UiTexture texture = texture(name);
+        imageContained(texture, x, y, width, height, color);
+    }
+
+    public void imageContained(UiTexture texture, float x, float y, float width, float height, int color) {
+        if (texture == null) return;
         float targetAspect = width / height;
         float sourceAspect = texture.aspect();
         if (targetAspect > sourceAspect) {
@@ -283,7 +278,7 @@ public final class UiRenderer {
     }
 
     public void delete() {
-        gaussianFallback.delete();
+        blur.delete();
         shadows.delete();
         shapes.delete();
         fonts.delete();

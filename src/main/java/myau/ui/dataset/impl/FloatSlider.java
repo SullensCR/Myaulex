@@ -41,7 +41,9 @@ public class FloatSlider extends Slider {
 
     @Override
     public String getName() {
-        return property.getName().replace("-", " ");
+        return property.getDisplayName() != null
+                ? property.getDisplayName()
+                : property.getName().replace("-", " ");
     }
 
     @Override
@@ -56,7 +58,7 @@ public class FloatSlider extends Slider {
 
     @Override
     public double getIncrement() {
-        return 0.1;
+        return property.getStep() > 0.0D ? property.getStep() : 0.1D;
     }
 
     @Override

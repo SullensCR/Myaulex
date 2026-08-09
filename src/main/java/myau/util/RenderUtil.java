@@ -1079,6 +1079,25 @@ public class RenderUtil {
         return vector4d;
     }
 
+    /** Projects a fixed world position into scaled GUI coordinates. */
+    public static Vector3d projectToScreen(double x, double y, double z, double screenScale) {
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, modelViewBuffer);
+        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, projectionBuffer);
+        GL11.glGetInteger(GL11.GL_VIEWPORT, viewportBuffer);
+        if (!GLU.gluProject(
+                (float) (x - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX()),
+                (float) (y - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY()),
+                (float) (z - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()),
+                modelViewBuffer, projectionBuffer, viewportBuffer, vectorBuffer)) {
+            return null;
+        }
+        Vector3d projected = new Vector3d(
+                vectorBuffer.get(0) / screenScale,
+                (Display.getHeight() - vectorBuffer.get(1)) / screenScale,
+                vectorBuffer.get(2));
+        return projected.z >= 0.0D && projected.z < 1.0D ? projected : null;
+    }
+
     public static boolean isInViewFrustum(AxisAlignedBB axisAlignedBB, double expand) {
         cameraFrustum.setPosition(RenderUtil.mc.getRenderViewEntity().posX, RenderUtil.mc.getRenderViewEntity().posY,
                 RenderUtil.mc.getRenderViewEntity().posZ);

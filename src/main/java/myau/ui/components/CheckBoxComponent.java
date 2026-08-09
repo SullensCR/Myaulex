@@ -28,7 +28,10 @@ public class CheckBoxComponent implements Component {
     public void draw(AtomicInteger offset) {
         GL11.glPushMatrix();
         GL11.glScaled(0.5D, 0.5D, 0.5D);
-        Minecraft.getMinecraft().fontRendererObj.drawString(this.property.getName().replace("-", " ") + ": " + ChatColors.formatColor(this.property.formatValue()), (float) ((this.module.category.getX() + 4) * 2), (float) ((this.module.category.getY() + this.offsetY + 5) * 2), -1, false);
+        String name = this.property.getDisplayName() != null
+                ? this.property.getDisplayName()
+                : this.property.getName().replace("-", " ");
+        Minecraft.getMinecraft().fontRendererObj.drawString(name + ": " + ChatColors.formatColor(this.property.formatValue()), (float) ((this.module.category.getX() + 4) * 2), (float) ((this.module.category.getY() + this.offsetY + 5) * 2), -1, false);
         GL11.glPopMatrix();
     }
 

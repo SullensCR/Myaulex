@@ -7,6 +7,7 @@ import myau.ui.ClickGui;
 import myau.ui.Component;
 import myau.ui.callback.GuiInput;
 import myau.ui.dataset.Slider;
+import myau.ui.dataset.SliderStops;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import org.lwjgl.opengl.GL11;
@@ -42,6 +43,8 @@ public class SliderComponent implements Component {
             sliderEnd = sliderStart + 84;
         }
         Gui.drawRect(sliderStart, this.parentModule.category.getY() + this.offsetY + 11, sliderEnd, this.parentModule.category.getY() + this.offsetY + 15, ((HUD) Myau.moduleManager.modules.get(HUD.class)).getColor(System.currentTimeMillis(), offset.get()).getRGB());
+        drawStops(sliderStart, this.parentModule.category.getY() + this.offsetY + 11,
+                this.parentModule.category.getWidth() - 8);
         GL11.glPushMatrix();
         GL11.glScaled(0.5D, 0.5D, 0.5D);
         Minecraft.getMinecraft().fontRendererObj.drawStringWithShadow(this.slider.getName() + ": " + this.slider.getValueColorString(), (float) ((int) ((float) (this.parentModule.category.getX() + 4) * 2.0F)), (float) ((int) ((float) (this.parentModule.category.getY() + this.offsetY + 3) * 2.0F)), -1);
@@ -74,12 +77,8 @@ public class SliderComponent implements Component {
                         * (this.slider.getMax() - this.slider.getMin())
                         + this.slider.getMin();
 
-                double increment = this.slider.getIncrement();
-                if (increment > 0) {
-                    rawValue = Math.round(rawValue / increment) * increment;
-                }
-                double n = roundToPrecision(rawValue, 2);
-                n = Math.max(this.slider.getMin(), Math.min(this.slider.getMax(), n));
+                double n = SliderStops.snap(rawValue, this.slider.getMin(), this.slider.getMax(), this.slider.getIncrement());
+                n = roundToPrecision(n, 2);
                 this.slider.setValue(n);
             }
         }
@@ -90,6 +89,16 @@ public class SliderComponent implements Component {
         if (this.decrement != 0 && this.decrement < System.currentTimeMillis()) {
             this.decrement = System.currentTimeMillis() + 50;
             this.slider.stepping(false);
+        }
+    }
+
+    private void drawStops(int startX, int startY, int trackWidth) {
+        int stopCount = SliderStops.count(this.slider.getMin(), this.slider.getMax(), this.slider.getIncrement());
+        for (int i = 0; i < stopCount; i++) {
+            double stopValue = SliderStops.valueAt(this.slider.getMin(), this.slider.getMax(), this.slider.getIncrement(), i, stopCount);
+            int stopX = startX + (int) Math.round(trackWidth * SliderStops.fraction(
+                    stopValue, this.slider.getMin(), this.slider.getMax()));
+            Gui.drawRect(stopX, startY, stopX + 1, startY + 4, 0xAA202020);
         }
     }
 

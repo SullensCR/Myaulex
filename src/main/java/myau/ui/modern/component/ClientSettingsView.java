@@ -108,6 +108,10 @@ public final class ClientSettingsView {
             float row = Y + 66;
             label(text, "Verify TCP_NODELAY", row);
             drawToggle(renderer, "tcp", X + 333, row, Myau.clientSettings.isVerifyTcpNoDelay());
+        } else if (section == 2) {
+            float row = Y + 66;
+            label(text, "Indicator", row);
+            drawToggle(renderer, "indicator", X + 333, row, Myau.clientSettings.isIndicatorEnabled());
         } else if (section == 4) {
             float row = Y + 66;
             modeRow(renderer, text, "Move correction", moveFixName(), row);
@@ -210,6 +214,11 @@ public final class ClientSettingsView {
                         "MODERN".equals(Myau.clientSettings.getClickGuiStyle()) ? "OLD" : "MODERN");
                 return true;
             }
+        } else if (section == 2) {
+            if (toggleAt(Y + 66).contains(mouseX, mouseY)) {
+                Myau.clientSettings.setIndicatorEnabled(!Myau.clientSettings.isIndicatorEnabled());
+                return true;
+            }
         } else if (section == 3) {
             if (new UiBounds(X + 325, Y + 59, 54, 35).contains(mouseX, mouseY)) {
                 Myau.clientSettings.setVerifyTcpNoDelay(!Myau.clientSettings.isVerifyTcpNoDelay());
@@ -247,8 +256,21 @@ public final class ClientSettingsView {
     }
 
     public boolean keyTyped(char character, int keyCode) {
-        for (ModuleCard card : visibleCards()) if (card.keyTyped(character, keyCode)) return true;
+        for (ModuleCard card : visibleCards()) {
+            if (card.hasInputCapture() && card.keyTyped(character, keyCode)) return true;
+        }
         return false;
+    }
+
+    public boolean isTextInputFocused() {
+        for (ModuleCard card : cards.values()) {
+            if (card.isTextInputFocused()) return true;
+        }
+        return false;
+    }
+
+    public void discardTextEditors() {
+        for (ModuleCard card : cards.values()) card.discardTextEditor();
     }
 
     public void scroll(int wheel) {
@@ -274,6 +296,7 @@ public final class ClientSettingsView {
 
     private float cardsTop() {
         if (section == 0) return Y + 161;
+        if (section == 2) return Y + 111;
         if (section == 3) return Y + 111;
         if (section == 4) return Y + HEIGHT;
         return Y + 58;

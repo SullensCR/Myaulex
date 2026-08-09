@@ -13,6 +13,7 @@ import myau.module.Module;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.IntProperty;
 import myau.property.properties.ModeProperty;
+import myau.ui.ClickGuiScreen;
 import myau.util.KeyBindUtil;
 import myau.util.PacketUtil;
 import net.minecraft.client.Minecraft;
@@ -42,6 +43,7 @@ public class InvWalk extends Module {
     private int closeDelayTicks = -1;
     private int sprintPauseTicks;
     private boolean serverInventoryOpen;
+    private boolean clickGuiMovementActive;
     private final Map<KeyBinding, Boolean> movementKeys = new HashMap<KeyBinding, Boolean>(8) {{
         put(mc.gameSettings.keyBindForward, false);
         put(mc.gameSettings.keyBindBack, false);
@@ -54,7 +56,6 @@ public class InvWalk extends Module {
 
     public final ModeProperty mode = new ModeProperty("mode", 1,
             new String[]{"VANILLA", "LEGIT", "HYPIXEL", "LEGIT+", "SPOOF"});
-    public final BooleanProperty guiEnabled = new BooleanProperty("click-gui", true);
     public final BooleanProperty sprint = new BooleanProperty("sprint", false);
     public final BooleanProperty clickSlowdown = new BooleanProperty("click-slowdown", true,
             sprint::getValue).childOf(sprint);
@@ -153,6 +154,36 @@ public class InvWalk extends Module {
         if (mc.thePlayer != null) mc.thePlayer.setSprinting(false);
     }
 
+    /**
+     * ClickGUI movement is a client UI behavior rather than an InventoryMove
+     * module feature, so it must be handled even when this module is disabled.
+     */
+    private boolean updateClickGuiMovement() {
+        if (!(mc.currentScreen instanceof ClickGuiScreen)) {
+            if (clickGuiMovementActive) releaseClickGuiMovement();
+            return false;
+        }
+
+        ClickGuiScreen screen = (ClickGuiScreen) mc.currentScreen;
+        if (screen.isTextInputFocused()) {
+            releaseClickGuiMovement();
+        } else {
+            if (isBlockedByScaffold()) {
+                stopSprintingNow();
+            } else {
+                pressMovementKeys(true);
+            }
+            clickGuiMovementActive = true;
+        }
+        return true;
+    }
+
+    private void releaseClickGuiMovement() {
+        KeyBinding.unPressAllKeys();
+        clickGuiMovementActive = false;
+        keysPressed = false;
+    }
+
     public boolean temporaryStackIsEmpty() {
         if (mc.thePlayer.inventory.getItemStack() != null) return false;
         if (mc.thePlayer.inventoryContainer instanceof ContainerPlayer) {
@@ -200,16 +231,10 @@ public class InvWalk extends Module {
 
     @EventTarget(Priority.LOWEST)
     public void onUpdate(UpdateEvent event) {
-        if (!this.isEnabled() || event.getType() != EventType.PRE) return;
+        if (event.getType() != EventType.PRE) return;
 
-        if (mc.currentScreen instanceof myau.ui.ClickGuiScreen && this.guiEnabled.getValue()) {
-            if (isBlockedByScaffold()) {
-                this.stopSprintingNow();
-            } else {
-                this.pressMovementKeys(true);
-            }
-            return;
-        }
+        if (updateClickGuiMovement()) return;
+        if (!this.isEnabled()) return;
 
         if (isContainerOpen() && (!sprint.getValue() || sprintPauseTicks > 0)) {
             stopSprintingNow();

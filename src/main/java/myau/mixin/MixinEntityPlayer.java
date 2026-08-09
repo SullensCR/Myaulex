@@ -26,7 +26,7 @@ public abstract class MixinEntityPlayer extends MixinEntityLivingBase {
         } else {
             KeepSprint keepSprint = (KeepSprint) Myau.moduleManager.modules.get(KeepSprint.class);
             return keepSprint.isEnabled() && keepSprint.shouldKeepSprint()
-                    ? speed + (1.0 - speed) * (1.0 - keepSprint.slowdown.getValue().doubleValue() / 100.0)
+                    ? keepSprint.getMotionMultiplier(speed)
                     : speed;
         }
     }

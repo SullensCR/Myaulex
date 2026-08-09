@@ -7,6 +7,7 @@ import myau.event.types.Priority;
 import myau.events.LivingUpdateEvent;
 import myau.events.PlayerUpdateEvent;
 import myau.events.RightClickMouseEvent;
+import myau.mixin.IAccessorEntityPlayer;
 import myau.module.Module;
 import myau.util.BlockUtil;
 import myau.util.ItemUtil;
@@ -24,13 +25,16 @@ import net.minecraft.util.BlockPos;
 public class NoSlow extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     private int lastSlot = -1;
-    public final ModeProperty swordMode = new ModeProperty("sword-mode", 1, new String[]{"NONE", "VANILLA"});
+    private boolean grimSlowdownTick;
+    public final ModeProperty swordMode = new ModeProperty("sword-mode", 1, new String[]{"NONE", "VANILLA", "Grim"});
     public final PercentProperty swordMotion = new PercentProperty("sword-motion", 100, () -> this.swordMode.getValue() != 0);
     public final BooleanProperty swordSprint = new BooleanProperty("sword-sprint", true, () -> this.swordMode.getValue() != 0);
-    public final ModeProperty foodMode = new ModeProperty("food-mode", 0, new String[]{"NONE", "VANILLA", "FLOAT"});
-    public final PercentProperty foodMotion = new PercentProperty("food-motion", 100, () -> this.foodMode.getValue() != 0);
-    public final BooleanProperty foodSprint = new BooleanProperty("food-sprint", true, () -> this.foodMode.getValue() != 0);
-    public final ModeProperty bowMode = new ModeProperty("bow-mode", 0, new String[]{"NONE", "VANILLA", "FLOAT"});
+    public final ModeProperty consumablesMode = new ModeProperty("consumables-mode", 0, new String[]{"NONE", "VANILLA", "FLOAT", "Grim"});
+    public final PercentProperty consumablesMotion = new PercentProperty("consumables-motion", 100, () -> this.consumablesMode.getValue() != 0);
+    public final BooleanProperty consumablesSprint = new BooleanProperty("consumables-sprint", true, () -> this.consumablesMode.getValue() != 0);
+    public final BooleanProperty lastTickSlowdown = new BooleanProperty("last-tick-slowdown", false,
+            () -> this.consumablesMode.getValue() == 3).childOf(this.consumablesMode);
+    public final ModeProperty bowMode = new ModeProperty("bow-mode", 0, new String[]{"NONE", "VANILLA", "FLOAT", "Grim"});
     public final PercentProperty bowMotion = new PercentProperty("bow-motion", 100, () -> this.bowMode.getValue() != 0);
     public final BooleanProperty bowSprint = new BooleanProperty("bow-sprint", true, () -> this.bowMode.getValue() != 0);
 
@@ -42,8 +46,8 @@ public class NoSlow extends Module {
         return this.swordMode.getValue() != 0 && ItemUtil.isHoldingSword();
     }
 
-    public boolean isFoodActive() {
-        return this.foodMode.getValue() != 0 && ItemUtil.isEating();
+    public boolean isConsumablesActive() {
+        return this.consumablesMode.getValue() != 0 && ItemUtil.isEating();
     }
 
     public boolean isBowActive() {
@@ -51,39 +55,73 @@ public class NoSlow extends Module {
     }
 
     public boolean isFloatMode() {
-        return this.foodMode.getValue() == 2 && ItemUtil.isEating()
+        return this.consumablesMode.getValue() == 2 && ItemUtil.isEating()
                 || this.bowMode.getValue() == 2 && ItemUtil.isUsingBow();
     }
 
+    public boolean isGrimMode() {
+        return this.swordMode.getValue() == 2 && ItemUtil.isHoldingSword()
+                || this.consumablesMode.getValue() == 3 && ItemUtil.isEating()
+                || this.bowMode.getValue() == 3 && ItemUtil.isUsingBow();
+    }
+
+    public boolean shouldUseVanillaSlowdown() {
+        int remainingTicks = ((IAccessorEntityPlayer) mc.thePlayer).getItemInUseCount();
+        return this.isEnabled()
+                && this.consumablesMode.getValue() == 3
+                && this.lastTickSlowdown.getValue()
+                && ItemUtil.isEating()
+                && remainingTicks > 0
+                && remainingTicks <= 3;
+    }
+
     public boolean isAnyActive() {
-        return mc.thePlayer.isUsingItem() && (this.isSwordActive() || this.isFoodActive() || this.isBowActive());
+        return mc.thePlayer.isUsingItem() && (this.isSwordActive() || this.isConsumablesActive() || this.isBowActive());
     }
 
     public boolean canSprint() {
         return this.isSwordActive() && this.swordSprint.getValue()
-                || this.isFoodActive() && this.foodSprint.getValue()
+                || this.isConsumablesActive() && this.consumablesSprint.getValue()
                 || this.isBowActive() && this.bowSprint.getValue();
     }
 
     public int getMotionMultiplier() {
-        if (ItemUtil.isHoldingSword()) {
+        if (this.isGrimMode()) {
+            return this.grimSlowdownTick ? 20 : 100;
+        } else if (ItemUtil.isHoldingSword()) {
             return this.swordMotion.getValue();
         } else if (ItemUtil.isEating()) {
-            return this.foodMotion.getValue();
+            return this.consumablesMotion.getValue();
         } else {
             return ItemUtil.isUsingBow() ? this.bowMotion.getValue() : 100;
         }
     }
 
+    @Override
+    public String[] getSuffix() {
+        return new String[]{this.swordMode.getModeString()};
+    }
+
     @EventTarget
     public void onLivingUpdate(LivingUpdateEvent event) {
         if (this.isEnabled() && this.isAnyActive()) {
-            float multiplier = (float) this.getMotionMultiplier() / 100.0F;
-            mc.thePlayer.movementInput.moveForward *= multiplier;
-            mc.thePlayer.movementInput.moveStrafe *= multiplier;
+            if (this.shouldUseVanillaSlowdown()) {
+                this.grimSlowdownTick = false;
+            } else {
+                if (this.isGrimMode()) {
+                    this.grimSlowdownTick = !this.grimSlowdownTick;
+                } else {
+                    this.grimSlowdownTick = false;
+                }
+                float multiplier = (float) this.getMotionMultiplier() / 100.0F;
+                mc.thePlayer.movementInput.moveForward *= multiplier;
+                mc.thePlayer.movementInput.moveStrafe *= multiplier;
+            }
             if (!this.canSprint()) {
                 mc.thePlayer.setSprinting(false);
             }
+        } else {
+            this.grimSlowdownTick = false;
         }
     }
 

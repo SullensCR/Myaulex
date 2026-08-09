@@ -1,0 +1,37 @@
+[02:27:16] [Client thread/INFO]: Connecting to anticheat-test.com, 25565
+[02:27:16] [Netty Client IO #2/INFO] [FML]: Attempting connection with missing mods [mcp, FML, Forge] at SERVER
+[02:27:16] [Netty Client IO #2/INFO] [FML]: Attempting connection with missing mods [mcp, FML, Forge] at SERVER
+[02:27:18] [Netty Epoll Client IO #0/INFO] [FML]: Unexpected packet during modded negotiation - assuming vanilla or keepalives : net.minecraft.network.play.server.S38PacketPlayerListItem
+[02:27:18] [Netty Epoll Client IO #0/INFO] [FML]: Unexpected packet during modded negotiation - assuming vanilla or keepalives : net.minecraft.network.play.server.S38PacketPlayerListItem
+[02:27:18] [Netty Epoll Client IO #0/INFO] [FML]: Unexpected packet during modded negotiation - assuming vanilla or keepalives : net.minecraft.network.play.server.S47PacketPlayerListHeaderFooter
+[02:27:18] [Netty Epoll Client IO #0/INFO] [FML]: Aborting client handshake "VANILLA"
+[02:27:18] [Netty Epoll Client IO #0/INFO] [FML]: [Netty Epoll Client IO #0] Client side vanilla connection established
+[02:27:19] [Client thread/INFO]: [CHAT] [ACTest] Switched to Vanilla
+[02:27:19] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: regular.ttf
+[02:27:19] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: icon.ttf
+[02:27:19] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: product_sans_regular.ttf
+[02:27:19] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: product_sans_light.ttf
+[02:27:19] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: product_sans_medium.ttf
+[02:27:20] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: tenacity.ttf
+[02:27:20] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: Vision.otf
+[02:27:20] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: nbp-informa-fivesix.ttf
+[02:27:20] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: tahomabold.ttf
+[02:27:20] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: noti.ttf
+[02:27:20] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: nunito.ttf
+[02:27:20] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: Nunito-Bold.ttf
+[02:27:20] [Client thread/INFO] [STDERR]: [myau.util.font.impl.FontUtil:getResource:44]: [Myaulex] Failed to load font: harmonyOS_Sans.ttf
+[02:27:21] [Client thread/WARN] [FML]: =============================================================
+[02:27:21] [Client thread/WARN] [FML]: MOD HAS DIRECT REFERENCE System.exit() THIS IS NOT ALLOWED REROUTING TO FML!
+[02:27:21] [Client thread/WARN] [FML]: Offendor: com/sun/jna/Native.main([Ljava/lang/String;)V
+[02:27:21] [Client thread/WARN] [FML]: Use FMLCommonHandler.exitJava instead
+[02:27:21] [Client thread/WARN] [FML]: =============================================================
+[02:27:21] [Client thread/INFO] [Myaulex-UI]: Modern UI texture sampling initialized: linear=true, mipmaps=false
+[02:27:21] [Client thread/INFO]: [CHAT] [ACTest] » You joined with the client brand: vanilla
+[02:27:21] [Client thread/INFO] [Myaulex-UI]: Shared Raven UI capability: supported=true enabled=true failed=false OpenGL20=true rounded=true bloom=true blur=true display=1060x950
+[02:27:21] [Client thread/INFO] [Myaulex-UI]: Shared UI backdrop path: Raven bloom+blur
+[02:27:21] [Client thread/INFO] [Myaulex-UI]: Shared Raven UI backdrop completed at logical=(0.0, 0.0, 510.0, 568.0) screen=(194.60938, 159.10417, 140.78125, 156.79166)
+[02:27:21] [Client thread/INFO] [Myaulex-UI]: Modern UI analytic shape antialiasing initialized.
+[02:27:21] [Client thread/ERROR]: ########## GL ERROR ##########
+[02:27:21] [Client thread/ERROR]: @ Post render
+[02:27:21] [Client thread/ERROR]: 1282: Invalid operation
+Clipboard copy at: 07 Aug 2026 02:27:29 -0600

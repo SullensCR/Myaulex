@@ -1,18 +1,320 @@
 package myau.module.modules;
 
+import myau.Myau;
+import myau.event.EventTarget;
+import myau.events.Render2DEvent;
+import myau.management.NotificationManager;
+import myau.management.NotificationManager.NotificationEntry;
+import myau.management.NotificationManager.NotificationType;
 import myau.module.Module;
 import myau.property.properties.FloatProperty;
-import myau.property.properties.IntProperty;
-import myau.property.properties.ModeProperty;
+import myau.render.ui.ProgressbarRenderer;
+import myau.render.ui.UiFont;
+import myau.render.ui.UiFonts;
+import myau.render.ui.UiRenderer;
+import myau.render.ui.UiTexture;
+import myau.render.ui.UiTransform;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.GlStateManager;
+import org.lwjgl.opengl.GL11;
 
-/** User controls for noncritical Myaulex notifications. */
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/** Independent lower-right notification renderer. */
 public final class Notifications extends Module {
-    public final ModeProperty position = new ModeProperty("position", 0,
-            new String[]{"BOTTOM_RIGHT", "TOP_RIGHT", "BOTTOM_LEFT", "TOP_LEFT"});
-    public final IntProperty duration = new IntProperty("duration-ms", 2500, 500, 8000);
+    private static final Minecraft MC = Minecraft.getMinecraft();
+    private static final float DESIGN_WIDTH = 1920.0F;
+    private static final float DESIGN_HEIGHT = 1080.0F;
+    private static final float RIGHT_MARGIN = 16.0F;
+    private static final float BOTTOM_MARGIN = 16.0F;
+    private static final float STACK_GAP = 8.0F;
+    private static final float MAX_WIDTH = 420.0F;
+    private static final float MIN_WIDTH = 220.0F;
+    private static final float ICON_SIZE = 30.0F;
+    private static final float TEXT_X = 58.0F;
+    private static final float RIGHT_PADDING = 16.0F;
+    private static final float TRAILING_PADDING = 5.0F;
+    private static final float TEXT_GAP = 2.0F;
+    private static final float TOP_PADDING = 9.0F;
+    private static final float BOTTOM_PADDING = 9.0F;
+    private static final float PROGRESS_GAP = 7.0F;
+    private static final float PROGRESS_HEIGHT = 9.0F;
+    private static final long STACK_REFLOW_DURATION_NANOS = 100_000_000L;
+
+    private final UiRenderer renderer = new UiRenderer();
+    private final Map<String, UiTexture> assets = new HashMap<>();
+    private final Map<String, VerticalAnimation> animatedY = new HashMap<>();
+
     public final FloatProperty scale = new FloatProperty("scale", 1.0F, 0.5F, 1.5F);
 
     public Notifications() {
         super("Notifications", true, true, "Controls client notifications.");
+    }
+
+    @Override
+    public void onEnabled() {
+        if (Myau.notificationManager != null) Myau.notificationManager.setEnabled(true);
+    }
+
+    @Override
+    public void onDisabled() {
+        if (Myau.notificationManager != null) Myau.notificationManager.setEnabled(false);
+        this.animatedY.clear();
+    }
+
+    @EventTarget
+    public void onRender(Render2DEvent event) {
+        if (!this.isEnabled() || Myau.notificationManager == null) return;
+        List<NotificationEntry> active = Myau.notificationManager.getActive();
+        if (active.isEmpty()) return;
+
+        List<List<NotificationEntry>> groups = this.groupEntries(active);
+        Map<String, CardLayout> layouts = new LinkedHashMap<>();
+        for (List<NotificationEntry> group : groups) {
+            CardLayout layout = null;
+            for (NotificationEntry entry : group) {
+                CardLayout candidate = this.layout(entry);
+                if (layout == null || candidate.totalHeight > layout.totalHeight) layout = candidate;
+            }
+            layouts.put(group.get(0).getSlotKey(), layout);
+        }
+
+        long now = System.nanoTime();
+
+        UiTransform transform = new UiTransform(MC, DESIGN_WIDTH, DESIGN_HEIGHT, this.scale.getValue(), 0.0F);
+        this.renderer.beginFrame(transform, 31.0F);
+        try {
+            float bottom = DESIGN_HEIGHT - BOTTOM_MARGIN;
+            Set<String> visibleSlots = new HashSet<>();
+            for (int index = groups.size() - 1; index >= 0; index--) {
+                List<NotificationEntry> group = groups.get(index);
+                String slot = group.get(0).getSlotKey();
+                CardLayout layout = layouts.get(slot);
+                visibleSlots.add(slot);
+                float targetY = bottom - layout.totalHeight;
+                VerticalAnimation animation = this.animatedY.get(slot);
+                if (animation == null) {
+                    animation = new VerticalAnimation(targetY, targetY, now);
+                    this.animatedY.put(slot, animation);
+                } else if (Math.abs(animation.targetY - targetY) > 0.01F) {
+                    animation = new VerticalAnimation(animation.value(now), targetY, now);
+                    this.animatedY.put(slot, animation);
+                }
+                float y = animation.value(now);
+                for (NotificationEntry entry : group) this.renderEntry(entry, layout, y);
+                bottom = targetY - STACK_GAP;
+            }
+            this.animatedY.keySet().removeIf(slot -> !visibleSlots.contains(slot));
+        } finally {
+            this.renderer.endFrame();
+        }
+    }
+
+    private List<List<NotificationEntry>> groupEntries(List<NotificationEntry> entries) {
+        Map<String, List<NotificationEntry>> grouped = new LinkedHashMap<>();
+        for (NotificationEntry entry : entries) {
+            List<NotificationEntry> group = grouped.get(entry.getSlotKey());
+            if (group == null) {
+                group = new ArrayList<>();
+                grouped.put(entry.getSlotKey(), group);
+            }
+            group.add(entry);
+        }
+        return new ArrayList<>(grouped.values());
+    }
+
+    private CardLayout layout(NotificationEntry entry) {
+        UiFont titleFont = this.renderer.fonts().snPro(30.0F, UiFonts.BOLD);
+        UiFont bodyFont = this.renderer.fonts().snPro(24.0F, UiFonts.REGULAR);
+        boolean activeProgress = entry.isProgressActive();
+        float trailing = activeProgress ? 42.0F : 0.0F;
+        float maxTextWidth = MAX_WIDTH - TEXT_X - RIGHT_PADDING - TRAILING_PADDING - trailing;
+        String title = this.ellipsize(entry.getTitle(), titleFont, maxTextWidth);
+        float titleWidth = titleFont.width(title);
+        List<String> body = this.wrap(entry.getMessage(), bodyFont, maxTextWidth);
+        float bodyWidth = 0.0F;
+        for (String line : body) bodyWidth = Math.max(bodyWidth, bodyFont.width(line));
+        float width = Math.max(MIN_WIDTH,
+                Math.min(MAX_WIDTH, Math.max(titleWidth, bodyWidth) + TEXT_X + RIGHT_PADDING + TRAILING_PADDING + trailing));
+        maxTextWidth = width - TEXT_X - RIGHT_PADDING - TRAILING_PADDING - trailing;
+        title = this.ellipsize(entry.getTitle(), titleFont, maxTextWidth);
+        body = this.wrap(entry.getMessage(), bodyFont, maxTextWidth);
+        float titleHeight = title.isEmpty() ? 0.0F : titleFont.height();
+        float bodyHeight = body.isEmpty() ? 0.0F : bodyFont.height() * body.size();
+        float contentHeight = titleHeight + (titleHeight > 0.0F && bodyHeight > 0.0F ? TEXT_GAP : 0.0F) + bodyHeight;
+        float height = Math.max(52.0F, TOP_PADDING + contentHeight + BOTTOM_PADDING);
+        float totalHeight = height + (activeProgress ? PROGRESS_GAP + PROGRESS_HEIGHT : 0.0F);
+        return new CardLayout(title, body, width, height, totalHeight, activeProgress);
+    }
+
+    private void renderEntry(NotificationEntry entry, CardLayout layout, float y) {
+        float alpha = this.alpha(entry);
+        if (alpha <= 0.01F) return;
+        float slide = (1.0F - this.motion(entry)) * (layout.width + RIGHT_MARGIN);
+        float x = DESIGN_WIDTH - RIGHT_MARGIN - layout.width + slide;
+        int color = withAlpha(entry.getType().color, Math.round(255.0F * alpha));
+        int white = withAlpha(0xFFFFFFFF, Math.round(255.0F * alpha));
+        int background = withAlpha(0x801A1A24, Math.round(255.0F * alpha));
+
+        this.renderer.shadow(x, y, layout.width, layout.height, 9.0F,
+                0.0F, 3.0F, 10.0F, 0.0F, withAlpha(0xFF000000, Math.round(99.0F * alpha)));
+        this.renderer.backdrop(x, y, layout.width, layout.height, 9.0F, background);
+        this.renderer.gradientRoundedRect(x + layout.width - 5.0F, y + 4.0F, 5.0F,
+                Math.max(1.0F, layout.height - 8.0F), 2.0F, color, darken(color));
+
+        UiTexture icon = this.asset("notifications/Icons/Icon=" + entry.getType().iconName + ".svg");
+        if (icon != null) {
+            int iconColor = entry.getType() == NotificationType.ANALYSIS ? color : white;
+            this.renderer.imageContained(icon, x + 16.0F, y + (layout.height - ICON_SIZE) * 0.5F,
+                    ICON_SIZE, ICON_SIZE, iconColor);
+        }
+
+        UiFont titleFont = this.renderer.fonts().snPro(30.0F, UiFonts.BOLD);
+        UiFont bodyFont = this.renderer.fonts().snPro(24.0F, UiFonts.REGULAR);
+        float textY = y + TOP_PADDING;
+        if (!layout.title.isEmpty()) {
+            titleFont.draw(layout.title, x + TEXT_X, textY, color, false);
+            textY += titleFont.height() + (layout.body.isEmpty() ? 0.0F : TEXT_GAP);
+        }
+        for (String line : layout.body) {
+            bodyFont.draw(line, x + TEXT_X, textY, white, false);
+            textY += bodyFont.height();
+        }
+
+        if (layout.progress) {
+            float progress = entry.getProgress();
+            ProgressbarRenderer.renderNotification(this.renderer, x, y + layout.height + PROGRESS_GAP,
+                    layout.width, progress, Math.round(255.0F * alpha));
+            this.renderThrobber(x + layout.width - 38.0F, y + 8.0F, alpha);
+        }
+    }
+
+    private void renderThrobber(float centerX, float centerY, float alpha) {
+        UiTexture track = this.asset("notifications/throbber/Track.svg");
+        UiTexture filled = this.asset("notifications/throbber/Filled Track.svg");
+        if (track == null || filled == null) return;
+        this.renderer.imageContained(track, centerX - 17.5F, centerY, 35.0F, 35.0F,
+                withAlpha(0xFFFFFFFF, Math.round(255.0F * alpha)));
+        GlStateManager.pushMatrix();
+        GL11.glTranslatef(centerX, centerY + 17.5F, 0.0F);
+        GL11.glRotatef((System.currentTimeMillis() % 2000L) * 0.18F, 0.0F, 0.0F, 1.0F);
+        this.renderer.imageContained(filled, -12.5F, -17.5F, 25.0F, 35.0F,
+                withAlpha(0xFFFFFFFF, Math.round(255.0F * alpha)));
+        GlStateManager.popMatrix();
+    }
+
+    private UiTexture asset(String path) {
+        UiTexture texture = this.assets.get(path);
+        if (texture != null) return texture;
+        try {
+            texture = new UiTexture(path);
+            this.assets.put(path, texture);
+            return texture;
+        } catch (RuntimeException failure) {
+            return null;
+        }
+    }
+
+    private float alpha(NotificationEntry entry) {
+        if (entry.isExiting()) return 1.0F - smooth(Math.min(1.0F,
+                entry.getExitAge() / (float) NotificationManager.EXIT_DURATION));
+        return smooth(Math.min(1.0F, entry.getAge() / (float) NotificationManager.ENTER_DURATION));
+    }
+
+    private float motion(NotificationEntry entry) {
+        if (entry.isExiting()) return Math.min(1.0F,
+                smooth(entry.getExitAge() / (float) NotificationManager.EXIT_DURATION));
+        return smooth(Math.min(1.0F, entry.getAge() / (float) NotificationManager.ENTER_DURATION));
+    }
+
+    private String ellipsize(String value, UiFont font, float width) {
+        if (value == null) return "";
+        if (font.width(value) <= width) return value;
+        String suffix = "...";
+        String result = value;
+        while (result.length() > 0 && font.width(result + suffix) > width) {
+            result = result.substring(0, result.length() - 1);
+        }
+        return result.trim() + suffix;
+    }
+
+    private List<String> wrap(String value, UiFont font, float width) {
+        List<String> lines = new ArrayList<>();
+        if (value == null || value.trim().isEmpty()) return lines;
+        String current = "";
+        for (String word : value.replace('\n', ' ').trim().split("\\s+")) {
+            String candidate = current.isEmpty() ? word : current + " " + word;
+            if (!current.isEmpty() && font.width(candidate) > width) {
+                lines.add(current);
+                current = word;
+            } else {
+                current = candidate;
+            }
+        }
+        if (!current.isEmpty()) lines.add(current);
+        if (lines.size() <= 2) return lines;
+        String second = lines.get(1);
+        for (int i = 2; i < lines.size(); i++) second += " " + lines.get(i);
+        lines.set(1, this.ellipsize(second, font, width));
+        return lines.subList(0, 2);
+    }
+
+    private static float smooth(float value) {
+        float clamped = Math.max(0.0F, Math.min(1.0F, value));
+        return clamped * clamped * (3.0F - 2.0F * clamped);
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (Math.max(0, Math.min(255, alpha)) << 24) | (color & 0x00FFFFFF);
+    }
+
+    private static int darken(int color) {
+        int r = ((color >> 16) & 255) / 2;
+        int g = ((color >> 8) & 255) / 2;
+        int b = (color & 255) / 2;
+        return (color & 0xFF000000) | r << 16 | g << 8 | b;
+    }
+
+    private static final class VerticalAnimation {
+        private final float fromY;
+        private final float targetY;
+        private final long startedNanos;
+
+        private VerticalAnimation(float fromY, float targetY, long startedNanos) {
+            this.fromY = fromY;
+            this.targetY = targetY;
+            this.startedNanos = startedNanos;
+        }
+
+        private float value(long now) {
+            float progress = Math.min(1.0F,
+                    Math.max(0.0F, (now - this.startedNanos) / (float) STACK_REFLOW_DURATION_NANOS));
+            return this.fromY + (this.targetY - this.fromY) * smooth(progress);
+        }
+    }
+
+    private static final class CardLayout {
+        private final String title;
+        private final List<String> body;
+        private final float width;
+        private final float height;
+        private final float totalHeight;
+        private final boolean progress;
+
+        private CardLayout(String title, List<String> body, float width, float height,
+                           float totalHeight, boolean progress) {
+            this.title = title;
+            this.body = body;
+            this.width = width;
+            this.height = height;
+            this.totalHeight = totalHeight;
+            this.progress = progress;
+        }
     }
 }

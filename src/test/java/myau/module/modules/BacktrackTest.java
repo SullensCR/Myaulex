@@ -2,6 +2,14 @@ package myau.module.modules;
 
 import net.minecraft.util.Vec3;
 import net.minecraft.network.play.server.S06PacketUpdateHealth;
+import net.minecraft.network.play.server.S01PacketJoinGame;
+import net.minecraft.network.play.server.S07PacketRespawn;
+import net.minecraft.network.play.server.S08PacketPlayerPosLook;
+import net.minecraft.network.play.server.S21PacketChunkData;
+import net.minecraft.network.play.server.S22PacketMultiBlockChange;
+import net.minecraft.network.play.server.S23PacketBlockChange;
+import net.minecraft.network.play.server.S26PacketMapChunkBulk;
+import net.minecraft.network.play.server.S38PacketPlayerListItem;
 import net.minecraft.network.status.server.S01PacketPong;
 import org.junit.Test;
 
@@ -82,6 +90,17 @@ public class BacktrackTest {
     @Test
     public void safetyPacketsBypassOrFlushTheQueue() {
         assertTrue(Backtrack.isImmediatePacket(new S01PacketPong(1L), null));
+        assertTrue(Backtrack.isImmediatePacket(new S01PacketJoinGame(), null));
+        assertTrue(Backtrack.isImmediatePacket(new S07PacketRespawn(), null));
+        assertTrue(Backtrack.isImmediatePacket(new S08PacketPlayerPosLook(), null));
+        assertTrue(Backtrack.isImmediatePacket(new S38PacketPlayerListItem(), null));
+        assertTrue(Backtrack.isImmediatePacket(new S21PacketChunkData(), null));
+        assertTrue(Backtrack.isImmediatePacket(new S22PacketMultiBlockChange(), null));
+        assertTrue(Backtrack.isImmediatePacket(new S23PacketBlockChange(), null));
+        assertTrue(Backtrack.isImmediatePacket(new S26PacketMapChunkBulk(), null));
+        assertTrue(Backtrack.packetRequiresFlush(new S01PacketJoinGame(), null));
+        assertTrue(Backtrack.packetRequiresFlush(new S07PacketRespawn(), null));
+        assertTrue(Backtrack.packetRequiresFlush(new S08PacketPlayerPosLook(), null));
         assertTrue(Backtrack.packetRequiresFlush(
                 new S06PacketUpdateHealth(0.0F, 20, 5.0F), null));
         assertFalse(Backtrack.packetRequiresFlush(

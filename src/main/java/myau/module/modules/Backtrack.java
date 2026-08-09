@@ -21,6 +21,7 @@ import myau.util.RenderUtil;
 import myau.util.RotationUtil;
 import myau.util.TeamUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.DataWatcher;
@@ -35,6 +36,18 @@ import net.minecraft.network.play.server.S18PacketEntityTeleport;
 import net.minecraft.network.play.server.S19PacketEntityStatus;
 import net.minecraft.network.play.server.S1CPacketEntityMetadata;
 import net.minecraft.network.play.server.S29PacketSoundEffect;
+import net.minecraft.network.play.server.S21PacketChunkData;
+import net.minecraft.network.play.server.S22PacketMultiBlockChange;
+import net.minecraft.network.play.server.S23PacketBlockChange;
+import net.minecraft.network.play.server.S26PacketMapChunkBulk;
+import net.minecraft.network.play.server.S01PacketJoinGame;
+import net.minecraft.network.play.server.S07PacketRespawn;
+import net.minecraft.network.play.server.S08PacketPlayerPosLook;
+import net.minecraft.network.play.server.S3BPacketScoreboardObjective;
+import net.minecraft.network.play.server.S3CPacketUpdateScore;
+import net.minecraft.network.play.server.S3DPacketDisplayScoreboard;
+import net.minecraft.network.play.server.S3EPacketTeams;
+import net.minecraft.network.play.server.S38PacketPlayerListItem;
 import net.minecraft.network.status.server.S01PacketPong;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.Vec3;
@@ -117,7 +130,7 @@ public final class Backtrack extends Module {
     @EventTarget(Priority.LOW)
     public void onPacket(PacketEvent event) {
         if (!isEnabled() || event.getType() != EventType.RECEIVE || event.isCancelled()) return;
-        if (mc.thePlayer == null || mc.theWorld == null) return;
+        if (mc.thePlayer == null || mc.theWorld == null || mc.getNetHandler() == null) return;
 
         if (hasConflictingInboundDelay()) {
             pendingFlush = true;
@@ -127,6 +140,14 @@ public final class Backtrack extends Module {
         EntityLivingBase currentTarget = target;
         Packet<?> packet = event.getPacket();
         long now = System.currentTimeMillis();
+
+        if (isWorldTransitionPacket(packet)) {
+            // These packets must reach vanilla immediately. In particular,
+            // S08PacketPlayerPosLook marks terrain loading as complete. Any
+            // queued combat packets belong to the state before this packet.
+            resetWithoutReplay();
+            return;
+        }
 
         if (currentTarget != null) {
             updateServerPosition(packet, currentTarget, now);
@@ -148,7 +169,7 @@ public final class Backtrack extends Module {
             shouldRender = true;
         }
         event.setCancelled(true);
-        packets.offer(new TimedPacket(packet, now));
+        packets.offer(new TimedPacket(packet, now, mc.theWorld, mc.getNetHandler()));
     }
 
     @EventTarget(Priority.LOW)
@@ -371,6 +392,13 @@ public final class Backtrack extends Module {
     }
 
     static boolean isImmediatePacket(Packet<?> packet, EntityLivingBase currentTarget) {
+        if (isWorldTransitionPacket(packet)
+                || packet instanceof S3BPacketScoreboardObjective
+                || packet instanceof S3CPacketUpdateScore
+                || packet instanceof S3DPacketDisplayScoreboard
+                || packet instanceof S3EPacketTeams
+                || packet instanceof S38PacketPlayerListItem
+                || isWorldStatePacket(packet)) return true;
         if (packet instanceof S02PacketChat || packet instanceof S01PacketPong) return true;
         if (packet instanceof S29PacketSoundEffect) {
             String name = ((S29PacketSoundEffect) packet).getSoundName();
@@ -387,6 +415,7 @@ public final class Backtrack extends Module {
     }
 
     static boolean packetRequiresFlush(Packet<?> packet, EntityLivingBase currentTarget) {
+        if (isWorldTransitionPacket(packet)) return true;
         if (packet instanceof S06PacketUpdateHealth) {
             return ((S06PacketUpdateHealth) packet).getHealth() <= 0.0F;
         }
@@ -404,6 +433,19 @@ public final class Backtrack extends Module {
         return false;
     }
 
+    private static boolean isWorldTransitionPacket(Packet<?> packet) {
+        return packet instanceof S01PacketJoinGame
+                || packet instanceof S07PacketRespawn
+                || packet instanceof S08PacketPlayerPosLook;
+    }
+
+    private static boolean isWorldStatePacket(Packet<?> packet) {
+        return packet instanceof S21PacketChunkData
+                || packet instanceof S22PacketMultiBlockChange
+                || packet instanceof S23PacketBlockChange
+                || packet instanceof S26PacketMapChunkBulk;
+    }
+
     private static boolean packetRemovesTarget(Packet<?> packet, EntityLivingBase currentTarget) {
         if (!(packet instanceof S13PacketDestroyEntities) || currentTarget == null) return false;
         for (int id : ((S13PacketDestroyEntities) packet).getEntityIDs()) {
@@ -416,19 +458,19 @@ public final class Backtrack extends Module {
         TimedPacket next;
         while ((next = packets.peek()) != null && next.time <= cutoff) {
             packets.poll();
-            replay(next.packet);
+            replay(next);
         }
     }
 
     private void drainAllPackets() {
         TimedPacket next;
-        while ((next = packets.poll()) != null) replay(next.packet);
+        while ((next = packets.poll()) != null) replay(next);
     }
 
     @SuppressWarnings("unchecked")
-    private void replay(Packet<?> packet) {
-        if (mc.getNetHandler() != null) {
-            ((Packet<INetHandlerPlayClient>) packet).processPacket(mc.getNetHandler());
+    private void replay(TimedPacket delayed) {
+        if (mc.theWorld == delayed.world && mc.getNetHandler() == delayed.netHandler) {
+            ((Packet<INetHandlerPlayClient>) delayed.packet).processPacket(delayed.netHandler);
         }
     }
 
@@ -585,10 +627,14 @@ public final class Backtrack extends Module {
     private static final class TimedPacket {
         private final Packet<?> packet;
         private final long time;
+        private final WorldClient world;
+        private final INetHandlerPlayClient netHandler;
 
-        private TimedPacket(Packet<?> packet, long time) {
+        private TimedPacket(Packet<?> packet, long time, WorldClient world, INetHandlerPlayClient netHandler) {
             this.packet = packet;
             this.time = time;
+            this.world = world;
+            this.netHandler = netHandler;
         }
     }
 

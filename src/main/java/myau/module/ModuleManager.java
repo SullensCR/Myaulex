@@ -6,7 +6,6 @@ import myau.event.types.EventType;
 import myau.events.KeyEvent;
 import myau.events.TickEvent;
 import myau.module.modules.GuiModule;
-import myau.module.modules.HUD;
 import myau.util.SoundUtil;
 
 import java.util.LinkedHashMap;
@@ -49,10 +48,6 @@ public class ModuleManager {
                 continue;
             }
             boolean shouldNotify = module.toggle();
-            HUD hud = (HUD) this.modules.get(HUD.class);
-            if (hud != null && shouldNotify) {
-                shouldNotify = hud.toggleAlerts.getValue();
-            }
             if(module instanceof GuiModule){
                 shouldNotify = false;
             }

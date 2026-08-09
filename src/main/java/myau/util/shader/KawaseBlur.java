@@ -50,12 +50,6 @@ public class KawaseBlur {
         return kawaseUp;
     }
 
-    /** Used by shared UI adapters to select their compatibility path early. */
-    public static boolean isSupported() {
-        initShaders();
-        return kawaseDown != null && kawaseUp != null;
-    }
-
     private static void initFrameBuffers(float iterations) {
         for (Framebuffer framebuffer : framebufferList) {
             framebuffer.deleteFramebuffer();

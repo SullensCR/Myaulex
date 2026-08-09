@@ -4,6 +4,7 @@ import myau.Myau;
 import myau.config.Config;
 import myau.module.modules.GuiModule;
 import myau.module.modules.HUD;
+import myau.module.modules.Notifications;
 import myau.util.KeyBindUtil;
 
 public abstract class Module {
@@ -76,10 +77,10 @@ public abstract class Module {
             if (((HUD) Myau.moduleManager.modules.get(HUD.class)).toggleSound.getValue()) {
                 Myau.moduleManager.playSound();
             }
-            HUD hud = (HUD) Myau.moduleManager.modules.get(HUD.class);
-            if (hud != null && hud.toggleAlerts.getValue() && Myau.notificationManager != null && !(this instanceof GuiModule)) {
-                int color = this.enabled ? hud.notificationEnabledColor.getValue() : hud.notificationDisabledColor.getValue();
-                Myau.notificationManager.add(this.name + (this.enabled ? " enabled" : " disabled"), hud.notificationDuration.getValue(), color);
+            if (Myau.notificationManager != null
+                    && !(this instanceof GuiModule)
+                    && !(this instanceof Notifications)) {
+                Myau.notificationManager.addToggle(this.name, this.enabled);
             }
             return true;
         } else {

@@ -111,6 +111,8 @@ public final class ClickGuiView {
 
     public boolean mouseClicked(float mouseX, float mouseY, int button) {
         for (ModuleCard card : cards) card.cancelBinding();
+        for (ModuleCard card : cards) card.discardTextEditor();
+        clientSettings.discardTextEditors();
 
         if (ClientSettingsView.GEAR.contains(mouseX, mouseY) && button == 0) {
             clientMenuOpen = !clientMenuOpen;
@@ -177,12 +179,22 @@ public final class ClickGuiView {
         if (keyCode == org.lwjgl.input.Keyboard.KEY_ESCAPE) {
             search.blur();
             for (ModuleCard card : cards) card.discardEditor();
+            clientSettings.discardTextEditors();
             return false;
         }
         if (clientMenuOpen && clientSettings.keyTyped(character, keyCode)) return true;
         if (search.keyTyped(character, keyCode)) return true;
         for (ModuleCard card : cards) {
-            if (card.keyTyped(character, keyCode)) return true;
+            if (card.hasInputCapture() && card.keyTyped(character, keyCode)) return true;
+        }
+        return false;
+    }
+
+    public boolean isTextInputFocused() {
+        if (search.isFocused()) return true;
+        if (clientMenuOpen && clientSettings.isTextInputFocused()) return true;
+        for (ModuleCard card : cards) {
+            if (card.isTextInputFocused()) return true;
         }
         return false;
     }

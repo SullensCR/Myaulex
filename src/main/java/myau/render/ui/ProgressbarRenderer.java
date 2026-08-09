@@ -66,6 +66,24 @@ public final class ProgressbarRenderer {
         );
     }
 
+    /** Renders the same rounded track style for non-item progress indicators. */
+    public static void renderNotification(UiRenderer renderer, float x, float y,
+                                           float width, float progress, int alpha) {
+        float clampedWidth = Math.max(32.0F, width);
+        float amount = clamp(progress, 0.0F, 1.0F);
+        renderer.shadow(x, y, clampedWidth, ProgressbarSizes.TRACK_HEIGHT,
+                ProgressbarSizes.TRACK_RADIUS, 0.0F, 2.0F, 4.0F, 0.0F,
+                withAlpha(0xFF000000, Math.round(alpha * 0.35F)));
+        renderer.roundedRect(x, y, clampedWidth, ProgressbarSizes.TRACK_HEIGHT,
+                ProgressbarSizes.TRACK_RADIUS, withAlpha(0xFF434362, alpha));
+        if (amount <= 0.0F) return;
+        float fillWidth = Math.max(1.0F, clampedWidth * amount);
+        renderer.gradientRoundedRect(x, y, fillWidth, ProgressbarSizes.TRACK_HEIGHT,
+                Math.min(ProgressbarSizes.TRACK_RADIUS, fillWidth * 0.5F),
+                withAlpha(ProgressbarSizes.ICE_START, alpha),
+                withAlpha(ProgressbarSizes.ICE_END, alpha));
+    }
+
     public static int countableBlockCount(net.minecraft.entity.player.EntityPlayer player) {
         if (player == null) return 0;
         int count = 0;

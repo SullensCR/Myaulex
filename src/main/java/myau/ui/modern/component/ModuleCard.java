@@ -2,6 +2,7 @@ package myau.ui.modern.component;
 
 import myau.Myau;
 import myau.config.Config;
+import myau.management.NotificationManager;
 import myau.module.Module;
 import myau.property.Property;
 import myau.property.RecommendedRange;
@@ -20,6 +21,7 @@ import myau.render.ui.UiFont;
 import myau.render.ui.UiFonts;
 import myau.render.ui.UiRenderer;
 import myau.ui.modern.ClickGuiTheme;
+import myau.ui.dataset.SliderStops;
 import myau.util.KeyBindUtil;
 import org.lwjgl.input.Keyboard;
 
@@ -77,6 +79,18 @@ public final class ModuleCard {
 
     public boolean isExpanded() {
         return expanded;
+    }
+
+    public boolean isTextInputFocused() {
+        return editing != null;
+    }
+
+    public boolean hasInputCapture() {
+        return editing != null || binding;
+    }
+
+    public void discardTextEditor() {
+        cancelEditor();
     }
 
     public void render(UiRenderer renderer, float x, float y, float mouseX, float mouseY) {
@@ -137,7 +151,7 @@ public final class ModuleCard {
     private void renderProperty(UiRenderer renderer, Property<?> property, float rowY) {
         UiFont labelFont = renderer.fonts().google(18, UiFonts.REGULAR);
         UiFont valueFont = renderer.fonts().google(14, UiFonts.REGULAR);
-        String label = label(property.getName());
+        String label = displayLabel(property);
         float rowX = property.getParent() == null ? x + 9 : x + 21;
         if (property.getParent() != null) {
             renderer.rect(x + 6, rowY - 4, 376, 28, 0x143B3F57);
@@ -189,6 +203,7 @@ public final class ModuleCard {
             renderer.shadow(trackX, rowY + 8, trackWidth, 5, 2.5F, 0, 2, 4, 0, 0x40000000);
             renderer.roundedRect(trackX, rowY + 8, trackWidth, 5, 2.5F, ClickGuiTheme.TRACK);
             renderer.roundedRect(trackX, rowY + 8, Math.max(3, trackWidth * fraction), 5, 2.5F, ClickGuiTheme.CYAN);
+            drawSliderStops(renderer, property, trackX, rowY + 8, trackWidth);
             float thumbX = trackX + trackWidth * fraction - 4.5F;
             renderer.shadow(thumbX, rowY + 4, 9, 9, 4.5F, 0, 2, 3, 0, 0x59000000);
             renderer.roundedRect(thumbX, rowY + 4, 9, 9, 4.5F, 0xFFF3F5FF);
@@ -387,8 +402,11 @@ public final class ModuleCard {
                         && !((RecommendedRange) editing).isRecommended(parsed)
                         && Myau.notificationManager != null) {
                     Myau.notificationManager.add(
-                            label(editing.getName()) + " is outside its recommended range and could trigger anticheat flags.",
-                            5000, 0xFFFFB84D
+                            NotificationManager.NotificationType.WARNING,
+                            "recommended-range-" + displayLabel(editing),
+                            "Warning!",
+                            displayLabel(editing) + " is outside its recommended range and could trigger anticheat flags.",
+                            false
                     );
                 }
             }
@@ -462,11 +480,37 @@ public final class ModuleCard {
         setNumeric(property, numericMin(property) + (numericMax(property) - numericMin(property)) * clamped);
     }
 
+    private static void drawSliderStops(UiRenderer renderer, Property<?> property, float trackX, float trackY, float trackWidth) {
+        double minimum = numericMin(property);
+        double maximum = numericMax(property);
+        double increment = numericStep(property);
+        int stopCount = SliderStops.count(minimum, maximum, increment);
+        for (int i = 0; i < stopCount; i++) {
+            double stopValue = SliderStops.valueAt(minimum, maximum, increment, i, stopCount);
+            float stopX = trackX + trackWidth * (float) SliderStops.fraction(stopValue, minimum, maximum);
+            renderer.rect(stopX, trackY, 1, 5, 0xAA202020);
+        }
+    }
+
     private static void setNumeric(Property<?> property, double value) {
-        if (property instanceof FloatProperty) ((FloatProperty) property).setValue((float) value);
+        double minimum = numericMin(property);
+        double maximum = numericMax(property);
+        value = SliderStops.snap(value, minimum, maximum, numericStep(property));
+        if (property instanceof FloatProperty) {
+            FloatProperty floatProperty = (FloatProperty) property;
+            floatProperty.setValue((float) value);
+        }
         else if (property instanceof IntProperty) ((IntProperty) property).setValue((int) Math.round(value));
         else if (property instanceof LongProperty) ((LongProperty) property).setValue(Math.round(value));
         else ((PercentProperty) property).setValue((int) Math.round(value));
+    }
+
+    private static double numericStep(Property<?> property) {
+        if (property instanceof FloatProperty) {
+            double step = ((FloatProperty) property).getStep();
+            return step > 0.0D ? step : 0.1D;
+        }
+        return 1.0D;
     }
 
     private static String displayValue(Property<?> property) {
@@ -484,6 +528,12 @@ public final class ModuleCard {
             result.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
         }
         return result.toString();
+    }
+
+    private static String displayLabel(Property<?> property) {
+        return property.getDisplayName() != null
+                ? property.getDisplayName()
+                : label(property.getName());
     }
 
     private static String trim(UiFont font, String value, float width) {

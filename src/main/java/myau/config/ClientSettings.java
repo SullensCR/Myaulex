@@ -29,6 +29,7 @@ public final class ClientSettings {
     private String clickGuiStyle = "MODERN";
     private String clickGuiCategory = "COMBAT";
     private boolean verifyTcpNoDelay = true;
+    private boolean indicator = true;
     private int moveFixMode = 1;
     private int botFilterMode = 0;
     private int teamsMode = 0;
@@ -110,6 +111,17 @@ public final class ClientSettings {
         }
     }
 
+    public boolean isIndicatorEnabled() {
+        return indicator;
+    }
+
+    public void setIndicatorEnabled(boolean value) {
+        if (indicator != value) {
+            indicator = value;
+            Config.markClientDirty();
+        }
+    }
+
     public int getMoveFixMode() { return moveFixMode; }
     public int getBotFilterMode() { return botFilterMode; }
     public int getTeamsMode() { return teamsMode; }
@@ -180,6 +192,10 @@ public final class ClientSettings {
                 verifyTcpNoDelay = network.get("verify-tcp-no-delay").getAsBoolean();
             }
         }
+        if (client.has("visuals") && client.get("visuals").isJsonObject()) {
+            JsonObject visuals = client.getAsJsonObject("visuals");
+            if (visuals.has("indicator")) indicator = visuals.get("indicator").getAsBoolean();
+        }
         if (client.has("targeting") && client.get("targeting").isJsonObject()) {
             JsonObject targeting = client.getAsJsonObject("targeting");
             moveFixMode = readIndex(targeting, "move-fix", moveFixMode, 3);
@@ -207,6 +223,9 @@ public final class ClientSettings {
         JsonObject network = new JsonObject();
         network.addProperty("verify-tcp-no-delay", verifyTcpNoDelay);
         client.add("network", network);
+        JsonObject visuals = new JsonObject();
+        visuals.addProperty("indicator", indicator);
+        client.add("visuals", visuals);
         JsonObject targeting = new JsonObject();
         targeting.addProperty("move-fix", moveFixMode);
         targeting.addProperty("bot-filter", botFilterMode);

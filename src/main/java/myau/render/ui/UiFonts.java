@@ -12,6 +12,7 @@ import myau.util.font.variable.OpenTypeVariableFont;
 public final class UiFonts {
     public static final int REGULAR = 400;
     public static final int SEMIBOLD = 600;
+    public static final int BOLD = 700;
     public static final int BLACK = 900;
 
     private final Map<String, UiFont> cache = new HashMap<>();
@@ -119,6 +120,7 @@ public final class UiFonts {
 
     private static Float awtWeight(int weight) {
         if (weight >= BLACK) return TextAttribute.WEIGHT_ULTRABOLD;
+        if (weight >= BOLD) return TextAttribute.WEIGHT_BOLD;
         if (weight >= SEMIBOLD) return TextAttribute.WEIGHT_SEMIBOLD;
         return TextAttribute.WEIGHT_REGULAR;
     }

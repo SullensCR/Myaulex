@@ -23,12 +23,18 @@ final class UiBackdropBlur {
             "uniform float radius;\n" +
             "varying vec2 uv;\n" +
             "void main(){\n" +
-            " vec2 d=texel*direction*max(radius/6.0,1.0);\n" +
-            " vec4 c=texture2D(textureIn,uv)*0.227027;\n" +
-            " c+=texture2D(textureIn,uv+d*1.384615)*0.316216;\n" +
-            " c+=texture2D(textureIn,uv-d*1.384615)*0.316216;\n" +
-            " c+=texture2D(textureIn,uv+d*3.230769)*0.070270;\n" +
-            " c+=texture2D(textureIn,uv-d*3.230769)*0.070270;\n" +
+            " // Use a wider, evenly spaced kernel so large UI radii do not\n" +
+            " // collapse into a few visible blur bands.\n" +
+            " vec2 d=texel*direction*max(radius/8.0,0.75);\n" +
+            " vec4 c=texture2D(textureIn,uv)*0.204164;\n" +
+            " c+=texture2D(textureIn,uv+d)*0.180174;\n" +
+            " c+=texture2D(textureIn,uv-d)*0.180174;\n" +
+            " c+=texture2D(textureIn,uv+d*2.0)*0.123832;\n" +
+            " c+=texture2D(textureIn,uv-d*2.0)*0.123832;\n" +
+            " c+=texture2D(textureIn,uv+d*3.0)*0.066282;\n" +
+            " c+=texture2D(textureIn,uv-d*3.0)*0.066282;\n" +
+            " c+=texture2D(textureIn,uv+d*4.0)*0.027630;\n" +
+            " c+=texture2D(textureIn,uv-d*4.0)*0.027630;\n" +
             " gl_FragColor=c;\n" +
             "}\n";
 

@@ -63,9 +63,6 @@ public final class ModernClickGui extends GuiScreen implements ClickGuiScreen {
             frameStarted = true;
             float progress = screenProgress();
             view.render(activeRenderer, designMouseX, designMouseY, progress, transitionType);
-            if (!activeRenderer.isSupported()) {
-                throw new IllegalStateException("Modern UI effects are unavailable");
-            }
         } catch (Throwable failure) {
             renderFailure = failure;
         } finally {
@@ -129,6 +126,11 @@ public final class ModernClickGui extends GuiScreen implements ClickGuiScreen {
     @Override
     public boolean doesGuiPauseGame() {
         return false;
+    }
+
+    @Override
+    public boolean isTextInputFocused() {
+        return view != null && view.isTextInputFocused();
     }
 
     private void updateTransform() {

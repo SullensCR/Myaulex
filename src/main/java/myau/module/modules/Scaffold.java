@@ -871,7 +871,7 @@ public class Scaffold extends Module {
             } finally {
                 progressbarRenderer.endFrame();
             }
-            return progressbarRenderer.isSupported();
+            return true;
         } catch (Throwable failure) {
             progressbarRendererUnavailable = true;
             return false;

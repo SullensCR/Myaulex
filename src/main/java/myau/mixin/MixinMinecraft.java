@@ -14,6 +14,7 @@ import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.InventoryPlayer;
+import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.spongepowered.asm.mixin.Mixin;
@@ -86,6 +87,9 @@ public abstract class MixinMinecraft {
             at = {@At("HEAD")}
     )
     private void loadWorld(WorldClient worldClient, String string, CallbackInfo callbackInfo) {
+        if (worldClient == null && this.thePlayer != null && this.thePlayer.sendQueue != null) {
+            this.thePlayer.sendQueue.getNetworkManager().closeChannel(new ChatComponentText("Quitting"));
+        }
         if (this.theWorld != null && worldClient != this.theWorld) {
             myau.config.Config.savePersistent();
         }

@@ -26,6 +26,7 @@ public class BlinkManager {
     public BlinkModules blinkModule = BlinkModules.NONE;
     public boolean blinking = false;
     public Deque<Packet<?>> blinkedPackets = new ConcurrentLinkedDeque<>();
+    private long blinkStartedAtMillis;
 
     public boolean offerPacket(Packet<?> packet) {
         if (this.blinkModule == BlinkModules.NONE || packet instanceof C00PacketKeepAlive || packet instanceof C01PacketChatMessage) {
@@ -45,12 +46,18 @@ public class BlinkManager {
         if (state) {
             this.blinkModule = module;
             this.blinking = true;
+            if (module == BlinkModules.BLINK) {
+                this.blinkStartedAtMillis = System.currentTimeMillis();
+            }
         } else {
             if(blinkModule != module){
                 return false;
             }
             this.blinking = false;
             if (Minecraft.getMinecraft().getNetHandler() != null && this.blinkedPackets.isEmpty()) {
+                if (module == BlinkModules.BLINK) {
+                    this.blinkStartedAtMillis = 0L;
+                }
                 return true;
             }
             for (Packet<?> blinkedPacket : blinkedPackets) {
@@ -58,6 +65,9 @@ public class BlinkManager {
             }
             this.blinkedPackets.clear();
             this.blinkModule = BlinkModules.NONE;
+            if (module == BlinkModules.BLINK) {
+                this.blinkStartedAtMillis = 0L;
+            }
         }
         return true;
     }
@@ -72,6 +82,11 @@ public class BlinkManager {
 
     public boolean isBlinking() {
         return blinking;
+    }
+
+    /** Timestamp of the current ordinary Blink buffering cycle, or zero when inactive. */
+    public long getBlinkStartedAtMillis() {
+        return blinkStartedAtMillis;
     }
 
     @EventTarget

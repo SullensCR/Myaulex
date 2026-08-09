@@ -182,8 +182,9 @@ public class PlayerUtil {
                             if (keepSprint.isEnabled()
                                     && (!keepSprint.groundOnly.getValue() || mc.thePlayer.onGround)
                                     && (!keepSprint.reachOnly.getValue() || !(RotationUtil.distanceToEntity(target) <= 3.0))) {
-                                mc.thePlayer.motionX *= 0.6 + 0.4 * (1.0 - keepSprint.slowdown.getValue().doubleValue() / 100.0);
-                                mc.thePlayer.motionZ *= 0.6 + 0.4 * (1.0 - keepSprint.slowdown.getValue().doubleValue() / 100.0);
+                                double motionMultiplier = keepSprint.getMotionMultiplier(0.6);
+                                mc.thePlayer.motionX *= motionMultiplier;
+                                mc.thePlayer.motionZ *= motionMultiplier;
                             } else {
                                 mc.thePlayer.motionX *= 0.6;
                                 mc.thePlayer.motionZ *= 0.6;

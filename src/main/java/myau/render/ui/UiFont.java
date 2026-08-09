@@ -10,6 +10,7 @@ import myau.util.font.variable.OpenTypeVariableFont;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
+import java.awt.font.TextAttribute;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -18,12 +19,47 @@ public final class UiFont {
     private static final int FIRST = 32;
     private static final int LAST = 255;
     private static final int COLUMNS = 16;
+    /** Empty texels around each glyph so a soft shadow cannot sample its neighbour. */
+    private static final int SHADOW_PADDING = 4;
+    private static final String SHADOW_VERTEX =
+            "#version 120\n" +
+            "varying vec2 uv;\n" +
+            "varying vec4 tint;\n" +
+            "void main(){\n" +
+            " gl_Position=gl_ModelViewProjectionMatrix*gl_Vertex;\n" +
+            " uv=gl_MultiTexCoord0.st;\n" +
+            " tint=gl_Color;\n" +
+            "}\n";
+    private static final String SHADOW_FRAGMENT =
+            "#version 120\n" +
+            "uniform sampler2D fontTexture;\n" +
+            "uniform vec2 texel;\n" +
+            "uniform vec2 shadowOffset;\n" +
+            "uniform float shadowOpacity;\n" +
+            "varying vec2 uv;\n" +
+            "varying vec4 tint;\n" +
+            "float alphaAt(vec2 point){ return texture2D(fontTexture,point).a; }\n" +
+            "float blurredAlpha(vec2 point){\n" +
+            " vec2 d=texel*1.5;\n" +
+            " float a=alphaAt(point)*0.204164;\n" +
+            " a+=(alphaAt(point+vec2(d.x,0.0))+alphaAt(point-vec2(d.x,0.0)))*0.123841;\n" +
+            " a+=(alphaAt(point+vec2(0.0,d.y))+alphaAt(point-vec2(0.0,d.y)))*0.123841;\n" +
+            " a+=(alphaAt(point+vec2(d.x,d.y))+alphaAt(point+vec2(-d.x,d.y))\n" +
+            "    +alphaAt(point+vec2(d.x,-d.y))+alphaAt(point-vec2(d.x,d.y)))*0.075118;\n" +
+            " return a;\n" +
+            "}\n" +
+            "void main(){\n" +
+            " float shadowAlpha=blurredAlpha(uv-texel*shadowOffset)*tint.a*shadowOpacity;\n" +
+            " gl_FragColor=vec4(0.0,0.0,0.0,shadowAlpha);\n" +
+            "}\n";
 
     private final Glyph[] glyphs = new Glyph[LAST + 1];
     private final DynamicTexture texture;
     private final int atlasSize;
     private final int cellSize;
     private final float lineHeight;
+    private UiShaderProgram shadowShader;
+    private boolean shadowShaderUnavailable;
 
     UiFont(Font font) {
         cellSize = Math.max(24, (int) Math.ceil(font.getSize2D() * 2.15F));
@@ -49,8 +85,8 @@ public final class UiFont {
             int y = row * cellSize;
             String value = String.valueOf((char) character);
             float advance = (float) font.getStringBounds(value, graphics.getFontRenderContext()).getWidth();
-            graphics.drawString(value, x + 2, y + 2 + metrics.getAscent());
-            glyphs[character] = new Glyph(x, y, Math.min(cellSize, Math.max(1, (int) Math.ceil(advance) + 5)), cellSize, advance);
+            graphics.drawString(value, x + SHADOW_PADDING + 2, y + SHADOW_PADDING + 2 + metrics.getAscent());
+            glyphs[character] = glyph(x, y, cellSize, advance);
         }
         graphics.dispose();
         texture = new DynamicTexture(image);
@@ -74,7 +110,18 @@ public final class UiFont {
                                             FontAxes axes, Font fallback) {
         int fallbackSize = Math.max(1, Math.round(size));
         FreeTypeFace face = FreeTypeFace.open(variableFont, axes, fallbackSize);
-        if (face == null) return buildAwtAtlas(fallback.deriveFont(size));
+        if (face == null) {
+            java.util.Map<TextAttribute, Object> attributes =
+                    new java.util.HashMap<TextAttribute, Object>();
+            float weight = axes.value("wght", 400.0F);
+            attributes.put(TextAttribute.SIZE, size);
+            attributes.put(TextAttribute.WEIGHT,
+                    weight >= 800.0F ? TextAttribute.WEIGHT_ULTRABOLD
+                            : weight >= 700.0F ? TextAttribute.WEIGHT_BOLD
+                            : weight >= 600.0F ? TextAttribute.WEIGHT_SEMIBOLD
+                            : TextAttribute.WEIGHT_REGULAR);
+            return buildAwtAtlas(fallback.deriveFont(attributes));
+        }
         try {
             int cellSize = Math.max(24, (int) Math.ceil(size * 2.15F));
             int rows = (int) Math.ceil((LAST - FIRST + 1) / (float) COLUMNS);
@@ -91,8 +138,8 @@ public final class UiFont {
                 int x = column * cellSize;
                 int y = row * cellSize;
                 FreeTypeFace.GlyphBitmap glyph = face.glyph(character);
-                int drawX = x + 2 + glyph.left;
-                int drawY = y + Math.round(ascent - glyph.top);
+                int drawX = x + SHADOW_PADDING + 2 + glyph.left;
+                int drawY = y + SHADOW_PADDING + Math.round(ascent - glyph.top);
                 for (int glyphY = 0; glyphY < glyph.height; glyphY++) {
                     for (int glyphX = 0; glyphX < glyph.width; glyphX++) {
                         int targetX = drawX + glyphX;
@@ -104,8 +151,7 @@ public final class UiFont {
                     }
                 }
                 float advance = glyph.advance > 0.0F ? glyph.advance : Math.max(1.0F, size * 0.5F);
-                glyphs[character] = new Glyph(x, y,
-                        Math.min(cellSize, Math.max(1, (int) Math.ceil(advance) + 5)), cellSize, advance);
+                glyphs[character] = glyph(x, y, cellSize, advance);
             }
             return new Atlas(image, atlasSize, cellSize, lineHeight, glyphs);
         } finally {
@@ -136,9 +182,8 @@ public final class UiFont {
             int y = row * cellSize;
             String value = String.valueOf((char) character);
             float advance = (float) font.getStringBounds(value, graphics.getFontRenderContext()).getWidth();
-            graphics.drawString(value, x + 2, y + 2 + metrics.getAscent());
-            glyphs[character] = new Glyph(x, y,
-                    Math.min(cellSize, Math.max(1, (int) Math.ceil(advance) + 5)), cellSize, advance);
+            graphics.drawString(value, x + SHADOW_PADDING + 2, y + SHADOW_PADDING + 2 + metrics.getAscent());
+            glyphs[character] = glyph(x, y, cellSize, advance);
         }
         graphics.dispose();
         return new Atlas(image, atlasSize, cellSize, lineHeight, glyphs);
@@ -159,6 +204,25 @@ public final class UiFont {
         return width;
     }
 
+    /** Width of the actual atlas quads, including glyph-side visual padding. */
+    public float visualWidth(String text) {
+        if (text == null) return 0.0F;
+        float cursor = 0.0F;
+        float right = 0.0F;
+        for (int i = 0; i < text.length(); i++) {
+            char character = text.charAt(i);
+            if (character == '\u00a7' && i + 1 < text.length()) {
+                i++;
+                continue;
+            }
+            Glyph glyph = character <= LAST ? glyphs[character] : glyphs['?'];
+            if (glyph == null) continue;
+            right = Math.max(right, cursor + glyph.width);
+            cursor += glyph.advance;
+        }
+        return right;
+    }
+
     public float height() {
         return lineHeight;
     }
@@ -169,6 +233,7 @@ public final class UiFont {
 
     public void draw(String text, float x, float y, int color, boolean shadow) {
         if (text == null || text.isEmpty()) return;
+        if (shadow && drawSoftShadow(text, x, y, color)) return;
         if (shadow) {
             int alpha = color >>> 24;
             int shadowColor = (Math.max(24, alpha * 3 / 5) << 24);
@@ -216,6 +281,74 @@ public final class UiFont {
         GlStateManager.color(1, 1, 1, 1);
     }
 
+    /**
+     * Draws a Gaussian alpha shadow from the glyph atlas, then draws the
+     * foreground after every shadow quad so shadows can never cover letters.
+     */
+    private boolean drawSoftShadow(String text, float x, float y, int baseColor) {
+        if (shadowShaderUnavailable) return false;
+        try {
+            if (shadowShader == null) {
+                shadowShader = new UiShaderProgram("myau-ui-font-soft-shadow", SHADOW_VERTEX, SHADOW_FRAGMENT);
+            }
+            GlStateManager.enableTexture2D();
+            GlStateManager.enableBlend();
+            GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GlStateManager.bindTexture(texture.getGlTextureId());
+            shadowShader.bind();
+            try {
+                shadowShader.uniform1i("fontTexture", 0);
+                shadowShader.uniform2f("texel", 1.0F / atlasSize, 1.0F / atlasSize);
+                shadowShader.uniform2f("shadowOffset", 0.0F, 2.0F);
+                shadowShader.uniform1f("shadowOpacity", 0.30F);
+
+                float cursor = x;
+                int color = baseColor;
+                GL11.glBegin(GL11.GL_QUADS);
+                for (int i = 0; i < text.length(); i++) {
+                    char character = text.charAt(i);
+                    if (character == '\u00a7' && i + 1 < text.length()) {
+                        color = minecraftColor(text.charAt(++i), baseColor);
+                        continue;
+                    }
+                    Glyph glyph = character <= LAST ? glyphs[character] : glyphs['?'];
+                    if (glyph == null) continue;
+                    applyColor(color);
+                    float u0 = (glyph.x - SHADOW_PADDING) / (float) atlasSize;
+                    float v0 = (glyph.y - SHADOW_PADDING) / (float) atlasSize;
+                    float u1 = (glyph.x + glyph.width + SHADOW_PADDING) / (float) atlasSize;
+                    float v1 = (glyph.y + glyph.height + SHADOW_PADDING) / (float) atlasSize;
+                    float left = cursor - SHADOW_PADDING;
+                    float top = y - SHADOW_PADDING;
+                    float right = cursor + glyph.width + SHADOW_PADDING;
+                    float bottom = y + glyph.height + SHADOW_PADDING;
+                    GL11.glTexCoord2f(u0, v0);
+                    GL11.glVertex2f(left, top);
+                    GL11.glTexCoord2f(u0, v1);
+                    GL11.glVertex2f(left, bottom);
+                    GL11.glTexCoord2f(u1, v1);
+                    GL11.glVertex2f(right, bottom);
+                    GL11.glTexCoord2f(u1, v0);
+                    GL11.glVertex2f(right, top);
+                    cursor += glyph.advance;
+                }
+                GL11.glEnd();
+            } finally {
+                shadowShader.unbind();
+            }
+            drawInternal(text, x, y, baseColor);
+            GlStateManager.color(1, 1, 1, 1);
+            return true;
+        } catch (RuntimeException failure) {
+            shadowShaderUnavailable = true;
+            if (shadowShader != null) {
+                shadowShader.delete();
+                shadowShader = null;
+            }
+            return false;
+        }
+    }
+
     private static void applyColor(int color) {
         GL11.glColor4f(
                 ((color >> 16) & 255) / 255.0F,
@@ -238,7 +371,15 @@ public final class UiFont {
     }
 
     public void delete() {
+        if (shadowShader != null) shadowShader.delete();
+        shadowShader = null;
         texture.deleteGlTexture();
+    }
+
+    private static Glyph glyph(int cellX, int cellY, int cellSize, float advance) {
+        return new Glyph(cellX + SHADOW_PADDING, cellY + SHADOW_PADDING,
+                Math.min(cellSize - SHADOW_PADDING * 2, Math.max(1, (int) Math.ceil(advance) + 5)),
+                cellSize - SHADOW_PADDING * 2, advance);
     }
 
     private static int nextPowerOfTwo(int value) {

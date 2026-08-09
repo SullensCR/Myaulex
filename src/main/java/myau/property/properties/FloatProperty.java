@@ -54,6 +54,13 @@ public class FloatProperty extends Property<Float> implements RecommendedRange {
         return maximum;
     }
 
+    /**
+     * Returns the slider step, or zero when the property is continuously draggable.
+     */
+    public double getStep() {
+        return 0.0D;
+    }
+
     @Override
     public double getRecommendedMinimum() { return minimum; }
 

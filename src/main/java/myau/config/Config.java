@@ -2,6 +2,7 @@ package myau.config;
 
 import com.google.gson.*;
 import myau.Myau;
+import myau.management.NotificationManager;
 import myau.mixin.IAccessorMinecraft;
 import myau.module.Module;
 import myau.property.Property;
@@ -68,7 +69,8 @@ public class Config {
                     writeLatest();
                     writeKeybinds();
                     writeClient();
-                    notifyUser("Imported default.json into the versioned Myaulex configuration.", 0xFF65D982);
+                    notifyUser(NotificationManager.NotificationType.CONFIG_SUCCESS,
+                            "default", "Configuration imported successfully");
                 }
             } else {
                 JsonObject latest = readObject(LATEST_FILE, true);
@@ -92,7 +94,8 @@ public class Config {
     public void load() {
         if (!requireValid()) return;
         if (!file.exists()) {
-            ChatUtil.sendFormatted(Myau.clientName + "Config file not found (&c&o" + file.getName() + "&r)&r");
+            notifyUser(NotificationManager.NotificationType.CONFIG_ERROR,
+                    this.name, "Config file not found");
             return;
         }
         JsonObject object = readObject(file, true);
@@ -104,7 +107,8 @@ public class Config {
         } finally {
             loading = false;
         }
-        ChatUtil.sendFormatted(Myau.clientName + "Config loaded (&a&o" + file.getName() + "&r)&r");
+        notifyUser(NotificationManager.NotificationType.CONFIG_SUCCESS,
+                this.name, "Config loaded successfully");
     }
 
     /** Saves a named ordinary-module profile. */
@@ -113,9 +117,11 @@ public class Config {
         JsonObject root = baseRoot();
         root.add("modules", serializeModules(false));
         if (writeAtomic(file, root)) {
-            ChatUtil.sendFormatted(Myau.clientName + "Config saved (&a&o" + file.getName() + "&r)&r");
+            notifyUser(NotificationManager.NotificationType.CONFIG_SUCCESS,
+                    this.name, "Config saved successfully");
         } else {
-            ChatUtil.sendFormatted(Myau.clientName + "Config couldn't be saved (&c&o" + file.getName() + "&r)&r");
+            notifyUser(NotificationManager.NotificationType.CONFIG_ERROR,
+                    this.name, "Error when saving config");
         }
     }
 
@@ -225,9 +231,10 @@ public class Config {
             List<Property<?>> list = Myau.propertyManager.properties.get(module.getClass());
             if (list != null) {
                 for (Property<?> property : list) {
-                    if (!properties.has(property.getName())) continue;
+                    JsonObject propertySource = propertySource(properties, property);
+                    if (propertySource == null) continue;
                     try {
-                        if (!property.read(properties)) {
+                        if (!property.read(propertySource)) {
                             logger().warn("Rejected property " + property.getName() + " for " + module.getName());
                         }
                     } catch (RuntimeException error) {
@@ -326,6 +333,60 @@ public class Config {
         return merged;
     }
 
+    private static JsonObject propertySource(JsonObject properties, Property<?> property) {
+        if (properties.has(property.getName())) return properties;
+        JsonElement targetCps = legacyTargetCpsValue(properties, property.getName());
+        if (targetCps != null) {
+            JsonObject migrated = new JsonObject();
+            for (Map.Entry<String, JsonElement> entry : properties.entrySet()) {
+                migrated.add(entry.getKey(), entry.getValue());
+            }
+            migrated.add(property.getName(), targetCps);
+            return migrated;
+        }
+        String legacyName = legacyPropertyName(property.getName());
+        if (legacyName == null || !properties.has(legacyName)) return null;
+
+        JsonObject migrated = new JsonObject();
+        for (Map.Entry<String, JsonElement> entry : properties.entrySet()) {
+            migrated.add(entry.getKey(), entry.getValue());
+        }
+        migrated.add(property.getName(), properties.get(legacyName));
+        return migrated;
+    }
+
+    private static JsonElement legacyTargetCpsValue(JsonObject properties, String propertyName) {
+        String minimumName;
+        String maximumName;
+        if ("target-cps".equals(propertyName)) {
+            minimumName = "min-aps";
+            maximumName = "max-aps";
+        } else if ("auto-block-target-cps".equals(propertyName)) {
+            minimumName = "auto-block-min-aps";
+            maximumName = "auto-block-max-aps";
+        } else {
+            return null;
+        }
+
+        JsonElement minimum = findElement(properties, minimumName);
+        JsonElement maximum = findElement(properties, maximumName);
+        if (minimum == null && maximum == null) return null;
+        try {
+            if (minimum == null) return new JsonPrimitive(maximum.getAsInt());
+            if (maximum == null) return new JsonPrimitive(minimum.getAsInt());
+            return new JsonPrimitive((int) Math.round((minimum.getAsDouble() + maximum.getAsDouble()) / 2.0D));
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static String legacyPropertyName(String propertyName) {
+        if ("consumables-mode".equals(propertyName)) return "food-mode";
+        if ("consumables-motion".equals(propertyName)) return "food-motion";
+        if ("consumables-sprint".equals(propertyName)) return "food-sprint";
+        return null;
+    }
+
     private static JsonObject propertyObject(JsonObject data) {
         return data.has("properties") && data.get("properties").isJsonObject()
                 ? data.getAsJsonObject("properties") : data;
@@ -363,14 +424,15 @@ public class Config {
                 int version = root.get("config-version").getAsInt();
                 if (version != CONFIG_VERSION) {
                     backup(source, "v" + version);
-                    notifyUser("Config version " + version + " differs from supported version "
-                            + CONFIG_VERSION + "; importing recognized values.", 0xFFFFB84D);
+                    notifyUser(NotificationManager.NotificationType.CONFIG_EDIT,
+                            source.getName(), "Config version differs; importing recognized values.");
                 }
             }
             return root;
         } catch (Exception error) {
             logger().error("Failed to read config " + source.getName(), error);
-            notifyUser("Could not read " + source.getName() + "; existing state was preserved.", 0xFFFF5C6C);
+            notifyUser(NotificationManager.NotificationType.CONFIG_ERROR,
+                    source.getName(), "Error when loading config; existing state was preserved.");
             return null;
         }
     }
@@ -411,7 +473,8 @@ public class Config {
 
     private boolean requireValid() {
         if (valid) return true;
-        ChatUtil.sendFormatted(Myau.clientName + "&cConfig names cannot be blank, reserved, or contain path characters.&r");
+        notifyUser(NotificationManager.NotificationType.CONFIG_ERROR,
+                "Configuration", "Config names cannot be blank, reserved, or contain path characters.");
         return false;
     }
 
@@ -435,8 +498,12 @@ public class Config {
         }
     }
 
-    private static void notifyUser(String message, int color) {
-        if (Myau.notificationManager != null) Myau.notificationManager.add(message, 5000, color);
+    private static void notifyUser(NotificationManager.NotificationType type, String title, String message) {
+        if (Myau.notificationManager != null && Myau.notificationManager.isEnabled()) {
+            Myau.notificationManager.add(type, "config:" + title, title, message, false);
+        } else {
+            ChatUtil.sendFormatted(Myau.clientName + title + ": " + message);
+        }
         logger().info(message);
     }
 

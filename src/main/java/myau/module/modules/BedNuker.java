@@ -1,9 +1,7 @@
 package myau.module.modules;
 
-import com.google.common.base.CaseFormat;
 import myau.Myau;
 import myau.enums.ChatColors;
-import myau.enums.DelayModules;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.event.types.Priority;
@@ -34,8 +32,6 @@ import net.minecraft.network.play.client.C07PacketPlayerDigging.Action;
 import net.minecraft.network.play.client.C0APacketAnimation;
 import net.minecraft.network.play.server.S02PacketChat;
 import net.minecraft.network.play.server.S08PacketPlayerPosLook;
-import net.minecraft.network.play.server.S12PacketEntityVelocity;
-import net.minecraft.network.play.server.S27PacketExplosion;
 import net.minecraft.potion.Potion;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.EnumFacing;
@@ -69,14 +65,13 @@ public class BedNuker extends Module {
     private boolean readyToBreak = false;
     private boolean breaking = false;
     private boolean waitingForStart = false;
-    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"LEGIT", "SWAP"});
     public final FloatProperty range = new FloatProperty("range", 4.5F, 3.0F, 6.0F);
     public final PercentProperty speed = new PercentProperty("speed", 0);
     public final BooleanProperty groundSpeed = new BooleanProperty("ground-spoof", false);
-    public final ModeProperty ignoreVelocity = new ModeProperty("ignore-velocity", 0, new String[]{"NONE", "CANCEL", "DELAY"});
     public final BooleanProperty surroundings = new BooleanProperty("surroundings", true);
     public final BooleanProperty toolCheck = new BooleanProperty("tool-check", true);
     public final BooleanProperty whiteList = new BooleanProperty("whitelist", true);
+    public final BooleanProperty holdToWhitelist = new BooleanProperty("hold-to-whitelist", false, this.whiteList::getValue);
     public final BooleanProperty swing = new BooleanProperty("swing", true);
     public final ModeProperty moveFix = new ModeProperty("move-fix", 1, new String[]{"NONE", "SILENT", "STRICT"});
     public final ModeProperty showTarget = new ModeProperty("show-target", 1, new String[]{"NONE", "DEFAULT", "HUD"});
@@ -248,6 +243,54 @@ public class BedNuker extends Module {
         return this.findTargetBed(mc.thePlayer.posX, mc.thePlayer.posY + (double) mc.thePlayer.getEyeHeight(), mc.thePlayer.posZ);
     }
 
+    private BlockPos findNearestBedBlock() {
+        ArrayList<BlockPos> beds = new ArrayList<>();
+        int sX = MathHelper.floor_double(mc.thePlayer.posX);
+        int sY = MathHelper.floor_double(mc.thePlayer.posY + (double) mc.thePlayer.getEyeHeight());
+        int sZ = MathHelper.floor_double(mc.thePlayer.posZ);
+        for (int i = sX - 6; i <= sX + 6; i++) {
+            for (int j = sY - 6; j <= sY + 6; j++) {
+                for (int k = sZ - 6; k <= sZ + 6; k++) {
+                    BlockPos blockPos = new BlockPos(i, j, k);
+                    if (!this.bedWhitelist.contains(blockPos)
+                            && mc.theWorld.getBlockState(blockPos).getBlock() instanceof BlockBed
+                            && PlayerUtil.isBlockWithinReach(
+                            blockPos,
+                            mc.thePlayer.posX,
+                            mc.thePlayer.posY + (double) mc.thePlayer.getEyeHeight(),
+                            mc.thePlayer.posZ,
+                            this.range.getValue().doubleValue())) {
+                        beds.add(blockPos);
+                    }
+                }
+            }
+        }
+        beds.sort(
+                Comparator.comparingDouble(
+                        blockPos -> blockPos.distanceSqToCenter(
+                                mc.thePlayer.posX,
+                                mc.thePlayer.posY + (double) mc.thePlayer.getEyeHeight(),
+                                mc.thePlayer.posZ
+                        )
+                )
+        );
+        return beds.isEmpty() ? null : beds.get(0);
+    }
+
+    private void whitelistBed(BlockPos bedPosition) {
+        IBlockState blockState = mc.theWorld.getBlockState(bedPosition);
+        if (!(blockState.getBlock() instanceof BlockBed)) {
+            return;
+        }
+        this.bedWhitelist.add(bedPosition);
+        EnumPartType partType = blockState.getValue(BlockBed.PART);
+        EnumFacing facing = blockState.getValue(BlockBed.FACING);
+        BlockPos otherPart = bedPosition.offset(partType == EnumPartType.HEAD ? facing.getOpposite() : facing);
+        if (mc.theWorld.getBlockState(otherPart).getBlock() instanceof BlockBed && !this.bedWhitelist.contains(otherPart)) {
+            this.bedWhitelist.add(otherPart);
+        }
+    }
+
     private BlockPos findTargetBed(double x, double y, double z) {
         ArrayList<BlockPos> targets = new ArrayList<>();
         int sX = MathHelper.floor_double(x);
@@ -327,6 +370,23 @@ public class BedNuker extends Module {
         return this.targetBed != null && this.breaking;
     }
 
+    @EventTarget
+    public void onKey(KeyEvent event) {
+        if (!this.holdToWhitelist.getValue()
+                || !this.whiteList.getValue()
+                || this.getKey() == 0
+                || event.getKey() != this.getKey()
+                || mc.currentScreen != null
+                || mc.theWorld == null
+                || mc.thePlayer == null) {
+            return;
+        }
+        BlockPos nearestBed = this.findNearestBedBlock();
+        if (nearestBed != null) {
+            this.whitelistBed(nearestBed);
+        }
+    }
+
     @EventTarget(Priority.HIGH)
     public void onTick(TickEvent event) {
         if (this.isEnabled() && event.getType() == EventType.PRE) {
@@ -343,7 +403,7 @@ public class BedNuker extends Module {
             }
             if (this.targetBed != null) {
                 int slot = ItemUtil.findInventorySlot(mc.thePlayer.inventory.currentItem, mc.theWorld.getBlockState(this.targetBed).getBlock());
-                if (this.mode.getValue() == 0 && this.savedSlot == -1) {
+                if (this.savedSlot == -1) {
                     this.savedSlot = mc.thePlayer.inventory.currentItem;
                     mc.thePlayer.inventory.currentItem = slot;
                     this.syncHeldItem();
@@ -361,9 +421,6 @@ public class BedNuker extends Module {
                         }
                         break;
                     case 1:
-                        if (this.mode.getValue() == 1) {
-                            this.readyToBreak = false;
-                        }
                         this.breaking = true;
                         this.tickCounter++;
                         this.breakProgress = this.breakProgress
@@ -376,17 +433,6 @@ public class BedNuker extends Module {
                         mc.effectRenderer.addBlockHitEffects(this.targetBed, this.getHitFacing(this.targetBed));
                         if (this.breakProgress >= 1.0F - 0.3F * ((float) this.speed.getValue().intValue() / 100.0F)
                                 || delta >= 1.0F - 0.3F * ((float) this.speed.getValue().intValue() / 100.0F)) {
-                            if (this.mode.getValue() == 1) {
-                                this.readyToBreak = true;
-                                this.savedSlot = mc.thePlayer.inventory.currentItem;
-                                mc.thePlayer.inventory.currentItem = slot;
-                                this.syncHeldItem();
-                                if (mc.thePlayer.isUsingItem()) {
-                                    this.savedSlot = mc.thePlayer.inventory.currentItem;
-                                    mc.thePlayer.inventory.currentItem = (mc.thePlayer.inventory.currentItem + 1) % 9;
-                                    this.syncHeldItem();
-                                }
-                            }
                             this.breaking = false;
                             PacketUtil.sendPacket(
                                     new C07PacketPlayerDigging(Action.STOP_DESTROY_BLOCK, this.targetBed, this.getHitFacing(this.targetBed))
@@ -422,9 +468,6 @@ public class BedNuker extends Module {
                 if (this.targetBed != null) {
                     this.readyToBreak = true;
                 }
-            }
-            if (this.targetBed == null) {
-                Myau.delayManager.setDelayState(false, DelayModules.BED_NUKER);
             }
         }
     }
@@ -464,18 +507,6 @@ public class BedNuker extends Module {
                     && RotationState.getPriority() == 5.0F
                     && MoveUtil.isForwardPressed()) {
                 MoveUtil.fixStrafe(RotationState.getSmoothedYaw());
-            }
-        }
-    }
-
-    @EventTarget(Priority.HIGH)
-    public void onKnockback(KnockbackEvent event) {
-        if (this.isEnabled() && !event.isCancelled() && !(event.getY() <= 0.0)) {
-            if (this.ignoreVelocity.getValue() == 1 && this.targetBed != null) {
-                event.setCancelled(true);
-                event.setX(mc.thePlayer.motionX);
-                event.setY(mc.thePlayer.motionY);
-                event.setZ(mc.thePlayer.motionZ);
             }
         }
     }
@@ -532,6 +563,7 @@ public class BedNuker extends Module {
     @EventTarget
     public void onLoadWorld(LoadWorldEvent event) {
         this.waitingForStart = false;
+        this.bedWhitelist.clear();
     }
 
     @EventTarget
@@ -562,24 +594,6 @@ public class BedNuker extends Module {
                         }
                     }
                 }, 1L, TimeUnit.SECONDS);
-            }
-            if (this.isEnabled() && this.targetBed != null && this.ignoreVelocity.getValue() == 2 && Myau.delayManager.getDelayModule() != DelayModules.BED_NUKER) {
-                if (event.getPacket() instanceof S12PacketEntityVelocity) {
-                    S12PacketEntityVelocity packet = (S12PacketEntityVelocity) event.getPacket();
-                    if (packet.getEntityID() == mc.thePlayer.getEntityId() && packet.getMotionY() > 0) {
-                        Myau.delayManager.delay(DelayModules.BED_NUKER);
-                        Myau.delayManager.delayedPacket.offer(packet);
-                        event.setCancelled(true);
-                    }
-                }
-                if (event.getPacket() instanceof S27PacketExplosion) {
-                    S27PacketExplosion explosion = (S27PacketExplosion) event.getPacket();
-                    if (explosion.func_149149_c() != 0.0F || explosion.func_149144_d() != 0.0F || explosion.func_149147_e() != 0.0F) {
-                        Myau.delayManager.delay(DelayModules.BED_NUKER);
-                        Myau.delayManager.delayedPacket.offer(explosion);
-                        event.setCancelled(true);
-                    }
-                }
             }
         }
     }
@@ -624,11 +638,6 @@ public class BedNuker extends Module {
     public void onDisabled() {
         this.resetBreaking();
         this.savedSlot = -1;
-        Myau.delayManager.setDelayState(false, DelayModules.BED_NUKER);
     }
 
-    @Override
-    public String[] getSuffix() {
-        return new String[]{CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, this.mode.getModeString())};
-    }
 }

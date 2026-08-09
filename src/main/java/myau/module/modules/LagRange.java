@@ -47,6 +47,8 @@ public class LagRange extends Module {
     private boolean isLagging = false;
     private boolean wasLagging = false;
     private int backwardsDamageTicks = 0;
+    private long activeLagStartedAtMillis;
+    private int activeLagDelayMillis;
     
     public final BooleanProperty advancedMode = new BooleanProperty("advanced-mode", false);
     
@@ -117,6 +119,8 @@ public class LagRange extends Module {
         this.tickIndex = -1;
         this.lagStartTime = 0L;
         this.isLagging = false;
+        this.activeLagStartedAtMillis = 0L;
+        this.activeLagDelayMillis = 0;
         this.logDebugState();
     }
 
@@ -124,11 +128,26 @@ public class LagRange extends Module {
         super("LagRange", false);
     }
 
+    /** Read-only state used by the central-screen indicator. */
+    public boolean isLagging() {
+        return isLagging;
+    }
+
+    public int getActiveLagDelayMillis() {
+        return activeLagDelayMillis;
+    }
+
+    public long getActiveLagStartedAtMillis() {
+        return activeLagStartedAtMillis;
+    }
+
     @EventTarget(Priority.LOW)
     public void onTick(TickEvent event) {
         if (this.isEnabled()) {
             switch (event.getType()) {
                 case PRE:
+                    boolean wasLagging = this.isLagging;
+                    int previousLagDelay = this.activeLagDelayMillis;
                     Myau.lagManager.setDelay(0);
                     this.hasTarget = false;
                     this.isLagging = false;
@@ -238,6 +257,10 @@ public class LagRange extends Module {
                                         }
                                         
                                         Myau.lagManager.setDelay(this.tickIndex);
+                                        if (!wasLagging || previousLagDelay != currentDelay) {
+                                            this.activeLagStartedAtMillis = System.currentTimeMillis();
+                                        }
+                                        this.activeLagDelayMillis = currentDelay;
                                         this.hasTarget = true;
                                         this.isLagging = true;
                                         this.logDebugState();
@@ -350,6 +373,8 @@ public class LagRange extends Module {
         this.lastPosition = null;
         this.currentPosition = null;
         this.isLagging = false;
+        this.activeLagStartedAtMillis = 0L;
+        this.activeLagDelayMillis = 0;
         this.wasLagging = false;
         this.backwardsDamageTicks = 0;
     }

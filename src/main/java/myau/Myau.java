@@ -17,6 +17,7 @@ import myau.property.Property;
 import myau.property.PropertyManager;
 import myau.ui.modern.ModuleCatalog;
 import myau.media.MprisService;
+import myau.render.IndicatorRenderer;
 
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
@@ -41,6 +42,7 @@ public class Myau {
     public static CommandManager commandManager;
     public static FontManagers fontManagers;
     public static ClientSettings clientSettings;
+    public static IndicatorRenderer indicatorRenderer;
 
     public Myau() {
         this.init();
@@ -61,6 +63,7 @@ public class Myau {
         commandManager = new CommandManager();
         fontManagers = new FontManagers();
         clientSettings = new ClientSettings();
+        indicatorRenderer = new IndicatorRenderer();
         fontManagers.load();
         EventManager.register(rotationManager);
         EventManager.register(floatManager);
@@ -69,6 +72,7 @@ public class Myau {
         EventManager.register(lagManager);
         EventManager.register(moduleManager);
         EventManager.register(commandManager);
+        EventManager.register(indicatorRenderer);
         moduleManager.modules.put(AimAssist.class, new AimAssist());
         moduleManager.modules.put(Backtrack.class, new Backtrack());
         moduleManager.modules.put(AutoCaptcha.class, new AutoCaptcha());
