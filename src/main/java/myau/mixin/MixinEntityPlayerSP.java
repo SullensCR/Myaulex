@@ -100,6 +100,10 @@ public abstract class MixinEntityPlayerSP extends MixinEntityPlayer {
             }
             EventManager.call(new UpdateEvent(EventType.POST, this.lastReportedYaw, this.lastReportedPitch, this.rotationYaw, this.rotationPitch));
         }
+        Stasis stasis = Stasis.getActiveInstance();
+        if (stasis != null) {
+            stasis.onPlayerUpdateCompleted();
+        }
     }
 
     @Redirect(

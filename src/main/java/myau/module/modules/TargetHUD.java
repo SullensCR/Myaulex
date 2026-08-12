@@ -69,8 +69,6 @@ public class TargetHUD extends Module {
     private final TimerUtil lastAttackTimer = new TimerUtil();
     private EntityLivingBase lastAttackTarget;
     private EntityLivingBase renderTarget;
-    private UiRenderer renderer;
-    private boolean rendererUnavailable;
     private long lastRenderNanos;
     private float visibility;
     private float expansion;
@@ -155,26 +153,20 @@ public class TargetHUD extends Module {
     }
 
     private void renderModern(EntityLivingBase entity) {
-        if (this.rendererUnavailable) {
+        UiRenderer renderer = Myau.uiRenderer;
+        if (renderer == null || !renderer.isSupported()) {
             this.renderModernFallback(entity);
             return;
         }
 
+        boolean frameStarted = false;
         try {
-            if (this.renderer == null) {
-                this.renderer = new UiRenderer();
-            }
-            if (!this.renderer.isSupported()) {
-                this.rendererUnavailable = true;
-                this.renderModernFallback(entity);
-                return;
-            }
-
             UiTransform transform = new UiTransform(mc, DESIGN_WIDTH, DESIGN_HEIGHT,
                     this.scale.getValue(), 0.0F);
-            this.renderer.beginFrame(transform, BACKDROP_BLUR_RADIUS);
+            renderer.beginFrame("Target HUD", transform, BACKDROP_BLUR_RADIUS);
+            frameStarted = true;
             try {
-                UiFont font = this.renderer.fonts().mojang(20.0F);
+                UiFont font = renderer.fonts().mojang(20.0F);
                 String health = Integer.toString(Math.max(0, Math.round(entity.getHealth())));
                 String name = entity.getName();
                 float componentWidth = TargetHudState.componentWidth(
@@ -183,13 +175,15 @@ public class TargetHUD extends Module {
                 float x = this.positionX(componentWidth);
                 float y = this.positionY(visualHeight);
                 int alpha = Math.round(255.0F * this.visibility);
-                this.drawModernComponent(this.renderer, entity, x, y, componentWidth, font, health, name, alpha);
+                this.drawModernComponent(renderer, entity, x, y, componentWidth, font, health, name, alpha);
             } finally {
-                this.renderer.endFrame();
+                renderer.endFrame();
+                frameStarted = false;
             }
         } catch (Throwable failure) {
-            this.rendererUnavailable = true;
             this.renderModernFallback(entity);
+        } finally {
+            if (frameStarted) renderer.endFrame();
         }
     }
 

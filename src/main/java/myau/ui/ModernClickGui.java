@@ -22,7 +22,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class ModernClickGui extends GuiScreen implements ClickGuiScreen {
     private static final Logger LOGGER = LogManager.getLogger("Myaulex-UI");
 
-    private UiRenderer renderer;
     private ClickGuiView view;
     private UiTransform transform;
     private boolean fallbackRequested;
@@ -37,8 +36,7 @@ public final class ModernClickGui extends GuiScreen implements ClickGuiScreen {
         closingAt = -1L;
         transitionType = ThreadLocalRandom.current().nextInt(3);
         try {
-            if (renderer == null) renderer = new UiRenderer();
-            if (!renderer.isSupported()) {
+            if (Myau.uiRenderer == null || !Myau.uiRenderer.isSupported()) {
                 throw new IllegalStateException("OpenGL 2.0 framebuffers and GLSL 1.20 are required");
             }
             if (view == null) view = new ClickGuiView();
@@ -51,15 +49,15 @@ public final class ModernClickGui extends GuiScreen implements ClickGuiScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        if (fallbackRequested || renderer == null || view == null) return;
+        if (fallbackRequested || Myau.uiRenderer == null || view == null) return;
         updateTransform();
         float designMouseX = transform.mouseX(mouseX);
         float designMouseY = transform.mouseY(mouseY);
-        UiRenderer activeRenderer = renderer;
+        UiRenderer activeRenderer = Myau.uiRenderer;
         boolean frameStarted = false;
         Throwable renderFailure = null;
         try {
-            activeRenderer.beginFrame(transform, 25.0F);
+            activeRenderer.beginFrame("Modern ClickGUI", transform, 25.0F);
             frameStarted = true;
             float progress = screenProgress();
             view.render(activeRenderer, designMouseX, designMouseY, progress, transitionType);
@@ -178,20 +176,12 @@ public final class ModernClickGui extends GuiScreen implements ClickGuiScreen {
                 GL11.glGetError(),
                 failure
         );
-        disposeRenderer();
+        disposeScreenState();
         GuiModule gui = (GuiModule) Myau.moduleManager.getModule(GuiModule.class);
         if (gui != null) gui.openOldGuiAfterModernFailure();
     }
 
-    private void disposeRenderer() {
-        if (renderer != null) {
-            try {
-                renderer.delete();
-            } catch (Throwable cleanupFailure) {
-                LOGGER.error("Failed to dispose modern UI renderer; glError={}", GL11.glGetError(), cleanupFailure);
-            }
-        }
-        renderer = null;
+    private void disposeScreenState() {
         view = null;
         transform = null;
     }

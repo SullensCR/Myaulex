@@ -22,8 +22,8 @@ import net.minecraft.util.MathHelper;
 import javax.vecmath.Vector4d;
 import java.awt.*;
 import java.text.DecimalFormat;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
+import java.util.Map;
 //this class from LBPR
 public class ESP2D extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
@@ -71,18 +71,21 @@ public class ESP2D extends Module {
 
         RenderUtil.enableRenderState();
 
-        List<Entity> collectedEntities = mc.theWorld.loadedEntityList.stream()
-                .filter(this::isValidEntity)
-                .collect(Collectors.toList());
-
-        for (Entity entity : collectedEntities) {
-            if (!RenderUtil.isInViewFrustum(entity.getEntityBoundingBox(), 0.1f)) continue;
-
-            ((IAccessorEntityRenderer) mc.entityRenderer).callSetupCameraTransform(event.getPartialTicks(), 0);
-            Vector4d pos = RenderUtil.projectToScreen(entity, scaleFactor);
+        Map<Entity, Vector4d> projected = new LinkedHashMap<>();
+        ((IAccessorEntityRenderer) mc.entityRenderer).callSetupCameraTransform(event.getPartialTicks(), 0);
+        try {
+            for (Entity entity : TeamUtil.getLoadedEntitiesSorted()) {
+                if (!isValidEntity(entity) || !RenderUtil.isInViewFrustum(entity.getEntityBoundingBox(), 0.1f)) continue;
+                Vector4d pos = RenderUtil.projectToScreen(entity, scaleFactor);
+                if (pos != null) projected.put(entity, pos);
+            }
+        } finally {
             mc.entityRenderer.setupOverlayRendering();
+        }
 
-            if (pos == null) continue;
+        for (Map.Entry<Entity, Vector4d> entry : projected.entrySet()) {
+            Entity entity = entry.getKey();
+            Vector4d pos = entry.getValue();
 
             double posX = pos.x;
             double posY = pos.y;

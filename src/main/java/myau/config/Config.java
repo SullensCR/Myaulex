@@ -520,7 +520,6 @@ public class Config {
         aliases.put("aura", new String[]{"KillAura"});
         aliases.put("fastkb", new String[]{"MoreKB", "WTap"});
         aliases.put("entityesp", new String[]{"ESP", "ESP2D", "Chams", "ItemESP"});
-        aliases.put("blockesp", new String[]{"BedESP", "ChestESP"});
         aliases.put("autogapple", new String[]{"AutoHeal"});
         aliases.put("inventorymanager", new String[]{"InvManager"});
         aliases.put("inventorymove", new String[]{"InvWalk"});

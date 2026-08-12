@@ -79,8 +79,6 @@ public class Scaffold extends Module {
     private int towerRestoreSlot = -1;
     private boolean towerRestoreWasIce = false;
     private EnumFacing targetFacing = null;
-    private static UiRenderer progressbarRenderer;
-    private static boolean progressbarRendererUnavailable;
     public final ModeProperty rotationMode = new ModeProperty("rotations", 2, new String[]{"NONE", "DEFAULT", "BACKWARDS", "SIDEWAYS"});
     public final ModeProperty moveFix = new ModeProperty("move-fix", 1, new String[]{"NONE", "SILENT"});
     public final ModeProperty sprintMode = new ModeProperty("sprint", 0, new String[]{"NONE", "VANILLA"});
@@ -289,6 +287,9 @@ public class Scaffold extends Module {
     }
 
     private void place(BlockPos blockPos, EnumFacing enumFacing, Vec3 vec3) {
+        if (Stasis.blocksAutomatedUse()) {
+            return;
+        }
         if (ItemUtil.isHoldingBlock() && this.blockCount > 0) {
             if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem(), blockPos, enumFacing, vec3)) {
                 if (mc.playerController.getCurrentGameType() != GameType.CREATIVE) {
@@ -839,14 +840,10 @@ public class Scaffold extends Module {
     }
 
     private boolean renderProgressbar(float progress, int alpha) {
-        if (progressbarRendererUnavailable) return false;
+        UiRenderer progressbarRenderer = Myau.uiRenderer;
+        if (progressbarRenderer == null || !progressbarRenderer.isSupported()) return false;
+        boolean frameStarted = false;
         try {
-            if (progressbarRenderer == null) progressbarRenderer = new UiRenderer();
-            if (!progressbarRenderer.isSupported()) {
-                progressbarRendererUnavailable = true;
-                return false;
-            }
-
             UiTransform transform = new UiTransform(
                     mc,
                     ProgressbarSizes.DESIGN_WIDTH,
@@ -854,7 +851,8 @@ public class Scaffold extends Module {
                     ProgressbarSizes.USER_SCALE * ((HUD) Myau.moduleManager.modules.get(HUD.class)).progressbarSize.getValue(),
                     0.0F
             );
-            progressbarRenderer.beginFrame(transform, ProgressbarSizes.BACKDROP_BLUR_RADIUS);
+            progressbarRenderer.beginFrame("Scaffold progressbar", transform, ProgressbarSizes.BACKDROP_BLUR_RADIUS);
+            frameStarted = true;
             try {
                 float x = (ProgressbarSizes.DESIGN_WIDTH - ProgressbarSizes.COMPONENT_WIDTH) * 0.5F
                         + ProgressbarSizes.OFFSET_X;
@@ -870,11 +868,13 @@ public class Scaffold extends Module {
                 );
             } finally {
                 progressbarRenderer.endFrame();
+                frameStarted = false;
             }
             return true;
         } catch (Throwable failure) {
-            progressbarRendererUnavailable = true;
             return false;
+        } finally {
+            if (frameStarted) progressbarRenderer.endFrame();
         }
     }
 

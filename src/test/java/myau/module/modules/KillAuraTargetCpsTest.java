@@ -30,4 +30,13 @@ public class KillAuraTargetCpsTest {
 
         assertEquals(Integer.valueOf(10), aura.autoBlockTargetCPS.getValue());
     }
+
+    @Test
+    public void externallyHeldBlockIsReleasedBeforeNonVanillaAuraAttack() {
+        assertEquals(true, KillAura.shouldReleaseHeldBlock(true, false, 0));
+        assertEquals(true, KillAura.shouldReleaseHeldBlock(true, false, 3));
+        assertEquals(false, KillAura.shouldReleaseHeldBlock(true, true, 3));
+        assertEquals(false, KillAura.shouldReleaseHeldBlock(true, false, 1));
+        assertEquals(false, KillAura.shouldReleaseHeldBlock(false, false, 3));
+    }
 }

@@ -227,6 +227,7 @@ public final class ClickGuiView {
             clientSettings.scroll(wheel);
             return;
         }
+        if (expanded != null && expanded.scrollPopup(wheel)) return;
         targetScroll = Math.max(0, Math.min(maxScroll, targetScroll + (wheel < 0 ? 48 : -48)));
         if (Myau.clientSettings != null) Myau.clientSettings.setScroll(categories.selected(), targetScroll);
     }

@@ -4,6 +4,7 @@ import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.events.PacketEvent;
 import myau.events.TickEvent;
+import myau.module.modules.Stasis;
 import myau.util.PacketUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.Packet;
@@ -60,6 +61,10 @@ public class LagManager {
     }
 
     public boolean handlePacket(Packet<?> packet) {
+        if (Stasis.ownsOutgoingPackets()) {
+            this.trackMovement(packet);
+            return false;
+        }
         this.flushQueue();
         if (packet instanceof C00PacketKeepAlive || packet instanceof C01PacketChatMessage) {
             return false;
@@ -67,18 +72,30 @@ public class LagManager {
             this.packetQueue.offer(new LagPacket(packet));
             return true;
         } else {
-            if (packet instanceof C03PacketPlayer) {
-                C03PacketPlayer c03 = (C03PacketPlayer) packet;
-                if (c03.isMoving()) {
-                    this.lastPosition = new Vec3(c03.getPositionX(), c03.getPositionY(), c03.getPositionZ());
-                }
-            }
+            this.trackMovement(packet);
             return false;
         }
     }
 
     public void setDelay(int delay) {
+        if (delay > 0 && Stasis.ownsOutgoingPackets()) {
+            return;
+        }
         this.tickDelay = delay;
+    }
+
+    public void flushForStasis() {
+        this.tickDelay = 0;
+        this.flushQueue();
+    }
+
+    private void trackMovement(Packet<?> packet) {
+        if (packet instanceof C03PacketPlayer) {
+            C03PacketPlayer c03 = (C03PacketPlayer) packet;
+            if (c03.isMoving()) {
+                this.lastPosition = new Vec3(c03.getPositionX(), c03.getPositionY(), c03.getPositionZ());
+            }
+        }
     }
 
     public Vec3 getLastPosition() {

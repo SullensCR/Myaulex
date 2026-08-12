@@ -44,6 +44,11 @@ public class ModuleComponent implements Component {
                     SliderComponent c = new SliderComponent(new FloatSlider(property), this, y);
                     this.settings.add(c);
                     y += c.getHeight();
+                } else if (baseProperty instanceof KeyBindProperty) {
+                    KeyBindProperty property = (KeyBindProperty) baseProperty;
+                    PropertyBindComponent c = new PropertyBindComponent(property, this, y);
+                    this.settings.add(c);
+                    y += c.getHeight();
                 } else if (baseProperty instanceof IntProperty) {
                     IntProperty property = (IntProperty) baseProperty;
                     SliderComponent c = new SliderComponent(new IntSlider(property), this, y);

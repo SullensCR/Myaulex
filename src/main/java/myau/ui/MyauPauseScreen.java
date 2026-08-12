@@ -34,7 +34,6 @@ public final class MyauPauseScreen extends GuiScreen {
             "Resume", "Server list", "Statistics", "Configs",
             "Options", "Forge Mods", "Reconnect", "Disconnect"
     };
-    private static UiRenderer sharedRenderer;
     private static final UiBounds PREVIOUS = new UiBounds(351, 267, 24, 24);
     private static final UiBounds PLAY_PAUSE = new UiBounds(386, 263, 32, 32);
     private static final UiBounds NEXT = new UiBounds(429, 267, 24, 24);
@@ -44,52 +43,57 @@ public final class MyauPauseScreen extends GuiScreen {
     @Override
     public void initGui() {
         openedAt = System.currentTimeMillis();
-        if (sharedRenderer == null) sharedRenderer = new UiRenderer();
         updateTransform();
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         updateTransform();
+        UiRenderer renderer = Myau.uiRenderer;
+        if (renderer == null) return;
         float mx = transform.mouseX(mouseX);
         float my = transform.mouseY(mouseY);
-        sharedRenderer.beginFrame(transform, 15.5F);
-        float progress = Math.min(1.0F, (System.currentTimeMillis() - openedAt) / 220.0F);
-        progress = 1.0F - (1.0F - progress) * (1.0F - progress);
-        float scale = 0.96F + 0.04F * progress;
-        GL11.glTranslatef(DESIGN_WIDTH / 2.0F, DESIGN_HEIGHT / 2.0F, 0);
-        GL11.glScalef(scale, scale, 1);
-        GL11.glTranslatef(-DESIGN_WIDTH / 2.0F, -DESIGN_HEIGHT / 2.0F, 0);
-        renderPanel(mx, my);
-        sharedRenderer.endFrame();
+        renderer.beginFrame("Pause menu", transform, 15.5F);
+        try {
+            float progress = Math.min(1.0F, (System.currentTimeMillis() - openedAt) / 220.0F);
+            progress = 1.0F - (1.0F - progress) * (1.0F - progress);
+            float scale = 0.96F + 0.04F * progress;
+            GL11.glTranslatef(DESIGN_WIDTH / 2.0F, DESIGN_HEIGHT / 2.0F, 0);
+            GL11.glScalef(scale, scale, 1);
+            GL11.glTranslatef(-DESIGN_WIDTH / 2.0F, -DESIGN_HEIGHT / 2.0F, 0);
+            renderPanel(mx, my);
+        } finally {
+            renderer.endFrame();
+        }
     }
 
     private void renderPanel(float mouseX, float mouseY) {
-        sharedRenderer.shadow(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, 20, 0, 3, 10, 5, 0x63000000);
-        sharedRenderer.backdrop(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, 20, 0x801A1A24);
-        UiFont logo = sharedRenderer.fonts().snPro(58, UiFonts.BLACK);
-        UiFont regular = sharedRenderer.fonts().snPro(23, UiFonts.REGULAR);
-        UiFont bold = sharedRenderer.fonts().snPro(23, UiFonts.SEMIBOLD);
+        UiRenderer renderer = Myau.uiRenderer;
+        renderer.shadow(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, 20, 0, 3, 10, 5, 0x63000000);
+        renderer.backdrop(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, 20, 0x801A1A24);
+        UiFont logo = renderer.fonts().snPro(58, UiFonts.BLACK);
+        UiFont regular = renderer.fonts().snPro(23, UiFonts.REGULAR);
+        UiFont bold = renderer.fonts().snPro(23, UiFonts.SEMIBOLD);
 
         logo.draw("Myaulex", (DESIGN_WIDTH - logo.width("Myaulex")) / 2.0F, 18, 0xFF76FFCF, true);
         TransactionAnalyzer analyzer = (TransactionAnalyzer) Myau.moduleManager.modules.get(TransactionAnalyzer.class);
         String ac = analyzer == null ? "Unknown" : analyzer.getDetected();
         regular.draw("AC: " + ac, 270, 106, 0xFFB0A7F7, true);
-        UiFont meta = sharedRenderer.fonts().mojang(13);
+        UiFont meta = renderer.fonts().mojang(13);
         ServerData currentServer = mc.getCurrentServerData();
         String connection = mc.isIntegratedServerRunning() ? "Singleplayer"
                 : currentServer == null ? "Disconnected" : currentServer.serverIP;
         String build = Myau.version == null ? "dev" : Myau.version;
         meta.draw(ellipsis("Minecraft 1.8.9  •  Myaulex " + build + "  •  " + connection,
                 meta, 400), 55, 177, 0xFFC6C3D7, true);
-        sharedRenderer.roundedRect(2, 198, 506, 3, 1.5F, 0xFFDCDFFF);
+        renderer.roundedRect(2, 198, 506, 3, 1.5F, 0xFFDCDFFF);
         renderMedia(mouseX, mouseY, regular, bold);
 
         for (int i = 0; i < BUTTONS.length; i++) {
             UiBounds button = BUTTONS[i];
             boolean hovered = button.contains(mouseX, mouseY);
-            sharedRenderer.shadow(button.x, button.y, button.width, button.height, 5, 0, 4, 5, 0, 0x40000000);
-            sharedRenderer.roundedRect(button.x, button.y, button.width, button.height, 5,
+            renderer.shadow(button.x, button.y, button.width, button.height, 5, 0, 4, 5, 0, 0x40000000);
+            renderer.roundedRect(button.x, button.y, button.width, button.height, 5,
                     hovered ? 0xB3464E64 : 0x801A1A24);
             float textX = button.x + (button.width - regular.width(LABELS[i])) / 2.0F;
             regular.draw(LABELS[i], textX, button.y + 5, 0xFFFFFFFF, true);
@@ -99,10 +103,11 @@ public final class MyauPauseScreen extends GuiScreen {
     private void renderMedia(float mouseX, float mouseY, UiFont regular, UiFont bold) {
         MprisService.Snapshot media = MprisService.getInstance().snapshot();
         if (!media.available) return;
-        sharedRenderer.shadow(55, 216, 400, 96, 10, 0, 3, 7, 0, 0x40000000);
-        sharedRenderer.roundedRect(55, 216, 400, 96, 10, 0x8A252635);
-        sharedRenderer.roundedRect(69, 230, 66, 66, 8, 0xFF3D4054);
-        UiFont note = sharedRenderer.fonts().snPro(32, UiFonts.SEMIBOLD);
+        UiRenderer renderer = Myau.uiRenderer;
+        renderer.shadow(55, 216, 400, 96, 10, 0, 3, 7, 0, 0x40000000);
+        renderer.roundedRect(55, 216, 400, 96, 10, 0x8A252635);
+        renderer.roundedRect(69, 230, 66, 66, 8, 0xFF3D4054);
+        UiFont note = renderer.fonts().snPro(32, UiFonts.SEMIBOLD);
         note.draw("♪", 91, 244, 0xFF76FFCF, true);
         bold.draw(ellipsis(media.title, bold, 183), 151, 229, 0xFFFFFFFF, true);
         regular.draw(ellipsis(media.artist.isEmpty() ? media.album : media.artist, regular, 183),

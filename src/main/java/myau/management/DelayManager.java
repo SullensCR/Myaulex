@@ -17,6 +17,7 @@ import net.minecraft.network.play.INetHandlerPlayClient;
 import net.minecraft.network.play.server.S00PacketKeepAlive;
 import net.minecraft.network.play.server.S01PacketJoinGame;
 import net.minecraft.network.play.server.S07PacketRespawn;
+import net.minecraft.network.play.server.S08PacketPlayerPosLook;
 import net.minecraft.network.play.server.S19PacketEntityStatus;
 import net.minecraft.network.play.server.S21PacketChunkData;
 import net.minecraft.network.play.server.S22PacketMultiBlockChange;
@@ -87,6 +88,7 @@ public class DelayManager {
 
     static boolean isImmediatePacket(Packet<?> packet) {
         return packet instanceof S00PacketKeepAlive
+                || packet instanceof S08PacketPlayerPosLook
                 || packet instanceof S38PacketPlayerListItem
                 || packet instanceof S21PacketChunkData
                 || packet instanceof S22PacketMultiBlockChange

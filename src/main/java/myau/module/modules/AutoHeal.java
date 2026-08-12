@@ -97,6 +97,7 @@ public class AutoHeal extends Module {
                     if (this.shouldHeal
                             && percent
                             && !this.hasRegenEffect()
+                            && !Stasis.blocksAutomatedUse()
                             && this.timer.hasTimeElapsed(this.delay.getValue())
                             && hurtTick > 0) {
                         int slot = this.findHealingItem();

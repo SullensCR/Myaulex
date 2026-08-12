@@ -242,6 +242,17 @@ public final class UiFont {
         drawInternal(text, x, y, color);
     }
 
+    /** Compile the optional soft-shadow program without issuing a draw call. */
+    void preloadShadowShader() {
+        if (shadowShader != null || shadowShaderUnavailable) return;
+        try {
+            shadowShader = new UiShaderProgram("myau-ui-font-soft-shadow", SHADOW_VERTEX, SHADOW_FRAGMENT);
+        } catch (RuntimeException failure) {
+            shadowShaderUnavailable = true;
+            shadowShader = null;
+        }
+    }
+
     private void drawInternal(String text, float x, float y, int baseColor) {
         GlStateManager.enableTexture2D();
         GlStateManager.enableBlend();

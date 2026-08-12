@@ -1,9 +1,12 @@
 package myau.render.ui;
 
 import net.minecraft.client.renderer.GlStateManager;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 
 final class UiShadowRenderer {
+    private static final Logger LOGGER = LogManager.getLogger("Myaulex-UI");
     private static final String VERTEX =
             "#version 120\n" +
             "varying vec2 localPosition;\n" +
@@ -29,10 +32,15 @@ final class UiShadowRenderer {
             "}\n";
 
     private UiShaderProgram shader;
+    private boolean unavailable;
+
+    boolean preload() {
+        return initialize();
+    }
 
     void draw(float x, float y, float width, float height, float radius,
               float offsetX, float offsetY, float blur, float spread, int color) {
-        if (shader == null) shader = new UiShaderProgram("myau-ui-soft-shadow", VERTEX, FRAGMENT);
+        if (!initialize()) return;
 
         float expandedWidth = width + spread * 2.0F;
         float expandedHeight = height + spread * 2.0F;
@@ -75,6 +83,19 @@ final class UiShadowRenderer {
     void delete() {
         if (shader != null) shader.delete();
         shader = null;
+    }
+
+    private boolean initialize() {
+        if (shader != null) return true;
+        if (unavailable) return false;
+        try {
+            shader = new UiShaderProgram("myau-ui-soft-shadow", VERTEX, FRAGMENT);
+            return true;
+        } catch (RuntimeException failure) {
+            unavailable = true;
+            LOGGER.warn("Modern UI soft shadows unavailable; continuing without panel shadows.", failure);
+            return false;
+        }
     }
 
     private static void vertex(float x, float y, float localX, float localY) {

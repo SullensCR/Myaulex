@@ -275,6 +275,7 @@ public final class ClientSettingsView {
 
     public void scroll(int wheel) {
         if (wheel == 0 || section < 0) return;
+        if (expanded != null && expanded.scrollPopup(wheel)) return;
         targetScroll = clamp(targetScroll + (wheel < 0 ? 48 : -48), 0, maxScroll);
     }
 

@@ -1,5 +1,6 @@
 package myau.module.modules;
 
+import myau.Myau;
 import myau.event.EventTarget;
 import myau.events.LoadWorldEvent;
 import myau.events.Render2DEvent;
@@ -21,6 +22,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.BlockPos;
@@ -58,8 +60,6 @@ public final class Bedplates extends Module {
     private final Map<BlockPos, Defense> defenses = new LinkedHashMap<>();
     private final Set<BlockPos> observedBeds = new LinkedHashSet<>();
     private final Map<BlockPos, Plate> plates = new LinkedHashMap<>();
-    private UiRenderer renderer;
-    private boolean rendererUnavailable;
     private int scanTick;
 
     public Bedplates() {
@@ -85,15 +85,11 @@ public final class Bedplates extends Module {
     @EventTarget
     public void onRender(Render2DEvent event) {
         if (!isEnabled() || mc.thePlayer == null || mc.theWorld == null || plates.isEmpty()) return;
-        if (rendererUnavailable) return;
+        UiRenderer renderer = Myau.uiRenderer;
+        if (renderer == null || !renderer.isSupported()) return;
 
+        boolean frameStarted = false;
         try {
-            if (renderer == null) renderer = new UiRenderer();
-            if (!renderer.isSupported()) {
-                rendererUnavailable = true;
-                return;
-            }
-
             ScaledResolution resolution = new ScaledResolution(mc);
             ((IAccessorEntityRenderer) mc.entityRenderer).callSetupCameraTransform(event.getPartialTicks(), 0);
             Map<Plate, Vector3d> projected = new LinkedHashMap<>();
@@ -117,17 +113,20 @@ public final class Bedplates extends Module {
                 plate.update(expanded, nowNanos);
             }
 
-            renderer.beginFrame(transform, 31.0F);
+            renderer.beginFrame("Bedplates", transform, 31.0F);
+            frameStarted = true;
             try {
                 for (Map.Entry<Plate, Vector3d> entry : projected.entrySet()) {
                     drawPlate(entry.getKey(), entry.getValue(), transform, nowMillis);
                 }
             } finally {
                 renderer.endFrame();
+                frameStarted = false;
             }
         } catch (Throwable ignored) {
             // A failed optional framebuffer/shader must never break Minecraft's HUD.
-            rendererUnavailable = true;
+        } finally {
+            if (frameStarted) renderer.endFrame();
         }
     }
 
@@ -215,15 +214,15 @@ public final class Bedplates extends Module {
         float borderInset = plate.expansion * scale; // JSON: collapsed border is outside; expanded border is inside.
         int opacity = Math.round(alpha * 255.0F);
 
-        renderer.shadow(x, y, width, height, BedplateState.CORNER_RADIUS * scale,
+        Myau.uiRenderer.shadow(x, y, width, height, BedplateState.CORNER_RADIUS * scale,
                 0.0F, 3.0F * scale, 10.0F * scale, 0.0F, multiplyAlpha(SHADOW_COLOR, opacity));
-        renderer.backdrop(x, y, width, height, BedplateState.CORNER_RADIUS * scale, multiplyAlpha(PANEL_COLOR, opacity));
-        renderer.outline(x + borderInset, y + borderInset, width - borderInset * 2.0F,
+        Myau.uiRenderer.backdrop(x, y, width, height, BedplateState.CORNER_RADIUS * scale, multiplyAlpha(PANEL_COLOR, opacity));
+        Myau.uiRenderer.outline(x + borderInset, y + borderInset, width - borderInset * 2.0F,
                 height - borderInset * 2.0F, Math.max(0.0F, BedplateState.CORNER_RADIUS * scale - borderInset),
                 2.0F * scale, multiplyAlpha(borderColor(plate.defense), opacity));
 
         float itemY = y + (height - BedplateState.ITEM_SIZE * scale) * 0.5F;
-        drawItem(new ItemStack(Blocks.bed), x + BedplateState.itemX(0) * scale, itemY, scale, alpha);
+        drawItem(new ItemStack(Items.bed), x + BedplateState.itemX(0) * scale, itemY, scale, alpha);
         for (int index = 0; index < layers; index++) {
             IBlockState state = plate.defense.layers.get(index);
             float targetX = x + BedplateState.itemX(index + 1) * scale;

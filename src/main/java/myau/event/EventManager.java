@@ -3,6 +3,7 @@ package myau.event;
 import myau.event.events.Event;
 import myau.event.events.EventStoppable;
 import myau.event.types.Priority;
+import myau.render.ClientPerformanceMetrics;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -211,6 +212,7 @@ public final class EventManager {
      * @return Event in the state after dispatching it.
      */
     public static Event call(final Event event) {
+        long startedNanos = ClientPerformanceMetrics.start();
         List<MethodData> dataList = REGISTRY_MAP.get(event.getClass());
         if (dataList != null) {
             if (event instanceof EventStoppable) {
@@ -227,6 +229,7 @@ public final class EventManager {
                 }
             }
         }
+        ClientPerformanceMetrics.recordEventDispatch(startedNanos);
         return event;
     }
 

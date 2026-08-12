@@ -8,4 +8,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface IAccessorKeyBinding {
     @Accessor("pressed")
     void setPressed(boolean boolean1);
+
+    @Accessor("pressTime")
+    void setPressTime(int pressTime);
 }

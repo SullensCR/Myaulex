@@ -6,7 +6,10 @@ import myau.event.EventManager;
 import myau.event.types.EventType;
 import myau.events.*;
 import myau.module.modules.NoHitDelay;
+import myau.module.modules.Stasis;
+import myau.render.RenderFrame;
 import myau.ui.MyauPauseScreen;
+import myau.util.TeamUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.GuiScreen;
@@ -87,6 +90,8 @@ public abstract class MixinMinecraft {
             at = {@At("HEAD")}
     )
     private void loadWorld(WorldClient worldClient, String string, CallbackInfo callbackInfo) {
+        RenderFrame.reset();
+        TeamUtil.invalidateRenderSnapshot();
         if (worldClient == null && this.thePlayer != null && this.thePlayer.sendQueue != null) {
             this.thePlayer.sendQueue.getNetworkManager().closeChannel(new ChatComponentText("Quitting"));
         }
@@ -131,12 +136,17 @@ public abstract class MixinMinecraft {
     private void rightClickMouse(CallbackInfo callbackInfo) {
         // Only fire event when actually clicking (not on cooldown)
         IAccessorMinecraft accessor = (IAccessorMinecraft) this;
+        Stasis stasis = Stasis.getActiveInstance();
         if (accessor.getRightClickDelayTimer() <= 0) {
             RightClickMouseEvent event = new RightClickMouseEvent();
             EventManager.call(event);
             if (event.isCancelled()) {
                 callbackInfo.cancel();
+                return;
             }
+        }
+        if (stasis != null && stasis.shouldBlockVanillaUseInvocation()) {
+            callbackInfo.cancel();
         }
     }
 
@@ -163,6 +173,10 @@ public abstract class MixinMinecraft {
     )
     private void setKeyBindState(int integer, boolean boolean2) {
         KeyBinding.setKeyBindState(integer, boolean2);
+        Stasis stasis = Stasis.getActiveInstance();
+        if (stasis != null) {
+            stasis.onRawKeyState(integer, boolean2);
+        }
         if (boolean2 && this.currentScreen == null) {
             EventManager.call(new KeyEvent(integer));
         }

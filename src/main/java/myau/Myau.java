@@ -18,6 +18,7 @@ import myau.property.PropertyManager;
 import myau.ui.modern.ModuleCatalog;
 import myau.media.MprisService;
 import myau.render.IndicatorRenderer;
+import myau.render.ui.UiRenderer;
 
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
@@ -43,6 +44,7 @@ public class Myau {
     public static FontManagers fontManagers;
     public static ClientSettings clientSettings;
     public static IndicatorRenderer indicatorRenderer;
+    public static UiRenderer uiRenderer;
 
     public Myau() {
         this.init();
@@ -64,6 +66,7 @@ public class Myau {
         fontManagers = new FontManagers();
         clientSettings = new ClientSettings();
         indicatorRenderer = new IndicatorRenderer();
+        uiRenderer = new UiRenderer("Myaulex UI");
         fontManagers.load();
         EventManager.register(rotationManager);
         EventManager.register(floatManager);
@@ -73,6 +76,7 @@ public class Myau {
         EventManager.register(moduleManager);
         EventManager.register(commandManager);
         EventManager.register(indicatorRenderer);
+        EventManager.register(uiRenderer);
         moduleManager.modules.put(AimAssist.class, new AimAssist());
         moduleManager.modules.put(Backtrack.class, new Backtrack());
         moduleManager.modules.put(AutoCaptcha.class, new AutoCaptcha());
@@ -85,7 +89,6 @@ public class Myau {
         moduleManager.modules.put(AutoHeal.class, new AutoHeal());
         moduleManager.modules.put(AutoTool.class, new AutoTool());
         moduleManager.modules.put(BedNuker.class, new BedNuker());
-        moduleManager.modules.put(BedESP.class, new BedESP());
         moduleManager.modules.put(Bedplates.class, new Bedplates());
         moduleManager.modules.put(Blink.class, new Blink());
         moduleManager.modules.put(BridgeAssist.class, new BridgeAssist());
@@ -98,6 +101,8 @@ public class Myau {
         moduleManager.modules.put(TransactionAnalyzer.class, new TransactionAnalyzer());
         moduleManager.modules.put(Notifications.class, new Notifications());
         moduleManager.modules.put(FastPlace.class, new FastPlace());
+        moduleManager.modules.put(FastQueue.class, new FastQueue());
+        moduleManager.modules.put(FlagDetector.class, new FlagDetector());
         moduleManager.modules.put(FloatingIsland.class, new FloatingIsland());
         moduleManager.modules.put(FullBright.class, new FullBright());
         moduleManager.modules.put(GuiModule.class, new GuiModule());
@@ -139,6 +144,7 @@ public class Myau {
         moduleManager.modules.put(Animations.class, new Animations());
         moduleManager.modules.put(Ambience.class, new Ambience());
         moduleManager.modules.put(BlockHit.class, new BlockHit());
+        moduleManager.modules.put(AutoRejoin.class, new AutoRejoin());
         commandManager.commands.add(new BindCommand());
         commandManager.commands.add(new ClickGuiCommand());
         commandManager.commands.add(new ConfigCommand());
@@ -175,6 +181,8 @@ public class Myau {
         }
         ModuleCatalog.validate(moduleManager.modules.values());
         Config.initialize();
+        HUD hud = (HUD) moduleManager.modules.get(HUD.class);
+        uiRenderer.initialize(hud == null ? 1.0F : hud.scale.getValue());
         if (friendManager.file.exists()) {
             friendManager.load();
         }

@@ -12,6 +12,7 @@ import myau.property.properties.DragProperty;
 import myau.property.properties.FileProperty;
 import myau.property.properties.FloatProperty;
 import myau.property.properties.IntProperty;
+import myau.property.properties.KeyBindProperty;
 import myau.property.properties.LongProperty;
 import myau.property.properties.ModeProperty;
 import myau.property.properties.PercentProperty;
@@ -32,6 +33,10 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class ModuleCard {
+    private static final int MAX_VISIBLE_POPUP_ENTRIES = 5;
+    private static final float POPUP_ENTRY_HEIGHT = 20.0F;
+    private static final float POPUP_PADDING = 4.0F;
+
     private final Module module;
     private float x;
     private float y;
@@ -40,6 +45,7 @@ public final class ModuleCard {
     private float toggleProgress;
     private long lastAnimationNanos = System.nanoTime();
     private boolean binding;
+    private KeyBindProperty bindingProperty;
     private Property<?> openMode;
     private Property<?> draggingNumber;
     private Property<?> editing;
@@ -48,6 +54,7 @@ public final class ModuleCard {
     private float popupX;
     private float popupY;
     private float popupWidth;
+    private int popupScroll;
     private final Map<Property<?>, UiBounds> numericTracks = new HashMap<>();
     private final Map<Property<?>, Float> booleanAnimations = new HashMap<>();
     private float animationDelta;
@@ -72,8 +79,10 @@ public final class ModuleCard {
         this.expanded = expanded;
         if (!expanded) {
             openMode = null;
+            popupScroll = 0;
             cancelEditor();
             binding = false;
+            bindingProperty = null;
         }
     }
 
@@ -86,7 +95,7 @@ public final class ModuleCard {
     }
 
     public boolean hasInputCapture() {
-        return editing != null || binding;
+        return editing != null || binding || bindingProperty != null;
     }
 
     public void discardTextEditor() {
@@ -186,11 +195,18 @@ public final class ModuleCard {
                 popupX = fieldX;
                 popupY = rowY + 24;
                 popupWidth = width;
-                float popupHeight = mode.getModes().length * 20.0F + 4.0F;
+                float popupHeight = popupHeight(mode);
                 if (popupY + popupHeight > ClickGuiTheme.MODULE_BOTTOM) {
                     popupY = rowY - popupHeight - 2.0F;
                 }
             }
+            return;
+        }
+
+        if (property instanceof KeyBindProperty) {
+            float fieldX = x + 250;
+            String key = bindingProperty == property ? "..." : KeyBindUtil.getKeyName(((KeyBindProperty) property).getValue());
+            drawField(renderer, fieldX, rowY, 129, 22, key, valueFont, bindingProperty == property);
             return;
         }
 
@@ -235,12 +251,24 @@ public final class ModuleCard {
         if (!(openMode instanceof ModeProperty)) return;
         ModeProperty mode = (ModeProperty) openMode;
         UiFont font = renderer.fonts().google(14, UiFonts.REGULAR);
-        float height = mode.getModes().length * 20.0F + 4;
+        int visibleEntries = visiblePopupEntries(mode);
+        float height = popupHeight(mode);
         renderer.shadow(popupX, popupY, popupWidth, height, 2, 0, 2, 4, 0, 0x66000000);
         renderer.roundedRect(popupX, popupY, popupWidth, height, 2, 0xFF20222E);
-        for (int i = 0; i < mode.getModes().length; i++) {
-            if (i == mode.getValue()) renderer.rect(popupX + 2, popupY + 2 + i * 20, popupWidth - 4, 20, 0x40545A83);
-            font.draw(trim(font, mode.getModes()[i], popupWidth - 10), popupX + 5, popupY + i * 20, 0xFFFFFFFF);
+        for (int row = 0; row < visibleEntries; row++) {
+            int index = popupScroll + row;
+            if (index == mode.getValue()) {
+                renderer.rect(popupX + 2, popupY + 2 + row * POPUP_ENTRY_HEIGHT,
+                        popupWidth - 4, POPUP_ENTRY_HEIGHT, 0x40545A83);
+            }
+            font.draw(trim(font, mode.getModes()[index], popupWidth - 12),
+                    popupX + 5, popupY + row * POPUP_ENTRY_HEIGHT, 0xFFFFFFFF);
+        }
+        if (mode.getModes().length > MAX_VISIBLE_POPUP_ENTRIES) {
+            float trackHeight = visibleEntries * POPUP_ENTRY_HEIGHT;
+            float thumbHeight = Math.max(10.0F, trackHeight * visibleEntries / mode.getModes().length);
+            float thumbY = popupY + 2 + (trackHeight - thumbHeight) * popupScroll / maxPopupScroll(mode);
+            renderer.roundedRect(popupX + popupWidth - 4, thumbY, 2, thumbHeight, 1, ClickGuiTheme.CYAN);
         }
     }
 
@@ -256,6 +284,13 @@ public final class ModuleCard {
     }
 
     public ClickResult mouseClicked(float mouseX, float mouseY, int button) {
+        if (bindingProperty != null) {
+            if (button != 0) {
+                bindingProperty.setValue(button - 100);
+                bindingProperty = null;
+            }
+            return ClickResult.CONSUMED;
+        }
         if (editing != null) cancelEditor();
 
         UiBounds header = new UiBounds(x, y, ClickGuiTheme.CONTENT_WIDTH, 47);
@@ -292,8 +327,17 @@ public final class ModuleCard {
     private void handlePropertyClick(Property<?> property, float rowY, float mouseX, float mouseY) {
         if (property instanceof BooleanProperty) {
             ((BooleanProperty) property).setValue(!((BooleanProperty) property).getValue());
+        } else if (property instanceof KeyBindProperty) {
+            bindingProperty = (KeyBindProperty) property;
         } else if (property instanceof ModeProperty) {
-            openMode = openMode == property ? null : property;
+            if (openMode == property) {
+                openMode = null;
+                popupScroll = 0;
+            } else {
+                ModeProperty mode = (ModeProperty) property;
+                openMode = property;
+                popupScroll = Math.min(Math.max(0, mode.getValue() - MAX_VISIBLE_POPUP_ENTRIES + 1), maxPopupScroll(mode));
+            }
         } else if (isNumeric(property)) {
             if (mouseX >= x + 327) startEditing(property, EditKind.NUMBER, displayValue(property));
             else {
@@ -332,6 +376,11 @@ public final class ModuleCard {
     }
 
     public boolean keyTyped(char character, int keyCode) {
+        if (bindingProperty != null) {
+            bindingProperty.setValue(keyCode == Keyboard.KEY_ESCAPE || keyCode == Keyboard.KEY_DELETE || keyCode == Keyboard.KEY_BACK ? 0 : keyCode);
+            bindingProperty = null;
+            return true;
+        }
         if (binding) {
             if (keyCode == Keyboard.KEY_ESCAPE || keyCode == Keyboard.KEY_DELETE || keyCode == Keyboard.KEY_BACK) module.setKey(0);
             else module.setKey(keyCode);
@@ -359,6 +408,7 @@ public final class ModuleCard {
 
     public void cancelBinding() {
         binding = false;
+        bindingProperty = null;
     }
 
     public boolean hasOpenPopup() {
@@ -369,20 +419,31 @@ public final class ModuleCard {
     public boolean handlePopupClick(float mouseX, float mouseY, int button) {
         if (!(openMode instanceof ModeProperty)) return false;
         ModeProperty mode = (ModeProperty) openMode;
-        UiBounds popup = new UiBounds(popupX, popupY, popupWidth, mode.getModes().length * 20 + 4);
+        UiBounds popup = new UiBounds(popupX, popupY, popupWidth, popupHeight(mode));
         if (button == 0 && popup.contains(mouseX, mouseY)) {
-            int index = Math.min(mode.getModes().length - 1,
-                    Math.max(0, (int) ((mouseY - popupY - 2) / 20)));
+            int index = popupScroll + Math.min(visiblePopupEntries(mode) - 1,
+                    Math.max(0, (int) ((mouseY - popupY - 2) / POPUP_ENTRY_HEIGHT)));
             mode.setValue(index);
         }
         openMode = null;
+        popupScroll = 0;
+        return true;
+    }
+
+    /** Scrolls an open mode popup one entry at a time and consumes the wheel event. */
+    public boolean scrollPopup(int wheel) {
+        if (!(openMode instanceof ModeProperty) || wheel == 0) return false;
+        ModeProperty mode = (ModeProperty) openMode;
+        popupScroll = Math.max(0, Math.min(maxPopupScroll(mode), popupScroll + (wheel < 0 ? 1 : -1)));
         return true;
     }
 
     public void discardEditor() {
         cancelEditor();
         binding = false;
+        bindingProperty = null;
         openMode = null;
+        popupScroll = 0;
     }
 
     private void startEditing(Property<?> property, EditKind kind, String value) {
@@ -429,6 +490,18 @@ public final class ModuleCard {
         editing = null;
         editKind = null;
         editorValue = "";
+    }
+
+    private static int visiblePopupEntries(ModeProperty mode) {
+        return Math.min(MAX_VISIBLE_POPUP_ENTRIES, mode.getModes().length);
+    }
+
+    private static int maxPopupScroll(ModeProperty mode) {
+        return Math.max(0, mode.getModes().length - visiblePopupEntries(mode));
+    }
+
+    private static float popupHeight(ModeProperty mode) {
+        return visiblePopupEntries(mode) * POPUP_ENTRY_HEIGHT + POPUP_PADDING;
     }
 
     private float settingsHeight() {

@@ -21,10 +21,13 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.AxisAlignedBB;
 
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class ItemESP extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
@@ -125,16 +128,19 @@ public class ItemESP extends Module {
                             double z = RenderUtil.lerpDouble(entityItem.posZ, entityItem.lastTickPosZ, event.getPartialTicks());
                             ItemData data = new ItemData(itemId, x, y, z);
                             Integer id = itemMap.get(data);
-                            itemMap.put(new ItemData(itemId, x, y, z), stack.stackSize + (id == null ? 0 : id));
+                            itemMap.put(data, stack.stackSize + (id == null ? 0 : id));
                         }
                     }
                 }
             }
-            for (Entry<ItemData, Integer> itemEntry : itemMap.entrySet().stream().sorted((entry1, entry2) -> {
-                int o = this.getItemPriority(entry1.getKey().itemId);
-                int o2 = this.getItemPriority(entry2.getKey().itemId);
-                return Integer.compare(o, o2);
-            }).collect(Collectors.toList())) {
+            List<Entry<ItemData, Integer>> entries = new ArrayList<>(itemMap.entrySet());
+            Collections.sort(entries, new Comparator<Entry<ItemData, Integer>>() {
+                @Override
+                public int compare(Entry<ItemData, Integer> first, Entry<ItemData, Integer> second) {
+                    return Integer.compare(getItemPriority(first.getKey().itemId), getItemPriority(second.getKey().itemId));
+                }
+            });
+            for (Entry<ItemData, Integer> itemEntry : entries) {
                 Color itemColor = this.getItemColor(itemEntry.getKey().itemId);
                 double x = itemEntry.getKey().x - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX();
                 double y = itemEntry.getKey().y - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY();

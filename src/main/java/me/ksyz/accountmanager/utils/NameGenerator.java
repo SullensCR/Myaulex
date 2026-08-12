@@ -14,8 +14,8 @@ import java.util.Random;
  * classpath. If missing, falls back to small built-in lists.
  */
 public final class NameGenerator {
-    private static final List<String> ADJECTIVES = loadLinesOrDefault("/nameGenerator/adjectives.txt", new String[]{"cool","fast","silent","brave","crazy","tiny","big","frosty","red","blue"});
-    private static final List<String> ANIMALS = loadLinesOrDefault("/nameGenerator/animals.txt", new String[]{"fox","wolf","hawk","lion","tiger","panda","otter","shark","eagle","bear"});
+    private static final List<String> ADJECTIVES = loadLinesOrDefault("/nameGenerator/adjectives.txt", new String[]{"c00ol","f4st","selent","bravve","cr4zy","t1ny","big","fro5ty","r3d","b1ue"});
+    private static final List<String> ANIMALS = loadLinesOrDefault("/nameGenerator/animals.txt", new String[]{"f0x","wolf","_hawk","1ion","t1ggr","Panda","oTTer","sHaRk","eagle","BRbear"});
     private static final Random RNG = new Random();
 
     private static List<String> loadLinesOrDefault(String resource, String[] fallback) {

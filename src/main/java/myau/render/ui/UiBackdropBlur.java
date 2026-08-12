@@ -1,5 +1,7 @@
 package myau.render.ui;
 
+import myau.render.ClientPerformanceMetrics;
+import myau.render.RenderFrame;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -8,6 +10,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GLContext;
+
+import java.util.HashMap;
+import java.util.Map;
 
 final class UiBackdropBlur {
     private static final Logger LOGGER = LogManager.getLogger("Myaulex-UI");
@@ -38,12 +43,17 @@ final class UiBackdropBlur {
             " gl_FragColor=c;\n" +
             "}\n";
 
+    private static UiBackdropBlur shared;
+
     private final Minecraft mc = Minecraft.getMinecraft();
     private UiShaderProgram shader;
-    private Framebuffer horizontal;
-    private Framebuffer vertical;
+    private final Map<Integer, Capture> captures = new HashMap<>();
     private boolean supported;
-    private int texture;
+
+    static UiBackdropBlur shared() {
+        if (shared == null) shared = new UiBackdropBlur();
+        return shared;
+    }
 
     UiBackdropBlur() {
         supported = OpenGlHelper.isFramebufferEnabled()
@@ -62,17 +72,46 @@ final class UiBackdropBlur {
         return supported;
     }
 
-    int texture() {
-        return texture;
+    boolean preloadShader() {
+        if (!supported) return false;
+        try {
+            if (shader == null) shader = new UiShaderProgram("myau-ui-gaussian", VERTEX, FRAGMENT);
+            return true;
+        } catch (RuntimeException failure) {
+            supported = false;
+            LOGGER.warn("Modern UI backdrop blur unavailable; continuing with translucent panels.", failure);
+            delete();
+            return false;
+        }
     }
 
-    void capture(float radius) {
-        if (!supported) return;
+    void invalidateFramebuffers() {
+        for (Capture capture : captures.values()) {
+            if (capture.horizontal != null) capture.horizontal.deleteFramebuffer();
+            if (capture.vertical != null) capture.vertical.deleteFramebuffer();
+        }
+        captures.clear();
+    }
+
+    int capture(float radius) {
+        if (!supported) return 0;
         try {
-            ensureResources();
-            renderPass(mc.getFramebuffer().framebufferTexture, horizontal, radius, 1.0F, 0.0F);
-            renderPass(horizontal.framebufferTexture, vertical, radius, 0.0F, 1.0F);
-            texture = vertical.framebufferTexture;
+            int key = Float.floatToIntBits(radius);
+            Capture capture = captures.get(key);
+            if (capture == null) {
+                capture = new Capture();
+                captures.put(key, capture);
+            }
+            ensureResources(capture);
+            long frame = RenderFrame.current();
+            if (frame == 0L || capture.frame != frame) {
+                long startedNanos = ClientPerformanceMetrics.start();
+                renderPass(mc.getFramebuffer().framebufferTexture, capture.horizontal, radius, 1.0F, 0.0F);
+                renderPass(capture.horizontal.framebufferTexture, capture.vertical, radius, 0.0F, 1.0F);
+                capture.frame = frame;
+                ClientPerformanceMetrics.recordBackdropCapture(startedNanos);
+            }
+            return capture.vertical.framebufferTexture;
         } catch (RuntimeException e) {
             supported = false;
             LOGGER.error("Backdrop blur failed at {}x{}, guiScale unknown, glError={}",
@@ -84,18 +123,19 @@ final class UiBackdropBlur {
         }
     }
 
-    private void ensureResources() {
+    private void ensureResources(Capture capture) {
         if (shader == null) shader = new UiShaderProgram("myau-ui-gaussian", VERTEX, FRAGMENT);
-        if (horizontal == null || horizontal.framebufferWidth != mc.displayWidth || horizontal.framebufferHeight != mc.displayHeight) {
-            if (horizontal != null) horizontal.deleteFramebuffer();
-            if (vertical != null) vertical.deleteFramebuffer();
-            horizontal = new Framebuffer(mc.displayWidth, mc.displayHeight, false);
-            vertical = new Framebuffer(mc.displayWidth, mc.displayHeight, false);
-            horizontal.setFramebufferFilter(GL11.GL_LINEAR);
-            vertical.setFramebufferFilter(GL11.GL_LINEAR);
+        if (capture.horizontal == null || capture.horizontal.framebufferWidth != mc.displayWidth || capture.horizontal.framebufferHeight != mc.displayHeight) {
+            if (capture.horizontal != null) capture.horizontal.deleteFramebuffer();
+            if (capture.vertical != null) capture.vertical.deleteFramebuffer();
+            capture.horizontal = new Framebuffer(mc.displayWidth, mc.displayHeight, false);
+            capture.vertical = new Framebuffer(mc.displayWidth, mc.displayHeight, false);
+            capture.horizontal.setFramebufferFilter(GL11.GL_LINEAR);
+            capture.vertical.setFramebufferFilter(GL11.GL_LINEAR);
+            capture.frame = Long.MIN_VALUE;
             try {
-                int horizontalStatus = framebufferStatus(horizontal);
-                int verticalStatus = framebufferStatus(vertical);
+                int horizontalStatus = framebufferStatus(capture.horizontal);
+                int verticalStatus = framebufferStatus(capture.vertical);
                 LOGGER.info("Modern UI framebuffers initialized at {}x{}: horizontal={}, vertical={}",
                         mc.displayWidth, mc.displayHeight, horizontalStatus, verticalStatus);
                 if (horizontalStatus != OpenGlHelper.GL_FRAMEBUFFER_COMPLETE
@@ -164,11 +204,13 @@ final class UiBackdropBlur {
 
     void delete() {
         if (shader != null) shader.delete();
-        if (horizontal != null) horizontal.deleteFramebuffer();
-        if (vertical != null) vertical.deleteFramebuffer();
+        invalidateFramebuffers();
         shader = null;
-        horizontal = null;
-        vertical = null;
-        texture = 0;
+    }
+
+    private static final class Capture {
+        private Framebuffer horizontal;
+        private Framebuffer vertical;
+        private long frame = Long.MIN_VALUE;
     }
 }

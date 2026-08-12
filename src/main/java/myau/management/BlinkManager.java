@@ -5,6 +5,7 @@ import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.events.PacketEvent;
 import myau.events.TickEvent;
+import myau.module.modules.Stasis;
 import myau.util.PacketUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.Packet;
@@ -29,6 +30,9 @@ public class BlinkManager {
     private long blinkStartedAtMillis;
 
     public boolean offerPacket(Packet<?> packet) {
+        if (Stasis.ownsOutgoingPackets()) {
+            return false;
+        }
         if (this.blinkModule == BlinkModules.NONE || packet instanceof C00PacketKeepAlive || packet instanceof C01PacketChatMessage) {
             return false;
         } else if (this.blinkedPackets.isEmpty() && packet instanceof C0FPacketConfirmTransaction) {
@@ -44,6 +48,9 @@ public class BlinkManager {
             return false;
         }
         if (state) {
+            if (Stasis.ownsOutgoingPackets()) {
+                return false;
+            }
             this.blinkModule = module;
             this.blinking = true;
             if (module == BlinkModules.BLINK) {
@@ -70,6 +77,16 @@ public class BlinkManager {
             }
         }
         return true;
+    }
+
+    public void flushForStasis() {
+        this.blinking = false;
+        for (Packet<?> blinkedPacket : this.blinkedPackets) {
+            PacketUtil.sendPacketNoEvent(blinkedPacket);
+        }
+        this.blinkedPackets.clear();
+        this.blinkModule = BlinkModules.NONE;
+        this.blinkStartedAtMillis = 0L;
     }
 
     public BlinkModules getBlinkingModule() {

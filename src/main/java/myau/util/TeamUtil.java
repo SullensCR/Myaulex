@@ -1,6 +1,8 @@
 package myau.util;
 
 import myau.Myau;
+import myau.render.ClientPerformanceMetrics;
+import myau.render.RenderFrame;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.network.NetworkPlayerInfo;
@@ -15,29 +17,58 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.scoreboard.ScorePlayerTeam;
 
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 public class TeamUtil {
     private static final Minecraft mc = Minecraft.getMinecraft();
+    private static final Comparator<Entity> FARTHEST_FIRST = new Comparator<Entity>() {
+        @Override
+        public int compare(Entity first, Entity second) {
+            double firstDistance = mc.getRenderManager().getDistanceToCamera(first.posX, first.posY, first.posZ);
+            double secondDistance = mc.getRenderManager().getDistanceToCamera(second.posX, second.posY, second.posZ);
+            int distance = Double.compare(secondDistance, firstDistance);
+            if (distance != 0) return distance;
+            return compareUuidText(first.getUniqueID(), second.getUniqueID());
+        }
+    };
+    private static long sortedFrame = Long.MIN_VALUE;
+    private static Object sortedWorld;
+    private static List<Entity> sortedEntities = Collections.emptyList();
 
     public static boolean isEntityLoaded(Entity entity) {
-        if (entity == null) return false;
+        if (entity == null || TeamUtil.mc.theWorld == null) return false;
         return TeamUtil.mc.theWorld.loadedEntityList.contains(entity);
     }
 
     public static List<Entity> getLoadedEntitiesSorted() {
-        return TeamUtil.mc.theWorld.loadedEntityList.stream().sorted((entity1, entity2) -> {
-            double dist1 = mc.getRenderManager().getDistanceToCamera(entity1.posX, entity1.posY, entity1.posZ);
-            double dist2 = mc.getRenderManager().getDistanceToCamera(entity2.posX, entity2.posY, entity2.posZ);
-            if (dist1 < dist2) {
-                return 1;
-            }
-            if (dist1 > dist2) {
-                return -1;
-            }
-            return entity1.getUniqueID().toString().compareTo(entity2.getUniqueID().toString());
-        }).collect(Collectors.toList());
+        if (mc.theWorld == null || mc.getRenderManager() == null) return Collections.emptyList();
+        long frame = RenderFrame.current();
+        if (frame != 0L && sortedFrame == frame && sortedWorld == mc.theWorld) return sortedEntities;
+
+        long startedNanos = ClientPerformanceMetrics.start();
+        List<Entity> snapshot = new ArrayList<>(mc.theWorld.loadedEntityList);
+        Collections.sort(snapshot, FARTHEST_FIRST);
+        sortedEntities = Collections.unmodifiableList(snapshot);
+        sortedWorld = mc.theWorld;
+        sortedFrame = frame;
+        ClientPerformanceMetrics.recordEntitySort(startedNanos);
+        return sortedEntities;
+    }
+
+    public static void invalidateRenderSnapshot() {
+        sortedFrame = Long.MIN_VALUE;
+        sortedWorld = null;
+        sortedEntities = Collections.emptyList();
+    }
+
+    /** Equivalent to comparing UUID.toString() without allocating two strings. */
+    private static int compareUuidText(UUID first, UUID second) {
+        int most = Long.compareUnsigned(first.getMostSignificantBits(), second.getMostSignificantBits());
+        return most != 0 ? most : Long.compareUnsigned(first.getLeastSignificantBits(), second.getLeastSignificantBits());
     }
 
     public static float getHealthScore(EntityLivingBase entityLivingBase) {

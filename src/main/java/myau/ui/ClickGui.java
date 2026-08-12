@@ -61,7 +61,6 @@ public class ClickGui extends GuiScreen implements ClickGuiScreen {
         renderModules.add(Myau.moduleManager.getModule(NameTags.class));
         renderModules.add(Myau.moduleManager.getModule(TargetHUD.class));
         renderModules.add(Myau.moduleManager.getModule(Indicators.class));
-        renderModules.add(Myau.moduleManager.getModule(BedESP.class));
         renderModules.add(Myau.moduleManager.getModule(ItemESP.class));
         renderModules.add(Myau.moduleManager.getModule(ViewClip.class));
         renderModules.add(Myau.moduleManager.getModule(NoHurtCam.class));
@@ -93,6 +92,7 @@ public class ClickGui extends GuiScreen implements ClickGuiScreen {
 
         List<Module> miscModules = new ArrayList<>();
         miscModules.add(Myau.moduleManager.getModule(AutoCaptcha.class));
+        miscModules.add(Myau.moduleManager.getModule(AutoRejoin.class));
         miscModules.add(Myau.moduleManager.getModule(AutoRegister.class));
         miscModules.add(Myau.moduleManager.getModule(BedNuker.class));
         miscModules.add(Myau.moduleManager.getModule(NoRotate.class));
@@ -100,6 +100,7 @@ public class ClickGui extends GuiScreen implements ClickGuiScreen {
         miscModules.add(Myau.moduleManager.getModule(ServerHider.class));
         miscModules.add(Myau.moduleManager.getModule(AntiObfuscate.class));
         miscModules.add(Myau.moduleManager.getModule(InventoryClicker.class));
+        miscModules.add(Myau.moduleManager.getModule(FlagDetector.class));
 
         combatModules.removeIf(module -> !ModuleCatalog.isOrdinary(module));
         movementModules.removeIf(module -> !ModuleCatalog.isOrdinary(module));

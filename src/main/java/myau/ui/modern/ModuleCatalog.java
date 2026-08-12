@@ -24,13 +24,14 @@ public final class ModuleCatalog {
         add(categories, ClickGuiCategory.MOVEMENT,
                 "AntiVoid", "Blink", "Keep Sprint", "NoSlow", "InventoryMove", "Sprint", "Stasis");
         add(categories, ClickGuiCategory.VISUALS,
-                "Ambience", "Particles", "Indicators", "EntityESP", "BlockESP", "BlockOverlay",
+                "Ambience", "Particles", "Indicators", "EntityESP", "BlockOverlay",
                 "Nametags", "Trajectories", "AntiDebuff", "Bedplates");
         add(categories, ClickGuiCategory.PLAYER,
                 "AutoGapple", "AutoTool", "ChestStealer", "InventoryManager", "Scaffold",
                 "BridgeAssist", "FastBreak", "BedBreaker");
         add(categories, ClickGuiCategory.UTILITIES,
-                "AutoCaptcha", "AutoAuthentication", "TransactionAnalyzer", "Notifications", "PacketDelay");
+                "AutoCaptcha", "AutoAuthentication", "AutoRejoin", "TransactionAnalyzer", "Notifications", "PacketDelay",
+                "FastQueue", "FlagDetector");
         CATEGORIES = Collections.unmodifiableMap(categories);
     }
 

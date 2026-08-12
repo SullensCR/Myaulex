@@ -1,29 +1,118 @@
 package myau.render.ui;
 
+import myau.event.EventTarget;
+import myau.events.ResizeEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public final class UiRenderer {
+    private static final Logger LOGGER = LogManager.getLogger("Myaulex-UI");
     // Backdrop textures use this path as their rounded mask. More segments
     // keep the blur edge smooth even when the shape shader is unavailable.
     private static final int CORNER_SEGMENTS = 24;
 
+    private static final boolean GL_DIAGNOSTICS = Boolean.getBoolean("myau.ui.glDiagnostics");
+    private static final String[] PRELOAD_RESOURCES = {
+            "notifications/Icons/Icon=Info.svg",
+            "notifications/Icons/Icon=Warning.svg",
+            "notifications/Icons/Icon=Error.svg",
+            "notifications/Icons/Icon=Analyze.svg",
+            "notifications/Icons/Icon=Config-Error.svg",
+            "notifications/Icons/Icon=Config-Success.svg",
+            "notifications/Icons/Icon=Config-Edit.svg",
+            "notifications/Icons/Icon=Enabled.svg",
+            "notifications/Icons/Icon=Disabled.svg",
+            "notifications/throbber/Track.svg",
+            "notifications/throbber/Filled Track.svg",
+            "ui/targethud/heart.svg",
+            "ui/progressbar/progressbar-box@2x.png",
+            "ui/progressbar/track@2x.png",
+            "ui/icons/combat.png",
+            "ui/icons/movement.png",
+            "ui/icons/visuals.png",
+            "ui/icons/player.png",
+            "ui/icons/utilities.png",
+            "ui/icons/module.png",
+            "ui/icons/search.png",
+            "ui/icons/dropdown.png",
+            "ui/icons/eye-on-bg.png",
+            "ui/icons/eye-on.png",
+            "ui/icons/eye-off-bg.png",
+            "ui/icons/eye-off.png"
+    };
+
     private final Minecraft mc = Minecraft.getMinecraft();
     private final UiFonts fonts = new UiFonts();
-    private final UiBackdropBlur blur = new UiBackdropBlur();
+    private final UiBackdropBlur blur = UiBackdropBlur.shared();
     private final UiShadowRenderer shadows = new UiShadowRenderer();
     private final UiShapeRenderer shapes = new UiShapeRenderer();
-    private final Map<String, UiTexture> textures = new HashMap<>();
+    private final UiResourceCache<UiTexture> textures = new UiResourceCache<>();
+    private final Set<String> failedTextures = new HashSet<>();
     private final Deque<UiBounds> clips = new ArrayDeque<>();
+    private final UiRendererLifecycle lifecycle = new UiRendererLifecycle();
     private UiTransform transform;
     private UiGlStateSnapshot stateSnapshot;
-    private boolean frameActive;
+    private final String defaultOwner;
+    private String activeOwner;
+    private int backdropTexture;
+
+    public UiRenderer() {
+        this("UI");
+    }
+
+    public UiRenderer(String diagnosticOwner) {
+        this.defaultOwner = diagnosticOwner;
+        this.activeOwner = diagnosticOwner;
+    }
+
+    /**
+     * Preloads fixed modern-UI resources at the GL-ready end of Minecraft startup.
+     * Framebuffer-sized blur targets remain deferred until the first real frame.
+     */
+    public void initialize(float arraylistScale) {
+        if (!lifecycle.beginInitialization()) return;
+
+        UiGlStateSnapshot snapshot = null;
+        boolean pushed = false;
+        try {
+            snapshot = UiGlStateSnapshot.capture();
+            GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+            pushed = true;
+
+            blur.preloadShader();
+            shapes.preload();
+            shadows.preload();
+
+            List<UiFont> startupFonts = startupFonts(arraylistScale);
+            for (UiFont font : startupFonts) font.preloadShadowShader();
+            for (String resource : PRELOAD_RESOURCES) resource(resource);
+
+            LOGGER.info("Modern UI renderer initialized at client startup: fonts={}, textures={}, blurSupported={}",
+                    startupFonts.size(), textures.size(), blur.isSupported());
+        } catch (Throwable failure) {
+            LOGGER.error("Modern UI startup preload was incomplete; lazy fallbacks remain available.", failure);
+        } finally {
+            try {
+                if (pushed) GL11.glPopAttrib();
+            } finally {
+                if (snapshot != null) snapshot.restore();
+            }
+        }
+    }
+
+    public boolean isInitialized() {
+        return lifecycle.isInitialized();
+    }
 
     public boolean isSupported() {
         return blur.isSupported();
@@ -34,24 +123,47 @@ public final class UiRenderer {
     }
 
     public UiTexture texture(String name) {
-        UiTexture texture = textures.get(name);
-        if (texture == null) {
-            texture = new UiTexture("ui/icons/" + name + ".png");
-            textures.put(name, texture);
+        return resource("ui/icons/" + name + ".png");
+    }
+
+    /** Load or return a shared texture from a path relative to /assets/myau/. */
+    public UiTexture resource(final String resourcePath) {
+        if (resourcePath == null || failedTextures.contains(resourcePath)) return null;
+        try {
+            return textures.get(resourcePath, new UiResourceCache.Loader<UiTexture>() {
+                @Override
+                public UiTexture load() {
+                    return new UiTexture(resourcePath);
+                }
+            });
+        } catch (RuntimeException failure) {
+            failedTextures.add(resourcePath);
+            LOGGER.warn("Unable to load optional modern UI texture /assets/myau/{}; omitting it.",
+                    resourcePath, failure);
+            return null;
         }
-        return texture;
     }
 
     public void beginFrame(UiTransform transform, float blurRadius) {
-        if (frameActive) throw new IllegalStateException("UI frame already active");
+        beginFrame(defaultOwner, transform, blurRadius);
+    }
+
+    public void beginFrame(String owner, UiTransform transform, float blurRadius) {
+        lifecycle.beginFrame();
+        this.activeOwner = owner == null ? defaultOwner : owner;
         this.transform = transform;
-        this.stateSnapshot = UiGlStateSnapshot.capture();
-        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        boolean attributesPushed = false;
+        boolean matrixPushed = false;
         boolean initialized = false;
         try {
-            blur.capture(blurRadius);
+            this.stateSnapshot = UiGlStateSnapshot.capture();
+            GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+            attributesPushed = true;
+            reportGlErrors("before beginFrame");
+            backdropTexture = blur.capture(blurRadius);
             GL11.glMatrixMode(GL11.GL_MODELVIEW);
             GL11.glPushMatrix();
+            matrixPushed = true;
             GL11.glTranslatef(transform.getLogicalX(), transform.getLogicalY(), 0);
             GL11.glScalef(transform.getLogicalScale(), transform.getLogicalScale(), 1);
             GlStateManager.disableDepth();
@@ -60,28 +172,49 @@ public final class UiRenderer {
             GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             GlStateManager.enableAlpha();
             GlStateManager.disableCull();
-            frameActive = true;
             initialized = true;
         } finally {
             if (!initialized) {
-                GL11.glPopAttrib();
-                restoreState();
-                this.transform = null;
+                try {
+                    if (matrixPushed) {
+                        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+                        GL11.glPopMatrix();
+                    }
+                    if (attributesPushed) GL11.glPopAttrib();
+                    restoreState();
+                } finally {
+                    this.transform = null;
+                    this.backdropTexture = 0;
+                    this.activeOwner = defaultOwner;
+                    lifecycle.endFrame();
+                }
             }
         }
     }
 
     public void endFrame() {
-        if (!frameActive) return;
-        while (!clips.isEmpty()) popClip();
-        GlStateManager.color(1, 1, 1, 1);
-        GlStateManager.depthMask(true);
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
-        GL11.glPopMatrix();
-        GL11.glPopAttrib();
-        restoreState();
-        frameActive = false;
-        transform = null;
+        if (!lifecycle.isFrameActive()) return;
+        try {
+            while (!clips.isEmpty()) popClip();
+            GlStateManager.color(1, 1, 1, 1);
+            GlStateManager.depthMask(true);
+            GL11.glMatrixMode(GL11.GL_MODELVIEW);
+            GL11.glPopMatrix();
+        } finally {
+            try {
+                GL11.glPopAttrib();
+            } finally {
+                try {
+                    restoreState();
+                    reportGlErrors("after endFrame");
+                } finally {
+                    lifecycle.endFrame();
+                    transform = null;
+                    backdropTexture = 0;
+                    activeOwner = defaultOwner;
+                }
+            }
+        }
     }
 
     private void restoreState() {
@@ -90,8 +223,8 @@ public final class UiRenderer {
     }
 
     public void backdrop(float x, float y, float width, float height, float radius, int tint) {
-        if (blur.texture() != 0) {
-            texturedRounded(blur.texture(), x, y, width, height, radius, radius, radius, radius,
+        if (backdropTexture != 0) {
+            texturedRounded(backdropTexture, x, y, width, height, radius, radius, radius, radius,
                     framebufferU(x), framebufferV(y),
                     framebufferU(x + width), framebufferV(y + height), 0xFFFFFFFF);
         }
@@ -192,7 +325,7 @@ public final class UiRenderer {
 
     public void image(String name, float x, float y, float width, float height, int color) {
         UiTexture texture = texture(name);
-        drawImage(texture, x, y, width, height, color);
+        if (texture != null) drawImage(texture, x, y, width, height, color);
     }
 
     public void image(UiTexture texture, float x, float y, float width, float height, int color) {
@@ -201,13 +334,8 @@ public final class UiRenderer {
 
     /** Draw an image from a path relative to /assets/myau/. */
     public void imageResource(String resourcePath, float x, float y, float width, float height, int color) {
-        String key = "resource:" + resourcePath;
-        UiTexture texture = textures.get(key);
-        if (texture == null) {
-            texture = new UiTexture(resourcePath);
-            textures.put(key, texture);
-        }
-        drawImage(texture, x, y, width, height, color);
+        UiTexture texture = resource(resourcePath);
+        if (texture != null) drawImage(texture, x, y, width, height, color);
     }
 
     public void imageContained(String name, float x, float y, float width, float height, int color) {
@@ -282,8 +410,57 @@ public final class UiRenderer {
         shadows.delete();
         shapes.delete();
         fonts.delete();
-        for (UiTexture texture : textures.values()) texture.delete();
-        textures.clear();
+        textures.clear(new UiResourceCache.Disposer<UiTexture>() {
+            @Override
+            public void dispose(UiTexture value) {
+                value.delete();
+            }
+        });
+        failedTextures.clear();
+    }
+
+    @EventTarget
+    public void onResize(ResizeEvent event) {
+        blur.invalidateFramebuffers();
+        lifecycle.invalidateFramebuffers();
+    }
+
+    private void reportGlErrors(String stage) {
+        if (!GL_DIAGNOSTICS) return;
+        int error;
+        while ((error = GL11.glGetError()) != GL11.GL_NO_ERROR) {
+            org.apache.logging.log4j.LogManager.getLogger("Myaulex-UI")
+                    .error("OpenGL error {} {} for {}", error, stage, activeOwner);
+        }
+    }
+
+    private List<UiFont> startupFonts(float arraylistScale) {
+        List<UiFont> result = new ArrayList<>();
+        addUnique(result, fonts.snPro(30.0F, UiFonts.BOLD));
+        addUnique(result, fonts.snPro(24.0F, UiFonts.REGULAR));
+        addUnique(result, fonts.snPro(32.0F, UiFonts.BLACK));
+        addUnique(result, fonts.snPro(32.0F * Math.max(0.5F, Math.min(1.5F, arraylistScale)), UiFonts.BLACK));
+        addUnique(result, fonts.snPro(50.0F, UiFonts.BLACK));
+        addUnique(result, fonts.snPro(58.0F, UiFonts.BLACK));
+        addUnique(result, fonts.snPro(23.0F, UiFonts.REGULAR));
+        addUnique(result, fonts.snPro(23.0F, UiFonts.SEMIBOLD));
+        addUnique(result, fonts.snPro(32.0F, UiFonts.SEMIBOLD));
+        addUnique(result, fonts.mojang(20.0F));
+        addUnique(result, fonts.mojang(13.0F));
+        addUnique(result, fonts.minecraft(38.0F));
+        addUnique(result, fonts.google(14.0F, UiFonts.REGULAR));
+        addUnique(result, fonts.google(15.0F, UiFonts.REGULAR));
+        addUnique(result, fonts.google(16.0F, UiFonts.SEMIBOLD));
+        addUnique(result, fonts.google(18.0F, UiFonts.REGULAR));
+        addUnique(result, fonts.google(18.0F, UiFonts.SEMIBOLD));
+        addUnique(result, fonts.google(20.0F, UiFonts.SEMIBOLD));
+        addUnique(result, fonts.google(20.0F, UiFonts.BLACK));
+        addUnique(result, fonts.google(24.0F, UiFonts.SEMIBOLD));
+        return result;
+    }
+
+    private static void addUnique(List<UiFont> fonts, UiFont font) {
+        if (!fonts.contains(font)) fonts.add(font);
     }
 
     private void texturedRounded(int texture, float x, float y, float width, float height,

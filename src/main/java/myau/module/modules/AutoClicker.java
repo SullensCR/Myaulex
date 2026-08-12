@@ -6,6 +6,7 @@ import myau.event.types.Priority;
 import myau.events.LeftClickMouseEvent;
 import myau.events.RightClickMouseEvent;
 import myau.events.TickEvent;
+import myau.mixin.IAccessorKeyBinding;
 import myau.module.Module;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.IntProperty;
@@ -23,6 +24,7 @@ public class AutoClicker extends Module {
     private boolean rightClickPending;
     private long leftClickDelay;
     private long rightClickDelay;
+    private boolean stasisPaused;
 
     public final BooleanProperty leftClicks = new BooleanProperty("left-clicks", true);
     public final SteppedFloatProperty leftTargetCPS = new SteppedFloatProperty(
@@ -95,6 +97,8 @@ public class AutoClicker extends Module {
         this.leftClickDelay = 0L;
         this.rightClickDelay = 0L;
         if (mc.gameSettings != null) {
+            ((IAccessorKeyBinding) mc.gameSettings.keyBindAttack).setPressTime(0);
+            ((IAccessorKeyBinding) mc.gameSettings.keyBindUseItem).setPressTime(0);
             KeyBindUtil.updateKeyState(mc.gameSettings.keyBindAttack.getKeyCode());
             KeyBindUtil.updateKeyState(mc.gameSettings.keyBindUseItem.getKeyCode());
         }
@@ -103,6 +107,19 @@ public class AutoClicker extends Module {
     @EventTarget
     public void onTick(TickEvent event) {
         if (event.getType() != EventType.PRE) return;
+
+        boolean pauseForStasis = Stasis.isAutoClickerPaused();
+        if (pauseForStasis) {
+            if (!this.stasisPaused) {
+                this.resetClickState();
+                this.stasisPaused = true;
+            }
+            return;
+        }
+        if (this.stasisPaused) {
+            this.resetClickState();
+            this.stasisPaused = false;
+        }
 
         if (this.leftClickDelay > 0L) this.leftClickDelay -= 50L;
         if (this.rightClickDelay > 0L) this.rightClickDelay -= 50L;
@@ -168,25 +185,27 @@ public class AutoClicker extends Module {
 
     @EventTarget(Priority.LOWEST)
     public void onLeftClick(LeftClickMouseEvent event) {
-        if (this.isEnabled() && this.leftClicks.getValue() && !event.isCancelled()) {
+        if (this.isEnabled() && !Stasis.isAutoClickerPaused() && this.leftClicks.getValue() && !event.isCancelled()) {
             this.leftClickDelay += this.nextLeftClickDelay();
         }
     }
 
     @EventTarget(Priority.LOWEST)
     public void onRightClick(RightClickMouseEvent event) {
-        if (this.isEnabled() && this.rightClicks.getValue() && !event.isCancelled()) {
+        if (this.isEnabled() && !Stasis.isAutoClickerPaused() && this.rightClicks.getValue() && !event.isCancelled()) {
             this.rightClickDelay += this.nextRightClickDelay();
         }
     }
 
     @Override
     public void onEnabled() {
+        this.stasisPaused = false;
         this.resetClickState();
     }
 
     @Override
     public void onDisabled() {
+        this.stasisPaused = false;
         this.resetClickState();
     }
 

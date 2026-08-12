@@ -25,8 +25,10 @@ import net.minecraft.entity.player.EntityPlayer;
 
 import javax.vecmath.Vector4d;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 public class ESP extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
@@ -62,6 +64,16 @@ public class ESP extends Module {
         } else {
             return this.self.getValue() && mc.gameSettings.thirdPersonView != 0;
         }
+    }
+
+    private List<EntityPlayer> renderedPlayers() {
+        List<EntityPlayer> players = new ArrayList<>();
+        for (net.minecraft.entity.Entity entity : TeamUtil.getLoadedEntitiesSorted()) {
+            if (entity instanceof EntityPlayer && this.shouldRenderPlayer((EntityPlayer) entity)) {
+                players.add((EntityPlayer) entity);
+            }
+        }
+        return players;
     }
 
     private Color getEntityColor(EntityPlayer entityPlayer) {
@@ -108,7 +120,7 @@ public class ESP extends Module {
     @EventTarget(Priority.HIGH)
     public void onRender(Render2DEvent event) {
         if (this.isEnabled() && (this.mode.getValue() == 1 || this.mode.getValue() == 3 || this.healthBar.getValue() == 1)) {
-            List<EntityPlayer> renderedEntities = TeamUtil.getLoadedEntitiesSorted().stream().filter(entity -> entity instanceof EntityPlayer && this.shouldRenderPlayer((EntityPlayer) entity)).map(EntityPlayer.class::cast).collect(Collectors.toList());
+            List<EntityPlayer> renderedEntities = this.renderedPlayers();
             if (!renderedEntities.isEmpty()) {
                 if (this.mode.getValue() == 3) {
                     GlStateManager.pushMatrix();
@@ -150,13 +162,21 @@ public class ESP extends Module {
                     RenderUtil.enableRenderState();
                     double scaleFactor = new ScaledResolution(mc).getScaleFactor();
                     double scale = scaleFactor / Math.pow(scaleFactor, 2.0);
+                    Map<EntityPlayer, Vector4d> projected = new LinkedHashMap<>();
+                    ((IAccessorEntityRenderer) mc.entityRenderer).callSetupCameraTransform(event.getPartialTicks(), 0);
+                    try {
+                        for (EntityPlayer player : renderedEntities) {
+                            Vector4d screenPosition = RenderUtil.projectToScreen(player, scaleFactor);
+                            if (screenPosition != null) projected.put(player, screenPosition);
+                        }
+                    } finally {
+                        mc.entityRenderer.setupOverlayRendering();
+                    }
                     GlStateManager.pushMatrix();
                     GlStateManager.scale(scale, scale, scale);
-                    for (EntityPlayer player : renderedEntities) {
-                        ((IAccessorEntityRenderer) mc.entityRenderer).callSetupCameraTransform(event.getPartialTicks(), 0);
-                        Vector4d screenPosition = RenderUtil.projectToScreen(player, scaleFactor);
-                        mc.entityRenderer.setupOverlayRendering();
-                        if (screenPosition != null) {
+                    for (Map.Entry<EntityPlayer, Vector4d> entry : projected.entrySet()) {
+                        EntityPlayer player = entry.getKey();
+                        Vector4d screenPosition = entry.getValue();
                             float x = (float) screenPosition.x;
                             float y = (float) screenPosition.y;
                             float z = (float) screenPosition.z;
@@ -174,7 +194,6 @@ public class ESP extends Module {
                                 RenderUtil.drawLine(x - box, y, x - box, w, 3.0F, ColorUtil.darker(healthColor, 0.2F).getRGB());
                                 RenderUtil.drawLine(x - box, w, x - box, w + (y - w) * percent, 1.5F, healthColor.getRGB());
                             }
-                        }
                     }
                     GlStateManager.popMatrix();
                     RenderUtil.disableRenderState();
@@ -187,7 +206,7 @@ public class ESP extends Module {
     public void onRender(Render3DEvent event) {
         if (this.isEnabled() && (this.mode.getValue() == 2 || this.mode.getValue() == 4 || this.mode.getValue() == 5 || this.healthBar.getValue() == 2)) {
             RenderUtil.enableRenderState();
-            for (EntityPlayer player : TeamUtil.getLoadedEntitiesSorted().stream().filter(entity -> entity instanceof EntityPlayer && this.shouldRenderPlayer((EntityPlayer) entity)).map(EntityPlayer.class::cast).collect(Collectors.toList())) {
+            for (EntityPlayer player : this.renderedPlayers()) {
                 if (player.ignoreFrustumCheck || RenderUtil.isInViewFrustum(player.getEntityBoundingBox(), 0.1F)) {
                     if (this.mode.getValue() == 2) {
                         Color color = this.getEntityColor(player);

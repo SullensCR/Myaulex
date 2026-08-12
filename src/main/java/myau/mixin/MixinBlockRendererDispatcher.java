@@ -1,7 +1,7 @@
 package myau.mixin;
 
 import myau.Myau;
-import myau.module.modules.BedESP;
+import myau.module.modules.BedNuker;
 import myau.module.modules.Bedplates;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockBed;
@@ -33,9 +33,10 @@ public abstract class MixinBlockRendererDispatcher {
             CallbackInfoReturnable<Boolean> callbackInfoReturnable
     ) {
         if (Myau.moduleManager != null) {
-            BedESP bedESP = (BedESP) Myau.moduleManager.modules.get(BedESP.class);
-            if (bedESP.isEnabled() && iBlockState.getBlock() instanceof BlockBed && iBlockState.getValue(BlockBed.PART) == EnumPartType.HEAD) {
-                bedESP.beds.add(new BlockPos(blockPos));
+            BedNuker bedBreaker = (BedNuker) Myau.moduleManager.modules.get(BedNuker.class);
+            if (bedBreaker != null && iBlockState.getBlock() instanceof BlockBed
+                    && iBlockState.getValue(BlockBed.PART) == EnumPartType.HEAD) {
+                bedBreaker.observeBedForEsp(blockPos);
             }
             Bedplates bedplates = (Bedplates) Myau.moduleManager.modules.get(Bedplates.class);
             if (bedplates != null && bedplates.isEnabled() && iBlockState.getBlock() instanceof BlockBed

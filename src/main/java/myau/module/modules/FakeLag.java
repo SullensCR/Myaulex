@@ -34,6 +34,10 @@ public class FakeLag extends Module {
 
     @Override
     public void onDisabled() {
+        this.flushForStasis();
+    }
+
+    public void flushForStasis() {
         this.isDispatching = true;
         while (!packetQueue.isEmpty()) {
             PacketUtil.sendPacket(packetQueue.poll().packet);
@@ -44,6 +48,7 @@ public class FakeLag extends Module {
     @EventTarget
     public void onPacket(PacketEvent event) {
         if(!this.enabled) return;
+        if (Stasis.ownsOutgoingPackets()) return;
         if (event.getType() == EventType.SEND) {
             if (this.isDispatching) {
                 return;

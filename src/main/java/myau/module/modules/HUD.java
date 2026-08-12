@@ -17,7 +17,6 @@ import myau.util.ColorUtil;
 import myau.util.RenderUtil;
 import myau.util.font.FontManager;
 import myau.util.font.IFont;
-import myau.util.shader.RoundedUtils;
 import myau.property.properties.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiChat;
@@ -27,18 +26,16 @@ import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class HUD extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    private static final UiFonts WATERMARK_FONTS = new UiFonts();
-    private UiFont watermarkFont;
     public static int targetHUDX = 100;
     public static int targetHUDY = 100;
 
@@ -53,9 +50,9 @@ public class HUD extends Module {
     }
 
     private List<Module> activeModules = new ArrayList<>();
+    private List<Module> sortedArraylistModules = Collections.emptyList();
+    private boolean arraylistOrderDirty = true;
     private final Map<Module, Float> moduleAnimations = new HashMap<>();
-    private UiRenderer arraylistRenderer;
-    private boolean arraylistRendererUnavailable;
     private float blinkTimerAlpha;
     public final ModeProperty colorMode = new ModeProperty(
             "color", 3, new String[]{"RAINBOW", "CHROMA", "ASTOLFO", "CUSTOM1", "CUSTOM12", "CUSTOM123"}
@@ -186,7 +183,9 @@ public class HUD extends Module {
     @EventTarget
     public void onTick(TickEvent event) {
         if (this.isEnabled() && event.getType() == EventType.POST) {
-            for (Module module : Myau.moduleManager.ordinaryModules()) {
+            Collection<Module> ordinaryModules = Myau.moduleManager.ordinaryModules();
+            List<Module> nextActiveModules = new ArrayList<>();
+            for (Module module : ordinaryModules) {
                 float current = this.moduleAnimations.containsKey(module) ? this.moduleAnimations.get(module) : 0.0F;
                 float target = module.isEnabled() && !module.isHidden() ? 1.0F : 0.0F;
                 float next = current + (target - current) * 0.22F;
@@ -198,10 +197,10 @@ public class HUD extends Module {
                 } else {
                     this.moduleAnimations.remove(module);
                 }
+                if (this.moduleAnimations.containsKey(module)) nextActiveModules.add(module);
             }
-            this.activeModules = Myau.moduleManager.ordinaryModules().stream()
-                    .filter(module -> this.moduleAnimations.containsKey(module))
-                    .collect(Collectors.<Module>toList());
+            this.activeModules = nextActiveModules;
+            this.arraylistOrderDirty = true;
         }
     }
 
@@ -231,32 +230,35 @@ public class HUD extends Module {
     }
 
     private void renderArraylist() {
-        if (this.activeModules.isEmpty() || this.arraylistRendererUnavailable) return;
+        if (this.activeModules.isEmpty() || Myau.uiRenderer == null) return;
+        UiRenderer renderer = Myau.uiRenderer;
+        boolean frameStarted = false;
         try {
-            if (this.arraylistRenderer == null) this.arraylistRenderer = new UiRenderer();
-            if (!this.arraylistRenderer.isSupported()) {
-                this.arraylistRendererUnavailable = true;
-                return;
-            }
+            if (!renderer.isSupported()) return;
 
             float userScale = this.scale.getValue();
             UiTransform transform = new UiTransform(mc, 1920.0F, 1080.0F, 1.0F, 0.0F);
-            this.arraylistRenderer.beginFrame(transform, 31.0F);
+            renderer.beginFrame("HUD Arraylist", transform, 31.0F);
+            frameStarted = true;
             try {
-                UiFont baseFont = this.arraylistRenderer.fonts().snPro(ArraylistLayout.FONT_SIZE, UiFonts.BLACK);
-                UiFont font = this.arraylistRenderer.fonts().snPro(ArraylistLayout.FONT_SIZE * userScale, UiFonts.BLACK);
-                List<Module> modules = new ArrayList<>(this.activeModules);
-                Collections.sort(modules, new Comparator<Module>() {
-                    @Override
-                    public int compare(Module left, Module right) {
-                        return Float.compare(arraylistWidth(right, baseFont), arraylistWidth(left, baseFont));
-                    }
-                });
+                UiFont baseFont = renderer.fonts().snPro(ArraylistLayout.FONT_SIZE, UiFonts.BLACK);
+                UiFont font = renderer.fonts().snPro(ArraylistLayout.FONT_SIZE * userScale, UiFonts.BLACK);
+                if (this.arraylistOrderDirty) {
+                    List<Module> modules = new ArrayList<>(this.activeModules);
+                    Collections.sort(modules, new Comparator<Module>() {
+                        @Override
+                        public int compare(Module left, Module right) {
+                            return Float.compare(arraylistWidth(right, baseFont), arraylistWidth(left, baseFont));
+                        }
+                    });
+                    this.sortedArraylistModules = modules;
+                    this.arraylistOrderDirty = false;
+                }
 
                 float cursor = this.posY.getValue() == 0
                         ? this.offsetY.getValue() * userScale
                         : 1080.0F - this.offsetY.getValue() * userScale;
-                for (Module module : modules) {
+                for (Module module : this.sortedArraylistModules) {
                     float alpha = this.moduleAnimations.containsKey(module) ? this.moduleAnimations.get(module) : 1.0F;
                     String name = this.getModuleName(module);
                     String suffix = this.arraylistSuffix(module);
@@ -273,11 +275,13 @@ public class HUD extends Module {
                             : ArraylistLayout.nextBottomCursor(cursor, userScale, alpha);
                 }
             } finally {
-                this.arraylistRenderer.endFrame();
+                renderer.endFrame();
+                frameStarted = false;
             }
         } catch (Throwable ignored) {
             // The modern renderer is optional; a graphics capability failure must not break the HUD.
-            this.arraylistRendererUnavailable = true;
+        } finally {
+            if (frameStarted) renderer.endFrame();
         }
     }
 
@@ -302,14 +306,14 @@ public class HUD extends Module {
         int alpha = Math.round(ArraylistLayout.clamp01(visibility) * 255.0F);
         int panelAlpha = Math.round(0xB2 * alpha / 255.0F);
         int shadowAlpha = Math.round(0x63 * alpha / 255.0F);
-        this.arraylistRenderer.shadow(x, y, width, height, ArraylistLayout.CARD_RADIUS * scale,
+        Myau.uiRenderer.shadow(x, y, width, height, ArraylistLayout.CARD_RADIUS * scale,
                 0.0F, 3.0F * scale, 10.0F * scale, 0.0F, this.withAlpha(0x63000000, shadowAlpha));
-        this.arraylistRenderer.backdrop(x, y, width, height, ArraylistLayout.CARD_RADIUS * scale,
+        Myau.uiRenderer.backdrop(x, y, width, height, ArraylistLayout.CARD_RADIUS * scale,
                 this.withAlpha(0xB21A1A24, panelAlpha));
 
         float pillX = x + ArraylistLayout.CARD_PADDING * scale;
         float pillY = ArraylistLayout.accentY(y, scale);
-        this.arraylistRenderer.roundedRect(pillX, pillY, ArraylistLayout.ACCENT_WIDTH * scale,
+        Myau.uiRenderer.roundedRect(pillX, pillY, ArraylistLayout.ACCENT_WIDTH * scale,
                 ArraylistLayout.ACCENT_HEIGHT * scale, 10.0F * scale, this.withAlpha(0xFF8FA7FF, alpha));
 
         float textY = y + (height - font.height()) * 0.5F;
@@ -350,32 +354,47 @@ public class HUD extends Module {
 
     /** Resolution-independent vector recreation of the exported watermark. */
     private void renderWatermark() {
-        if (!this.watermark.getValue()) return;
+        if (!this.watermark.getValue() || Myau.uiRenderer == null) return;
 
         float scale = this.watermarkScale.getValue();
         int x = this.watermarkOffsetX.getValue();
         int y = this.watermarkOffsetY.getValue();
+        UiRenderer renderer = Myau.uiRenderer;
+        UiTransform transform = new UiTransform(mc, 1920.0F, 1080.0F, 1.0F, 0.0F);
+        boolean frameStarted = false;
+        try {
+            renderer.beginFrame("HUD Watermark", transform, 31.0F);
+            frameStarted = true;
+            float logicalScale = transform.getLogicalScale();
+            float designX = (x - transform.getLogicalX()) / logicalScale;
+            float designY = (y - transform.getLogicalY()) / logicalScale;
+            float designScale = scale / logicalScale;
 
-        GlStateManager.pushMatrix();
-        GlStateManager.translate(x, y, 0.0F);
-        GlStateManager.scale(scale, scale, 1.0F);
+            renderer.roundedRect(designX, designY, 293.0F * designScale, 85.0F * designScale,
+                    20.0F * designScale, 0x631A1A24);
+            renderer.backdrop(designX, designY, 293.0F * designScale, 85.0F * designScale,
+                    20.0F * designScale, 0x801A1A24);
+            renderer.roundedRect(designX + 5.0F * designScale, designY + 5.0F * designScale,
+                    75.0F * designScale, 75.0F * designScale, 15.0F * designScale, 0xCC1A1A24);
 
-        RoundedUtils.drawRound(0, 0, 293, 85, 20, 0x631A1A24);
-        RoundedUtils.drawRound(0, 0, 293, 85, 20, 0x801A1A24);
-        RoundedUtils.drawRound(5, 5, 75, 75, 15, 0xCC1A1A24);
-        this.renderWatermarkCat();
-        if (this.watermarkFont == null) {
-            // Use the variable font's black axis for the heavy display
-            // silhouette in the reference wordmark.
-            this.watermarkFont = WATERMARK_FONTS.snPro(50, UiFonts.BLACK);
+            GlStateManager.pushMatrix();
+            try {
+                GlStateManager.translate(designX, designY, 0.0F);
+                GlStateManager.scale(designScale, designScale, 1.0F);
+                this.renderWatermarkCat();
+                UiFont watermarkFont = renderer.fonts().snPro(50.0F, UiFonts.BLACK);
+                String wordmark = "Myaulex";
+                float visualWidth = watermarkFont.visualWidth(wordmark);
+                float wordmarkX = 90.0F + (185.0F - visualWidth) / 2.0F;
+                watermarkFont.draw(wordmark, wordmarkX, 5.0F, 0xFFD4CFFE, true);
+            } finally {
+                GlStateManager.popMatrix();
+            }
+        } catch (Throwable ignored) {
+            // Keep the remaining HUD elements alive if this optional visual fails.
+        } finally {
+            if (frameStarted) renderer.endFrame();
         }
-        String wordmark = "Myaulex";
-        float visualWidth = this.watermarkFont.visualWidth(wordmark);
-        float wordmarkX = 90.0F + (185.0F - visualWidth) / 2.0F;
-        float wordmarkY = 5.0F;
-        int wordmarkColor = 0xFFD4CFFE;
-        this.watermarkFont.draw(wordmark, wordmarkX, wordmarkY, wordmarkColor, true);
-        GlStateManager.popMatrix();
     }
 
     /** Cat mark traced from the supplied SVG paths; no bitmap is used. */

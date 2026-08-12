@@ -23,7 +23,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 import java.awt.*;
-import java.util.stream.Collectors;
 
 public class Indicators extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
@@ -95,7 +94,9 @@ public class Indicators extends Module {
         if (!this.isEnabled()) {
             return;
         }
-        for (Entity entity : TeamUtil.getLoadedEntitiesSorted().stream().filter(this::shouldRender).collect(Collectors.toList())) {
+        ScaledResolution resolution = new ScaledResolution(mc);
+        for (Entity entity : TeamUtil.getLoadedEntitiesSorted()) {
+            if (!this.shouldRender(entity)) continue;
             float offset = 10.0f + this.offset.getValue();
             float yawBetween = RotationUtil.getYawBetween(RenderUtil.lerpDouble(Indicators.mc.thePlayer.posX, Indicators.mc.thePlayer.prevPosX, render2DEvent.getPartialTicks()), RenderUtil.lerpDouble(Indicators.mc.thePlayer.posZ, Indicators.mc.thePlayer.prevPosZ, render2DEvent.getPartialTicks()), RenderUtil.lerpDouble(entity.posX, entity.prevPosX, render2DEvent.getPartialTicks()), RenderUtil.lerpDouble(entity.posZ, entity.prevPosZ, render2DEvent.getPartialTicks()));
             if (Indicators.mc.gameSettings.thirdPersonView == 2) {
@@ -106,7 +107,7 @@ public class Indicators extends Module {
             GlStateManager.pushMatrix();
             GlStateManager.disableDepth();
             GlStateManager.scale(this.scale.getValue(), this.scale.getValue(), 0.0f);
-            GlStateManager.translate((float) new ScaledResolution(mc).getScaledWidth() / 2.0f / this.scale.getValue(), (float) new ScaledResolution(mc).getScaledHeight() / 2.0f / this.scale.getValue(), 0.0f);
+            GlStateManager.translate((float) resolution.getScaledWidth() / 2.0f / this.scale.getValue(), (float) resolution.getScaledHeight() / 2.0f / this.scale.getValue(), 0.0f);
             GlStateManager.pushMatrix();
             GlStateManager.translate((offset + 0.0f) * x - 8.0f, (offset + 0.0f) * z - 8.0f, -300.0f);
             mc.getRenderItem().renderItemAndEffectIntoGUI(new ItemStack(this.getIndicatorItem(entity)), 0, 0);

@@ -11,11 +11,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.INetHandlerPlayClient;
+import net.minecraft.network.play.server.S01PacketJoinGame;
+import net.minecraft.network.play.server.S07PacketRespawn;
 import net.minecraft.network.play.server.S21PacketChunkData;
 import net.minecraft.network.play.server.S22PacketMultiBlockChange;
 import net.minecraft.network.play.server.S23PacketBlockChange;
 import net.minecraft.network.play.server.S26PacketMapChunkBulk;
 import net.minecraft.network.play.server.S38PacketPlayerListItem;
+import net.minecraft.network.play.server.S08PacketPlayerPosLook;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -41,7 +44,10 @@ public final class VeloDelay extends Module {
     }
 
     static boolean shouldDelayInbound(Packet<?> packet) {
-        return !(packet instanceof S38PacketPlayerListItem)
+        return !(packet instanceof S01PacketJoinGame)
+                && !(packet instanceof S07PacketRespawn)
+                && !(packet instanceof S08PacketPlayerPosLook)
+                && !(packet instanceof S38PacketPlayerListItem)
                 && !(packet instanceof S21PacketChunkData)
                 && !(packet instanceof S22PacketMultiBlockChange)
                 && !(packet instanceof S23PacketBlockChange)

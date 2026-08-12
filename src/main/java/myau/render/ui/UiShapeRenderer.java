@@ -57,6 +57,10 @@ final class UiShapeRenderer {
     private UiShaderProgram shader;
     private boolean unavailable;
 
+    boolean preload() {
+        return initialize();
+    }
+
     boolean fill(float x, float y, float width, float height,
                  float topLeft, float topRight, float bottomRight, float bottomLeft, int color) {
         return draw(x, y, width, height, topLeft, topRight, bottomRight, bottomLeft,

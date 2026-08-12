@@ -9,6 +9,7 @@ import myau.util.PacketUtil;
 import myau.util.RandomUtil;
 import myau.util.RotationUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiDownloadTerrain;
 import net.minecraft.network.play.client.C03PacketPlayer.C06PacketPlayerPosLook;
 import net.minecraft.network.play.server.S02PacketChat;
 import net.minecraft.network.play.server.S08PacketPlayerPosLook;
@@ -33,6 +34,12 @@ public class NoRotate extends Module {
                     }
                 }
                 if (event.getPacket() instanceof S08PacketPlayerPosLook) {
+                    // The first server position packet after a world transition
+                    // completes vanilla terrain loading. Let it reach the net
+                    // handler unchanged so it can clear the loading screen.
+                    if (mc.currentScreen instanceof GuiDownloadTerrain) {
+                        return;
+                    }
                     if (this.reset) {
                         this.reset = false;
                         return;

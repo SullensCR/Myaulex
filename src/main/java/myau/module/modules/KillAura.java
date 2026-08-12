@@ -132,11 +132,17 @@ public class KillAura extends Module {
     }
 
     private void sendUseItem() {
+        if (Stasis.blocksAutomatedUse()) {
+            return;
+        }
         ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
         this.startBlock(mc.thePlayer.getHeldItem());
     }
 
     private void startBlock(ItemStack itemStack) {
+        if (Stasis.blocksAutomatedUse()) {
+            return;
+        }
         PacketUtil.sendPacket(new C08PacketPlayerBlockPlacement(itemStack));
         mc.thePlayer.setItemInUse(itemStack, itemStack.getMaxItemUseDuration());
         this.blockingState = true;
@@ -149,6 +155,9 @@ public class KillAura extends Module {
     }
 
     private void interactAttack(float yaw, float pitch) {
+        if (Stasis.blocksAutomatedUse()) {
+            return;
+        }
         if (this.target != null) {
             MovingObjectPosition mop = RotationUtil.rayTrace(this.target.getBox(), yaw, pitch, 8.0);
             if (mop != null) {
@@ -426,6 +435,10 @@ public class KillAura extends Module {
         return (mc.thePlayer.isUsingItem() || this.blockingState) && ItemUtil.isHoldingSword();
     }
 
+    static boolean shouldReleaseHeldBlock(boolean playerBlocking, boolean auraBlocking, int autoBlockMode) {
+        return playerBlocking && !auraBlocking && autoBlockMode != 1;
+    }
+
     @EventTarget(Priority.LOW)
     public void onUpdate(UpdateEvent event) {
         if (event.getType() == EventType.POST && this.blinkReset) {
@@ -438,6 +451,14 @@ public class KillAura extends Module {
                 this.attackDelayMS -= 50L;
             }
             boolean attack = this.target != null && this.canAttack();
+            if (attack
+                    && shouldReleaseHeldBlock(this.isPlayerBlocking(), this.blockingState, this.autoBlock.getValue())
+                    && !Myau.playerStateManager.digging
+                    && !Myau.playerStateManager.placing) {
+                // Treat a sword block that existed before Aura entered range like the
+                // release/reblock cycle used after Aura has already started attacking.
+                this.stopBlock();
+            }
             boolean block = attack && this.canAutoBlock();
             if (!block) {
                 Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
