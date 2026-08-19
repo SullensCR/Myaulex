@@ -29,6 +29,7 @@ import net.minecraft.network.play.client.C16PacketClientStatus;
 import net.minecraft.network.play.client.C16PacketClientStatus.EnumState;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -36,12 +37,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class InvWalk extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     private final Queue<C0EPacketClickWindow> clickQueue = new ConcurrentLinkedQueue<>();
+    private final InventoryClickSlowdownQueue<C0EPacketClickWindow> clickSlowdownQueue =
+            new InventoryClickSlowdownQueue<>();
     private boolean keysPressed = false;
     private C16PacketClientStatus pendingStatus = null;
     private int delayTicks = 0;
     private int openDelayTicks = -1;
     private int closeDelayTicks = -1;
-    private int sprintPauseTicks;
+    private int clickSlowdownWindowId = -1;
     private boolean serverInventoryOpen;
     private boolean clickGuiMovementActive;
     private final Map<KeyBinding, Boolean> movementKeys = new HashMap<KeyBinding, Boolean>(8) {{
@@ -59,6 +62,10 @@ public class InvWalk extends Module {
     public final BooleanProperty sprint = new BooleanProperty("sprint", false);
     public final BooleanProperty clickSlowdown = new BooleanProperty("click-slowdown", true,
             sprint::getValue).childOf(sprint);
+    public final IntProperty slowdownTicks = new IntProperty("slowdown-ticks", 2, 0, 5,
+            () -> sprint.getValue() && clickSlowdown.getValue()).childOf(clickSlowdown);
+    public final IntProperty restoreTicks = new IntProperty("restore-ticks", 5, 0, 5,
+            () -> sprint.getValue() && clickSlowdown.getValue()).childOf(clickSlowdown);
     public final BooleanProperty reopenOnClick = new BooleanProperty("reopen-on-click", true,
             () -> mode.getValue() == 4).childOf(mode);
     public final IntProperty openDelay = new IntProperty("open-delay", 0, 0, 20, () -> mode.getValue() == 3);
@@ -67,6 +74,8 @@ public class InvWalk extends Module {
 
     public InvWalk() {
         super("InventoryMove", false);
+        this.slowdownTicks.setDisplayName("Slowdown ticks");
+        this.restoreTicks.setDisplayName("Restore ticks");
     }
 
     public void pressMovementKeys(boolean skipSneak) {
@@ -75,7 +84,7 @@ public class InvWalk extends Module {
                 .forEach(key -> KeyBindUtil.updateKeyState(key.getKeyCode()));
         if (shouldForceSprintKey()) {
             KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
-        } else if (isContainerOpen() && (!sprint.getValue() || sprintPauseTicks > 0)) {
+        } else if (isContainerOpen() && (!sprint.getValue() || clickSlowdownQueue.blocksSprint())) {
             stopSprintingNow();
         }
         this.keysPressed = true;
@@ -99,7 +108,7 @@ public class InvWalk extends Module {
         }
         if (shouldForceSprintKey()) {
             KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
-        } else if (isContainerOpen() && (!sprint.getValue() || sprintPauseTicks > 0)) {
+        } else if (isContainerOpen() && (!sprint.getValue() || clickSlowdownQueue.blocksSprint())) {
             stopSprintingNow();
         }
         this.keysPressed = true;
@@ -127,9 +136,10 @@ public class InvWalk extends Module {
         }
     }
 
-    /** True while InventoryMove owns sprint and the Sprint option is off. */
+    /** True while InventoryMove owns the sprint key or a click-slowdown cycle is active. */
     public boolean blocksSprint() {
-        return isEnabled() && isContainerOpen() && !sprint.getValue();
+        return isEnabled() && isContainerOpen()
+                && (!sprint.getValue() || clickSlowdownQueue.blocksSprint());
     }
 
     private boolean isContainerOpen() {
@@ -139,7 +149,7 @@ public class InvWalk extends Module {
 
     private boolean shouldForceSprintKey() {
         Sprint sprintModule = (Sprint) Myau.moduleManager.modules.get(Sprint.class);
-        return sprint.getValue() && sprintPauseTicks <= 0
+        return sprint.getValue() && !clickSlowdownQueue.blocksSprint()
                 && sprintModule != null && sprintModule.isEnabled()
                 && !isBlockedByScaffold();
     }
@@ -152,6 +162,47 @@ public class InvWalk extends Module {
     private void stopSprintingNow() {
         KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), false);
         if (mc.thePlayer != null) mc.thePlayer.setSprinting(false);
+    }
+
+    private void restoreSprintKeyIfAllowed() {
+        if (shouldForceSprintKey()) {
+            KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
+        }
+    }
+
+    private void handleClickSlowdownAdvance(
+            InventoryClickSlowdownQueue.Advance<C0EPacketClickWindow> advance
+    ) {
+        for (C0EPacketClickWindow packet : advance.getReleasedClicks()) {
+            PacketUtil.sendPacketNoEvent(packet);
+        }
+        if (advance.shouldRestoreSprint()) {
+            this.clickSlowdownWindowId = -1;
+            restoreSprintKeyIfAllowed();
+        }
+    }
+
+    private void flushClickSlowdownAndReset() {
+        boolean wasBlockingSprint = this.clickSlowdownQueue.blocksSprint();
+        List<C0EPacketClickWindow> pending = this.clickSlowdownQueue.drainAndReset();
+        this.clickSlowdownWindowId = -1;
+        if (mc.getNetHandler() != null) {
+            for (C0EPacketClickWindow packet : pending) {
+                PacketUtil.sendPacketNoEvent(packet);
+            }
+        }
+        if (wasBlockingSprint) {
+            restoreSprintKeyIfAllowed();
+        }
+    }
+
+    private void discardClickSlowdownAndReset() {
+        boolean wasBlockingSprint = this.clickSlowdownQueue.blocksSprint();
+        this.clickSlowdownQueue.discardAndReset();
+        this.clickSlowdownWindowId = -1;
+        if (wasBlockingSprint) {
+            restoreSprintKeyIfAllowed();
+        }
     }
 
     /**
@@ -201,7 +252,15 @@ public class InvWalk extends Module {
     @EventTarget(Priority.LOWEST)
     public void onTick(TickEvent event) {
         if (event.getType() == EventType.PRE) {
-            if (this.sprintPauseTicks > 0) this.sprintPauseTicks--;
+            if (this.clickSlowdownQueue.blocksSprint()) {
+                if (!this.isEnabled() || !this.sprint.getValue() || !this.clickSlowdown.getValue()) {
+                    flushClickSlowdownAndReset();
+                } else if (!isContainerOpen()) {
+                    discardClickSlowdownAndReset();
+                } else {
+                    handleClickSlowdownAdvance(this.clickSlowdownQueue.tick(this.restoreTicks.getValue()));
+                }
+            }
             if (this.openDelayTicks >= 0) {
                 this.openDelayTicks--;
                 return;
@@ -236,7 +295,7 @@ public class InvWalk extends Module {
         if (updateClickGuiMovement()) return;
         if (!this.isEnabled()) return;
 
-        if (isContainerOpen() && (!sprint.getValue() || sprintPauseTicks > 0)) {
+        if (isContainerOpen() && (!sprint.getValue() || clickSlowdownQueue.blocksSprint())) {
             stopSprintingNow();
         }
 
@@ -287,7 +346,11 @@ public class InvWalk extends Module {
         } else if (!(event.getPacket() instanceof C0EPacketClickWindow)) {
             if (event.getPacket() instanceof C0DPacketCloseWindow) {
                 C0DPacketCloseWindow packet = (C0DPacketCloseWindow) event.getPacket();
-                if (((IAccessorC0DPacketCloseWindow) packet).getWindowId() == 0) {
+                int windowId = ((IAccessorC0DPacketCloseWindow) packet).getWindowId();
+                if (windowId == this.clickSlowdownWindowId) {
+                    discardClickSlowdownAndReset();
+                }
+                if (windowId == 0) {
                     this.serverInventoryOpen = false;
                     if (this.mode.getValue() == 4) {
                         event.setCancelled(true);
@@ -328,9 +391,14 @@ public class InvWalk extends Module {
                     && isContainerOpen()) {
                 stopSprintingNow();
                 event.setCancelled(true);
-                this.clickQueue.offer(packet);
-                this.delayTicks = Math.max(this.delayTicks, 2);
-                this.sprintPauseTicks = Math.max(this.sprintPauseTicks, 2);
+                if (this.clickSlowdownWindowId >= 0
+                        && this.clickSlowdownWindowId != packet.getWindowId()) {
+                    this.clickSlowdownQueue.discardAndReset();
+                    this.clickSlowdownWindowId = -1;
+                }
+                this.clickSlowdownWindowId = packet.getWindowId();
+                handleClickSlowdownAdvance(this.clickSlowdownQueue.enqueue(
+                        packet, this.slowdownTicks.getValue(), this.restoreTicks.getValue()));
                 return;
             }
             switch (this.mode.getValue()) {
@@ -403,12 +471,24 @@ public class InvWalk extends Module {
             this.pendingStatus = null;
         }
         this.delayTicks = 0;
-        this.sprintPauseTicks = 0;
+        List<C0EPacketClickWindow> slowdownClicks = this.clickSlowdownQueue.drainAndReset();
+        this.clickSlowdownWindowId = -1;
+        for (C0EPacketClickWindow packet : slowdownClicks) {
+            PacketUtil.sendPacketNoEvent(packet);
+        }
         while (!this.clickQueue.isEmpty()) PacketUtil.sendPacketNoEvent(this.clickQueue.poll());
         if (this.serverInventoryOpen && mc.getNetHandler() != null) {
             PacketUtil.sendPacketNoEvent(new C0DPacketCloseWindow(0));
         }
         this.serverInventoryOpen = false;
+    }
+
+    @Override
+    public void verifyValue(String name) {
+        if (("click-slowdown".equals(name) && !this.clickSlowdown.getValue())
+                || ("sprint".equals(name) && !this.sprint.getValue())) {
+            flushClickSlowdownAndReset();
+        }
     }
 
     @Override

@@ -7,6 +7,12 @@ import static org.junit.Assert.*;
 
 public class ClientSettingsTest {
     @Test
+    public void crashGuardIsPersistedAsAnInternalClientFeature() {
+        assertTrue(ClientSettings.isIntegratedModuleName("CrashGuard"));
+        assertFalse(ClientSettings.isIntegratedModuleName("PacketDelay"));
+    }
+
+    @Test
     public void targetingAndNetworkControlsRoundTripThroughClientStore() {
         ClientSettings source = new ClientSettings();
         source.cycleMoveFixMode();

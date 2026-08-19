@@ -21,9 +21,9 @@ import java.util.Map;
 public final class ClientSettings {
     private static final java.util.Set<String> INTEGRATED_MODULES = new HashSet<>(Arrays.asList(
             "ClickGui", "Animations", "HUD", "TargetHUD",
-            "Fpscounter", "FloatingIsland", "DynamicIsland", "Capes", "Fullbright",
+            "Fpscounter", "Capes", "Fullbright",
             "NoHurtCam", "NoHitDelay", "NoJumpDelay", "AntiObfuscate", "NickHider",
-            "ServerHider"
+            "ServerHider", "CrashGuard"
     ));
     private float clickGuiScale = 1.0F;
     private String clickGuiStyle = "MODERN";

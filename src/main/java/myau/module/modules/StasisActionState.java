@@ -1,6 +1,7 @@
 package myau.module.modules;
 
 final class StasisActionState {
+    static final int MAX_BUFFERED_ROTATIONS = 3;
     static final int CLASSIC = 0;
     static final int EXPERIMENTAL_1 = 1;
     static final int EXPERIMENTAL_2 = 2;
@@ -12,6 +13,9 @@ final class StasisActionState {
     private boolean pendingUse;
     private boolean rawUseArmed;
     private boolean replayingUse;
+    private final float[] bufferedYaws = new float[MAX_BUFFERED_ROTATIONS];
+    private final float[] bufferedPitches = new float[MAX_BUFFERED_ROTATIONS];
+    private int bufferedRotationCount;
 
     void reset(int mode) {
         this.mode = mode;
@@ -20,6 +24,7 @@ final class StasisActionState {
         this.pendingUse = false;
         this.rawUseArmed = false;
         this.replayingUse = false;
+        this.bufferedRotationCount = 0;
     }
 
     int getMode() {
@@ -63,12 +68,39 @@ final class StasisActionState {
         return true;
     }
 
-    boolean requestRotationWake() {
+    void recordRotation(float yaw, float pitch) {
         if (!this.isExperimental()) {
-            return false;
+            return;
         }
-        this.startWakeWindow();
-        return this.mode == EXPERIMENTAL_1 || this.mode == EXPERIMENTAL_2;
+        if (this.bufferedRotationCount > 0) {
+            int last = this.bufferedRotationCount - 1;
+            if (Math.abs(this.bufferedYaws[last] - yaw) <= 1.0E-4F
+                    && Math.abs(this.bufferedPitches[last] - pitch) <= 1.0E-4F) {
+                return;
+            }
+        }
+        if (this.bufferedRotationCount == MAX_BUFFERED_ROTATIONS) {
+            System.arraycopy(this.bufferedYaws, 1, this.bufferedYaws, 0, MAX_BUFFERED_ROTATIONS - 1);
+            System.arraycopy(this.bufferedPitches, 1, this.bufferedPitches, 0, MAX_BUFFERED_ROTATIONS - 1);
+            this.bufferedRotationCount--;
+        }
+        this.bufferedYaws[this.bufferedRotationCount] = yaw;
+        this.bufferedPitches[this.bufferedRotationCount] = pitch;
+        this.bufferedRotationCount++;
+    }
+
+    int getBufferedRotationCount() {
+        return this.bufferedRotationCount;
+    }
+
+    RotationSample consumeLatestRotation() {
+        if (this.bufferedRotationCount == 0) {
+            return null;
+        }
+        int last = this.bufferedRotationCount - 1;
+        RotationSample sample = new RotationSample(this.bufferedYaws[last], this.bufferedPitches[last]);
+        this.bufferedRotationCount = 0;
+        return sample;
     }
 
     private void startWakeWindow() {
@@ -132,5 +164,15 @@ final class StasisActionState {
                 || this.fastUpdateActive
                 || this.pendingUse
                 || this.replayingUse;
+    }
+
+    static final class RotationSample {
+        final float yaw;
+        final float pitch;
+
+        RotationSample(float yaw, float pitch) {
+            this.yaw = yaw;
+            this.pitch = pitch;
+        }
     }
 }

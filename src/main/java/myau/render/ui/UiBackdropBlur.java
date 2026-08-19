@@ -11,11 +11,13 @@ import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GLContext;
 
-import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 final class UiBackdropBlur {
     private static final Logger LOGGER = LogManager.getLogger("Myaulex-UI");
+    private static final int MAX_CAPTURE_VARIANTS = 6;
     private static final String VERTEX =
             "#version 120\n" +
             "varying vec2 uv;\n" +
@@ -47,7 +49,9 @@ final class UiBackdropBlur {
 
     private final Minecraft mc = Minecraft.getMinecraft();
     private UiShaderProgram shader;
-    private final Map<Integer, Capture> captures = new HashMap<>();
+    // Radius sliders can visit many values; keep the shared per-frame reuse while
+    // bounding the number of full-screen framebuffer pairs retained by the client.
+    private final Map<Integer, Capture> captures = new LinkedHashMap<>(8, 0.75F, true);
     private boolean supported;
 
     static UiBackdropBlur shared() {
@@ -99,6 +103,13 @@ final class UiBackdropBlur {
             int key = Float.floatToIntBits(radius);
             Capture capture = captures.get(key);
             if (capture == null) {
+                while (captures.size() >= MAX_CAPTURE_VARIANTS) {
+                    Iterator<Map.Entry<Integer, Capture>> iterator = captures.entrySet().iterator();
+                    if (!iterator.hasNext()) break;
+                    Capture oldest = iterator.next().getValue();
+                    iterator.remove();
+                    deleteCapture(oldest);
+                }
                 capture = new Capture();
                 captures.put(key, capture);
             }
@@ -147,6 +158,12 @@ final class UiBackdropBlur {
                 mc.getFramebuffer().bindFramebuffer(true);
             }
         }
+    }
+
+    private static void deleteCapture(Capture capture) {
+        if (capture == null) return;
+        if (capture.horizontal != null) capture.horizontal.deleteFramebuffer();
+        if (capture.vertical != null) capture.vertical.deleteFramebuffer();
     }
 
     private static int framebufferStatus(Framebuffer framebuffer) {

@@ -65,6 +65,7 @@ public final class UiRenderer {
     private final String defaultOwner;
     private String activeOwner;
     private int backdropTexture;
+    private float backdropStrength = 1.0F;
 
     public UiRenderer() {
         this("UI");
@@ -145,13 +146,20 @@ public final class UiRenderer {
     }
 
     public void beginFrame(UiTransform transform, float blurRadius) {
-        beginFrame(defaultOwner, transform, blurRadius);
+        beginFrame(defaultOwner, transform, blurRadius, 1.0F, true);
     }
 
     public void beginFrame(String owner, UiTransform transform, float blurRadius) {
+        beginFrame(owner, transform, blurRadius, 1.0F, true);
+    }
+
+    /** Starts a frame with explicit scene-blur controls for modern UI consumers. */
+    public void beginFrame(String owner, UiTransform transform, float blurRadius,
+                           float blurStrength, boolean blurEnabled) {
         lifecycle.beginFrame();
         this.activeOwner = owner == null ? defaultOwner : owner;
         this.transform = transform;
+        this.backdropStrength = clamp01(blurStrength);
         boolean attributesPushed = false;
         boolean matrixPushed = false;
         boolean initialized = false;
@@ -160,7 +168,8 @@ public final class UiRenderer {
             GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
             attributesPushed = true;
             reportGlErrors("before beginFrame");
-            backdropTexture = blur.capture(blurRadius);
+            backdropTexture = blurEnabled && backdropStrength > 0.0F
+                    ? blur.capture(Math.max(0.0F, blurRadius)) : 0;
             GL11.glMatrixMode(GL11.GL_MODELVIEW);
             GL11.glPushMatrix();
             matrixPushed = true;
@@ -185,6 +194,7 @@ public final class UiRenderer {
                 } finally {
                     this.transform = null;
                     this.backdropTexture = 0;
+                    this.backdropStrength = 1.0F;
                     this.activeOwner = defaultOwner;
                     lifecycle.endFrame();
                 }
@@ -211,6 +221,7 @@ public final class UiRenderer {
                     lifecycle.endFrame();
                     transform = null;
                     backdropTexture = 0;
+                    backdropStrength = 1.0F;
                     activeOwner = defaultOwner;
                 }
             }
@@ -223,10 +234,11 @@ public final class UiRenderer {
     }
 
     public void backdrop(float x, float y, float width, float height, float radius, int tint) {
-        if (backdropTexture != 0) {
+        if (backdropTexture != 0 && backdropStrength > 0.0F) {
             texturedRounded(backdropTexture, x, y, width, height, radius, radius, radius, radius,
                     framebufferU(x), framebufferV(y),
-                    framebufferU(x + width), framebufferV(y + height), 0xFFFFFFFF);
+                    framebufferU(x + width), framebufferV(y + height),
+                    withAlpha(0xFFFFFFFF, Math.round(backdropStrength * 255.0F)));
         }
         roundedRect(x, y, width, height, radius, tint);
     }
@@ -522,6 +534,15 @@ public final class UiRenderer {
         float right = Math.min(a.x + a.width, b.x + b.width);
         float bottom = Math.min(a.y + a.height, b.y + b.height);
         return new UiBounds(x, y, Math.max(0, right - x), Math.max(0, bottom - y));
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (color & 0x00FFFFFF) | (Math.max(0, Math.min(255, alpha)) << 24);
+    }
+
+    private static float clamp01(float value) {
+        if (!Float.isFinite(value)) return 0.0F;
+        return Math.max(0.0F, Math.min(1.0F, value));
     }
 
     private static void applyColor(int color) {

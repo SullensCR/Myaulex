@@ -120,6 +120,9 @@ tasks.processResources {
     from(file("assets/targetHUD/heart")) {
         into("assets/myau/ui/targethud")
     }
+    from(file("assets/sounds")) {
+        into("assets/myau/sounds")
+    }
     filesMatching(listOf("mcmod.info", "mixins.$modid.json","version.json")) {
         expand(inputs.properties)
     }

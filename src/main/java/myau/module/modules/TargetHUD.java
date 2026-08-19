@@ -11,6 +11,7 @@ import myau.property.properties.FloatProperty;
 import myau.property.properties.IntProperty;
 import myau.property.properties.ModeProperty;
 import myau.property.properties.TargetHudStyleProperty;
+import myau.render.HudPosition;
 import myau.render.ui.UiFont;
 import myau.render.ui.UiRenderer;
 import myau.render.ui.UiTransform;
@@ -77,6 +78,10 @@ public class TargetHUD extends Module {
 
     public TargetHUD() {
         super("TargetHUD", false, true, "Target HUD");
+    }
+
+    public boolean isHudVisible() {
+        return this.isEnabled() && this.renderTarget != null && this.visibility > 0.01F;
     }
 
     @EventTarget
@@ -172,8 +177,8 @@ public class TargetHUD extends Module {
                 float componentWidth = TargetHudState.componentWidth(
                         font.visualWidth(health), font.visualWidth(name));
                 float visualHeight = TargetHudState.height(this.expansion);
-                float x = this.positionX(componentWidth);
-                float y = this.positionY(visualHeight);
+                float x = this.positionX(transform.getDesignWidth(), componentWidth);
+                float y = this.positionY(transform.getDesignHeight(), visualHeight);
                 int alpha = Math.round(255.0F * this.visibility);
                 this.drawModernComponent(renderer, entity, x, y, componentWidth, font, health, name, alpha);
             } finally {
@@ -339,15 +344,7 @@ public class TargetHUD extends Module {
     }
 
     private float positionX(float canvasWidth, float componentWidth) {
-        switch (this.posX.getValue()) {
-            case 0:
-                return this.offX.getValue();
-            case 2:
-                return canvasWidth - componentWidth - this.offX.getValue();
-            case 1:
-            default:
-                return (canvasWidth - componentWidth) * 0.5F + this.offX.getValue();
-        }
+        return HudPosition.anchoredX(this.posX.getValue(), canvasWidth, componentWidth, this.offX.getValue());
     }
 
     private float positionY(float componentHeight) {
@@ -355,15 +352,7 @@ public class TargetHUD extends Module {
     }
 
     private float positionY(float canvasHeight, float componentHeight) {
-        switch (this.posY.getValue()) {
-            case 0:
-                return this.offY.getValue();
-            case 2:
-                return canvasHeight - componentHeight - this.offY.getValue();
-            case 1:
-            default:
-                return (canvasHeight - componentHeight) * 0.5F + this.offY.getValue();
-        }
+        return HudPosition.anchoredY(this.posY.getValue(), canvasHeight, componentHeight, this.offY.getValue());
     }
 
     private float healthRatio(EntityLivingBase entity) {

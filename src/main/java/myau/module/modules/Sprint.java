@@ -38,7 +38,7 @@ public class Sprint extends Module {
         if (this.isEnabled()) {
             switch (event.getType()) {
                 case PRE:
-                    if (isBlockedByInventoryMove() || isBlockedByScaffold()) {
+                    if (isBlockedByInventoryMove() || isBlockedByScaffold() || isBlockedByHitSelect()) {
                         KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), false);
                         if (mc.thePlayer != null) {
                             mc.thePlayer.setSprinting(false);
@@ -61,6 +61,11 @@ public class Sprint extends Module {
     private boolean isBlockedByScaffold() {
         Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
         return scaffold != null && scaffold.blocksSprint();
+    }
+
+    private boolean isBlockedByHitSelect() {
+        HitSelect hitSelect = (HitSelect) Myau.moduleManager.modules.get(HitSelect.class);
+        return hitSelect != null && hitSelect.isSuppressingSprint();
     }
 
     @Override

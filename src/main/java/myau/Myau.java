@@ -45,6 +45,7 @@ public class Myau {
     public static ClientSettings clientSettings;
     public static IndicatorRenderer indicatorRenderer;
     public static UiRenderer uiRenderer;
+    public static HudEditManager hudEditManager;
 
     public Myau() {
         this.init();
@@ -67,6 +68,7 @@ public class Myau {
         clientSettings = new ClientSettings();
         indicatorRenderer = new IndicatorRenderer();
         uiRenderer = new UiRenderer("Myaulex UI");
+        hudEditManager = new HudEditManager();
         fontManagers.load();
         EventManager.register(rotationManager);
         EventManager.register(floatManager);
@@ -84,6 +86,7 @@ public class Myau {
         moduleManager.modules.put(AntiDebuff.class, new AntiDebuff());
         moduleManager.modules.put(AntiFireball.class, new AntiFireball());
         moduleManager.modules.put(AntiObfuscate.class, new AntiObfuscate());
+        moduleManager.modules.put(CrashGuard.class, new CrashGuard());
         moduleManager.modules.put(AntiVoid.class, new AntiVoid());
         moduleManager.modules.put(AutoClicker.class, new AutoClicker());
         moduleManager.modules.put(AutoHeal.class, new AutoHeal());
@@ -103,7 +106,6 @@ public class Myau {
         moduleManager.modules.put(FastPlace.class, new FastPlace());
         moduleManager.modules.put(FastQueue.class, new FastQueue());
         moduleManager.modules.put(FlagDetector.class, new FlagDetector());
-        moduleManager.modules.put(FloatingIsland.class, new FloatingIsland());
         moduleManager.modules.put(FullBright.class, new FullBright());
         moduleManager.modules.put(GuiModule.class, new GuiModule());
         moduleManager.modules.put(HUD.class, new HUD());
@@ -115,6 +117,7 @@ public class Myau {
         moduleManager.modules.put(ItemESP.class, new ItemESP());
         moduleManager.modules.put(KeepSprint.class, new KeepSprint());
         moduleManager.modules.put(KillAura.class, new KillAura());
+        moduleManager.modules.put(HitSelect.class, new HitSelect());
         moduleManager.modules.put(LagRange.class, new LagRange());
         moduleManager.modules.put(NameTags.class, new NameTags());
         moduleManager.modules.put(NickHider.class, new NickHider());
@@ -132,13 +135,13 @@ public class Myau {
         moduleManager.modules.put(Stasis.class, new Stasis());
         moduleManager.modules.put(Trajectories.class, new Trajectories());
         moduleManager.modules.put(Velocity.class, new Velocity());
+        moduleManager.modules.put(MotionPath.class, new MotionPath());
         moduleManager.modules.put(ViewClip.class, new ViewClip());
         moduleManager.modules.put(Wtap.class, new Wtap());
         moduleManager.modules.put(BlockOverlay.class, new BlockOverlay());
         moduleManager.modules.put(BreakProgress.class, new BreakProgress());
         moduleManager.modules.put(FPScounter.class, new FPScounter());
         moduleManager.modules.put(HitParticleEffects.class, new HitParticleEffects());
-        moduleManager.modules.put(DynamicIsland.class, new DynamicIsland());
         moduleManager.modules.put(ESP2D.class, new ESP2D());
         moduleManager.modules.put(Capes.class, new Capes());
         moduleManager.modules.put(Animations.class, new Animations());

@@ -26,4 +26,11 @@ public class ArraylistLayoutTest {
         assertEquals(24.5F, ArraylistLayout.nextTopCursor(0.0F, 1.0F, 0.5F), 0.001F);
         assertEquals(151.0F, ArraylistLayout.nextBottomCursor(200.0F, 1.0F, 1.0F), 0.001F);
     }
+
+    @Test
+    public void customRowGapControlsTopAndBottomSpacing() {
+        assertEquals(52.0F, ArraylistLayout.nextTopCursor(0.0F, 1.0F, 1.0F, 10.0F), 0.001F);
+        assertEquals(148.0F, ArraylistLayout.nextBottomCursor(200.0F, 1.0F, 1.0F, 10.0F), 0.001F);
+        assertEquals(42.0F, ArraylistLayout.nextTopCursor(0.0F, 1.0F, 1.0F, -5.0F), 0.001F);
+    }
 }

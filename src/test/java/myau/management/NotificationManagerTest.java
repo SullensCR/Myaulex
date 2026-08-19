@@ -2,9 +2,11 @@ package myau.management;
 
 import myau.Myau;
 import myau.config.Config;
+import myau.util.SoundUtil;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -14,11 +16,13 @@ import static org.junit.Assert.assertTrue;
 public class NotificationManagerTest {
     private long now;
     private NotificationManager manager;
+    private List<String> playedSounds;
 
     @Before
     public void setUp() {
         this.now = 0L;
-        this.manager = new NotificationManager(() -> this.now);
+        this.playedSounds = new ArrayList<>();
+        this.manager = new NotificationManager(() -> this.now, this.playedSounds::add);
     }
 
     @Test
@@ -63,8 +67,40 @@ public class NotificationManagerTest {
     }
 
     @Test
+    public void genericNotificationsPlayOnlyTheGenericSound() {
+        this.manager.add(NotificationManager.NotificationType.WARNING, "warning", "Warning", "Be careful", false);
+
+        assertEquals(1, this.playedSounds.size());
+        assertEquals(SoundUtil.NOTIFICATION_SOUND, this.playedSounds.get(0));
+    }
+
+    @Test
+    public void toggleNotificationsDoNotPlayTheGenericSound() {
+        this.manager.addToggle("Scaffold", true);
+
+        assertTrue(this.playedSounds.isEmpty());
+    }
+
+    @Test
+    public void bedWhitelistUsesItsDedicatedSoundEvenWithoutCards() {
+        NotificationManager.NotificationEntry entry = this.manager.addBedWhitelist();
+
+        assertEquals("Bed whitelisted", entry.getMessage());
+        assertEquals(1, this.playedSounds.size());
+        assertEquals(SoundUtil.BED_WHITELIST_SOUND, this.playedSounds.get(0));
+
+        this.playedSounds.clear();
+        this.manager.setEnabled(false);
+        assertEquals(null, this.manager.addBedWhitelist());
+        assertEquals(1, this.playedSounds.size());
+        assertEquals(SoundUtil.BED_WHITELIST_SOUND, this.playedSounds.get(0));
+    }
+
+    @Test
     public void analyzerProgressUpdatesInPlaceAndRestartsResultHold() {
         NotificationManager.NotificationEntry active = this.manager.beginAnalysis();
+        assertEquals(1, this.playedSounds.size());
+        assertEquals(SoundUtil.NOTIFICATION_SOUND, this.playedSounds.get(0));
         this.now = 1500L;
         assertEquals(0.5F, active.getProgress(), 0.001F);
         assertTrue(active.isProgressActive());
@@ -78,6 +114,7 @@ public class NotificationManagerTest {
         assertEquals("Grim", active.getMessage());
         assertFalse(active.isProgressActive());
         assertEquals(0L, active.getAge());
+        assertEquals(1, this.playedSounds.size());
 
         this.now = 3000L + NotificationManager.ENTER_DURATION + NotificationManager.DISPLAY_DURATION;
         this.manager.getActive();
@@ -102,6 +139,8 @@ public class NotificationManagerTest {
         this.manager.setEnabled(false);
         assertTrue(this.manager.getActive().isEmpty());
         assertEquals(null, this.manager.addToggle("Scaffold", true));
+        this.manager.add(NotificationManager.NotificationType.WARNING, "warning", "Warning", "Be careful", false);
+        assertTrue(this.playedSounds.isEmpty());
 
         this.manager.setEnabled(true);
         this.manager.addToggle("Scaffold", true);

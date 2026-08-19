@@ -23,9 +23,15 @@ import net.minecraft.network.play.server.S21PacketChunkData;
 import net.minecraft.network.play.server.S22PacketMultiBlockChange;
 import net.minecraft.network.play.server.S23PacketBlockChange;
 import net.minecraft.network.play.server.S26PacketMapChunkBulk;
+import net.minecraft.network.play.server.S3BPacketScoreboardObjective;
+import net.minecraft.network.play.server.S3CPacketUpdateScore;
+import net.minecraft.network.play.server.S3DPacketDisplayScoreboard;
+import net.minecraft.network.play.server.S3EPacketTeams;
 import net.minecraft.network.play.server.S38PacketPlayerListItem;
+import net.minecraft.network.play.server.S47PacketPlayerListHeaderFooter;
 import net.minecraft.network.status.client.C00PacketServerQuery;
 import net.minecraft.network.status.client.C01PacketPing;
+import myau.module.modules.VeloDelay;
 
 import java.util.Deque;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -37,6 +43,9 @@ public class DelayManager {
     private final Deque<DelayedPacket> delayedPacket = new ConcurrentLinkedDeque<>();
 
     public synchronized boolean shouldDelay(Packet<INetHandlerPlayClient> packet) {
+        if (VeloDelay.isOwningInboundQueue()) {
+            return false;
+        }
         if (this.delayModule == DelayModules.NONE || mc.theWorld == null || mc.getNetHandler() == null) {
             return false;
         } else if (isImmediatePacket(packet)) {
@@ -89,7 +98,12 @@ public class DelayManager {
     static boolean isImmediatePacket(Packet<?> packet) {
         return packet instanceof S00PacketKeepAlive
                 || packet instanceof S08PacketPlayerPosLook
+                || packet instanceof S3BPacketScoreboardObjective
+                || packet instanceof S3CPacketUpdateScore
+                || packet instanceof S3DPacketDisplayScoreboard
+                || packet instanceof S3EPacketTeams
                 || packet instanceof S38PacketPlayerListItem
+                || packet instanceof S47PacketPlayerListHeaderFooter
                 || packet instanceof S21PacketChunkData
                 || packet instanceof S22PacketMultiBlockChange
                 || packet instanceof S23PacketBlockChange

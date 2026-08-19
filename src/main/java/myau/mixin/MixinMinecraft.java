@@ -13,6 +13,7 @@ import myau.util.TeamUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.settings.KeyBinding;
@@ -62,6 +63,14 @@ public abstract class MixinMinecraft {
         if (Myau.moduleManager != null && this.currentScreen == null) {
             ((Minecraft) (Object) this).displayGuiScreen(new MyauPauseScreen());
             callbackInfo.cancel();
+        }
+    }
+
+    @Inject(method = {"displayGuiScreen"}, at = {@At("HEAD")})
+    private void displayGuiScreen(GuiScreen screen, CallbackInfo callbackInfo) {
+        if (this.currentScreen instanceof GuiChat && !(screen instanceof GuiChat)
+                && Myau.hudEditManager != null) {
+            Myau.hudEditManager.finishEditing();
         }
     }
 

@@ -20,6 +20,7 @@ import net.minecraft.network.play.server.S22PacketMultiBlockChange;
 import net.minecraft.network.play.server.S23PacketBlockChange;
 import net.minecraft.network.play.server.S26PacketMapChunkBulk;
 import net.minecraft.network.play.server.S38PacketPlayerListItem;
+import net.minecraft.network.play.server.S47PacketPlayerListHeaderFooter;
 import net.minecraft.network.play.server.S08PacketPlayerPosLook;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -66,9 +67,16 @@ public final class PacketDelay extends Module {
         }
     }
 
+    /** Flush only the inbound side before VeloDelay takes ownership. */
+    public void flushInboundForVeloDelay() {
+        TimedPacket packet;
+        while ((packet = inboundQueue.poll()) != null) replay(packet, true);
+    }
+
     @EventTarget
     public void onPacket(PacketEvent event) {
         if (!isEnabled() || replaying || mc.thePlayer == null || mc.theWorld == null || mc.getNetHandler() == null) return;
+        if (event.getType() == EventType.RECEIVE && VeloDelay.isOwningInboundQueue()) return;
         if (event.getType() == EventType.SEND && outbound.getValue()) {
             event.setCancelled(true);
             outboundQueue.offer(new TimedPacket(
@@ -87,6 +95,7 @@ public final class PacketDelay extends Module {
                 && !(packet instanceof S07PacketRespawn)
                 && !(packet instanceof S08PacketPlayerPosLook)
                 && !(packet instanceof S38PacketPlayerListItem)
+                && !(packet instanceof S47PacketPlayerListHeaderFooter)
                 && !(packet instanceof S21PacketChunkData)
                 && !(packet instanceof S22PacketMultiBlockChange)
                 && !(packet instanceof S23PacketBlockChange)

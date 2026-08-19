@@ -5,7 +5,6 @@ import myau.enums.DelayModules;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.event.types.Priority;
-import myau.events.AttackEvent;
 import myau.events.LoadWorldEvent;
 import myau.events.PacketEvent;
 import myau.events.Render3DEvent;
@@ -48,6 +47,7 @@ import net.minecraft.network.play.server.S3CPacketUpdateScore;
 import net.minecraft.network.play.server.S3DPacketDisplayScoreboard;
 import net.minecraft.network.play.server.S3EPacketTeams;
 import net.minecraft.network.play.server.S38PacketPlayerListItem;
+import net.minecraft.network.play.server.S47PacketPlayerListHeaderFooter;
 import net.minecraft.network.status.server.S01PacketPong;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.Vec3;
@@ -55,6 +55,8 @@ import net.minecraft.world.WorldSettings.GameType;
 import org.lwjgl.opengl.GL11;
 
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.ToDoubleFunction;
@@ -66,7 +68,6 @@ import java.util.function.ToDoubleFunction;
  */
 public final class Backtrack extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    private static final long MANUAL_TARGET_TIMEOUT_MS = 3_000L;
     private static final double MAX_SERVER_DISTANCE = 6.0D;
 
     public final IntProperty nextDelay = new IntProperty("next-delay-ms", 0, 0, 2000);
@@ -88,8 +89,6 @@ public final class Backtrack extends Module {
     private final ServerPositionTracker serverPosition = new ServerPositionTracker();
 
     private volatile EntityLivingBase target;
-    private volatile EntityLivingBase manualTarget;
-    private volatile long manualTargetTime;
     private volatile boolean pendingFlush;
     private volatile boolean pendingTargetReset;
 
@@ -120,13 +119,6 @@ public final class Backtrack extends Module {
         resetWithoutReplay();
     }
 
-    @EventTarget
-    public void onAttack(AttackEvent event) {
-        if (!isEnabled() || !(event.getTarget() instanceof EntityLivingBase)) return;
-        manualTarget = (EntityLivingBase) event.getTarget();
-        manualTargetTime = System.currentTimeMillis();
-    }
-
     @EventTarget(Priority.LOW)
     public void onPacket(PacketEvent event) {
         if (!isEnabled() || event.getType() != EventType.RECEIVE || event.isCancelled()) return;
@@ -141,11 +133,19 @@ public final class Backtrack extends Module {
         Packet<?> packet = event.getPacket();
         long now = System.currentTimeMillis();
 
-        if (isWorldTransitionPacket(packet)) {
-            // These packets must reach vanilla immediately. In particular,
-            // S08PacketPlayerPosLook marks terrain loading as complete. Any
-            // queued combat packets belong to the state before this packet.
+        if (isHardWorldTransitionPacket(packet)) {
+            // Join/respawn replace the play state. Packets received before
+            // this boundary belong to the old world and must not be replayed.
             resetWithoutReplay();
+            return;
+        }
+        if (packet instanceof S08PacketPlayerPosLook) {
+            // S08 is also used for ordinary corrections, teleports and game
+            // start positioning. Preserve every packet that arrived before it
+            // as one FIFO batch and schedule that batch before vanilla queues
+            // the S08 task on the Minecraft thread.
+            scheduleReplay(detachQueue(packets));
+            resetTrackingState();
             return;
         }
 
@@ -182,7 +182,7 @@ public final class Backtrack extends Module {
         }
 
         long now = System.currentTimeMillis();
-        EntityLivingBase resolved = resolveTarget(now);
+        EntityLivingBase resolved = resolveTarget();
         if (pendingTargetReset) resolved = null;
 
         if (resolved != target) {
@@ -199,7 +199,6 @@ public final class Backtrack extends Module {
             pendingFlush = false;
             if (pendingTargetReset) {
                 target = null;
-                manualTarget = null;
                 serverPosition.clear();
             }
             pendingTargetReset = false;
@@ -319,15 +318,17 @@ public final class Backtrack extends Module {
         resetWithoutReplay();
     }
 
-    private EntityLivingBase resolveTarget(long now) {
+    private EntityLivingBase resolveTarget() {
         KillAura aura = (KillAura) Myau.moduleManager.modules.get(KillAura.class);
-        if (aura != null && aura.isEnabled() && isValidTarget(aura.getTarget())) {
-            return aura.getTarget();
-        }
-        if (now - manualTargetTime <= MANUAL_TARGET_TIMEOUT_MS && isValidTarget(manualTarget)) {
-            return manualTarget;
-        }
-        return null;
+        EntityLivingBase auraTarget = aura == null ? null : aura.getTarget();
+        return shouldUseAuraTarget(
+                aura != null && aura.isEnabled(),
+                aura != null && aura.isAttackAllowed(),
+                isValidTarget(auraTarget)) ? auraTarget : null;
+    }
+
+    static boolean shouldUseAuraTarget(boolean auraEnabled, boolean attackAllowed, boolean validTarget) {
+        return auraEnabled && attackAllowed && validTarget;
     }
 
     private boolean shouldBacktrack(EntityLivingBase candidate, long now) {
@@ -385,19 +386,29 @@ public final class Backtrack extends Module {
     }
 
     private boolean hasConflictingInboundDelay() {
+        if (VeloDelay.isOwningInboundQueue()) return true;
         if (Myau.delayManager != null
                 && Myau.delayManager.getDelayModule() != DelayModules.NONE) return true;
         PacketDelay packetDelay = (PacketDelay) Myau.moduleManager.modules.get(PacketDelay.class);
         return packetDelay != null && packetDelay.isEnabled() && packetDelay.inbound.getValue();
     }
 
+    /** Flush the current hold before VeloDelay takes ownership of inbound packets. */
+    public void flushForVeloDelay() {
+        drainAllPackets();
+        pendingFlush = false;
+        pendingTargetReset = false;
+    }
+
     static boolean isImmediatePacket(Packet<?> packet, EntityLivingBase currentTarget) {
-        if (isWorldTransitionPacket(packet)
+        if (isHardWorldTransitionPacket(packet)
+                || packet instanceof S08PacketPlayerPosLook
                 || packet instanceof S3BPacketScoreboardObjective
                 || packet instanceof S3CPacketUpdateScore
                 || packet instanceof S3DPacketDisplayScoreboard
                 || packet instanceof S3EPacketTeams
                 || packet instanceof S38PacketPlayerListItem
+                || packet instanceof S47PacketPlayerListHeaderFooter
                 || isWorldStatePacket(packet)) return true;
         if (packet instanceof S02PacketChat || packet instanceof S01PacketPong) return true;
         if (packet instanceof S29PacketSoundEffect) {
@@ -415,7 +426,7 @@ public final class Backtrack extends Module {
     }
 
     static boolean packetRequiresFlush(Packet<?> packet, EntityLivingBase currentTarget) {
-        if (isWorldTransitionPacket(packet)) return true;
+        if (isHardWorldTransitionPacket(packet) || packet instanceof S08PacketPlayerPosLook) return true;
         if (packet instanceof S06PacketUpdateHealth) {
             return ((S06PacketUpdateHealth) packet).getHealth() <= 0.0F;
         }
@@ -433,10 +444,9 @@ public final class Backtrack extends Module {
         return false;
     }
 
-    private static boolean isWorldTransitionPacket(Packet<?> packet) {
+    private static boolean isHardWorldTransitionPacket(Packet<?> packet) {
         return packet instanceof S01PacketJoinGame
-                || packet instanceof S07PacketRespawn
-                || packet instanceof S08PacketPlayerPosLook;
+                || packet instanceof S07PacketRespawn;
     }
 
     private static boolean isWorldStatePacket(Packet<?> packet) {
@@ -465,6 +475,20 @@ public final class Backtrack extends Module {
     private void drainAllPackets() {
         TimedPacket next;
         while ((next = packets.poll()) != null) replay(next);
+    }
+
+    private void scheduleReplay(List<TimedPacket> batch) {
+        if (batch.isEmpty()) return;
+        mc.addScheduledTask(() -> {
+            for (TimedPacket delayed : batch) replay(delayed);
+        });
+    }
+
+    static <T> List<T> detachQueue(ConcurrentLinkedQueue<T> queue) {
+        List<T> batch = new ArrayList<>();
+        T next;
+        while ((next = queue.poll()) != null) batch.add(next);
+        return batch;
     }
 
     @SuppressWarnings("unchecked")
@@ -506,11 +530,13 @@ public final class Backtrack extends Module {
 
     private void resetWithoutReplay() {
         packets.clear();
+        resetTrackingState();
+    }
+
+    private void resetTrackingState() {
         positions.clear();
         serverPosition.clear();
         target = null;
-        manualTarget = null;
-        manualTargetTime = 0L;
         pendingFlush = false;
         pendingTargetReset = false;
         cycleStarted = 0L;

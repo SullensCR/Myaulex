@@ -7,9 +7,14 @@ import myau.Myau;
 import myau.event.EventManager;
 import myau.event.types.EventType;
 import myau.events.PacketEvent;
+import myau.events.PacketArrivalEvent;
+import myau.module.modules.CrashGuard;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.INetHandlerPlayClient;
+import net.minecraft.network.play.server.S19PacketEntityStatus;
+import net.minecraft.network.play.server.S12PacketEntityVelocity;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.spongepowered.asm.mixin.Mixin;
@@ -45,6 +50,13 @@ public abstract class MixinNetworkManager {
     )
     private void channelRead0(ChannelHandlerContext channelHandlerContext, Packet<?> packet, CallbackInfo callbackInfo) {
         if (!packet.getClass().getName().startsWith("net.minecraft.network.play.client")) {
+            if (CrashGuard.shouldBlockIncomingPacket(packet)) {
+                callbackInfo.cancel();
+                return;
+            }
+            if (packet instanceof S19PacketEntityStatus || packet instanceof S12PacketEntityVelocity) {
+                EventManager.call(new PacketArrivalEvent(packet, Minecraft.getMinecraft().theWorld, System.nanoTime()));
+            }
             if (Myau.delayManager != null && Myau.delayManager.shouldDelay((Packet<INetHandlerPlayClient>) packet)) {
                 callbackInfo.cancel();
             } else {

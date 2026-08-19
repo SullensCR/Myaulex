@@ -9,6 +9,7 @@ import myau.events.TickEvent;
 import myau.mixin.IAccessorGuiChat;
 import myau.module.Module;
 import myau.render.ArraylistLayout;
+import myau.render.HudPosition;
 import myau.render.ui.UiFont;
 import myau.render.ui.UiFonts;
 import myau.render.ui.UiRenderer;
@@ -68,9 +69,16 @@ public class HUD extends Module {
     // Retained for the blink timer and modules that still use the classic HUD text path.
     // The redesigned arraylist uses the same heavy SN Pro face as the watermark.
     public final ModeProperty font = new ModeProperty("font", 0, new String[]{"NUNITO", "PRODUCT_SANS", "TENACITY", "VISION", "MINECRAFT"});
-    public final IntProperty offsetX = new IntProperty("offset-x", 2, 0, 255);
-    public final IntProperty offsetY = new IntProperty("offset-y", 2, 0, 255);
+    public final IntProperty offsetX = new IntProperty("offset-x", 2, 0, 5000);
+    public final IntProperty offsetY = new IntProperty("offset-y", 2, 0, 5000);
     public final FloatProperty scale = new FloatProperty("scale", 1.0F, 0.5F, 1.5F);
+    public final SteppedFloatProperty arraylistSpacing = new SteppedFloatProperty(
+            "arraylist-spacing", 7.0F, 0.0F, 24.0F, 1.0F, null);
+    public final BooleanProperty blur = new BooleanProperty("blur", true);
+    public final SteppedFloatProperty blurRadius = new SteppedFloatProperty(
+            "blur-radius", 31.0F, 0.0F, 60.0F, 1.0F, this.blur::getValue);
+    public final FloatProperty blurStrength = new FloatProperty(
+            "blur-strength", 1.0F, 0.0F, 1.0F, this.blur::getValue);
     public final FloatProperty progressbarSize = new FloatProperty("progressbar-size", 1.0F, 0.5F, 2.0F);
     public final BooleanProperty shadow = new BooleanProperty("shadow", true);
     public final BooleanProperty suffixes = new BooleanProperty("suffixes", true);
@@ -80,9 +88,13 @@ public class HUD extends Module {
     public final BooleanProperty watermark = new BooleanProperty("watermark", true);
     public final FloatProperty watermarkScale = new FloatProperty("watermark-scale", 1.0F, 0.25F, 2.0F,
             this.watermark::getValue);
-    public final IntProperty watermarkOffsetX = new IntProperty("watermark-offset-x", 8, 0, 512,
+    public final ModeProperty watermarkPosX = new ModeProperty("watermark-position-x", 0,
+            new String[]{"LEFT", "RIGHT"}, this.watermark::getValue);
+    public final ModeProperty watermarkPosY = new ModeProperty("watermark-position-y", 0,
+            new String[]{"TOP", "BOTTOM"}, this.watermark::getValue);
+    public final IntProperty watermarkOffsetX = new IntProperty("watermark-offset-x", 8, 0, 5000,
             this.watermark::getValue);
-    public final IntProperty watermarkOffsetY = new IntProperty("watermark-offset-y", 8, 0, 512,
+    public final IntProperty watermarkOffsetY = new IntProperty("watermark-offset-y", 8, 0, 5000,
             this.watermark::getValue);
     public final BooleanProperty toggleSound = new BooleanProperty("toggle-sounds", true);
     public final FloatProperty colorDistance = new FloatProperty("color-dist", 50F, 10F, 100F);
@@ -238,41 +250,17 @@ public class HUD extends Module {
 
             float userScale = this.scale.getValue();
             UiTransform transform = new UiTransform(mc, 1920.0F, 1080.0F, 1.0F, 0.0F);
-            renderer.beginFrame("HUD Arraylist", transform, 31.0F);
+            renderer.beginFrame("HUD Arraylist", transform, this.blurRadius.getValue(),
+                    this.blurStrength.getValue(), this.blur.getValue());
             frameStarted = true;
             try {
                 UiFont baseFont = renderer.fonts().snPro(ArraylistLayout.FONT_SIZE, UiFonts.BLACK);
                 UiFont font = renderer.fonts().snPro(ArraylistLayout.FONT_SIZE * userScale, UiFonts.BLACK);
-                if (this.arraylistOrderDirty) {
-                    List<Module> modules = new ArrayList<>(this.activeModules);
-                    Collections.sort(modules, new Comparator<Module>() {
-                        @Override
-                        public int compare(Module left, Module right) {
-                            return Float.compare(arraylistWidth(right, baseFont), arraylistWidth(left, baseFont));
-                        }
-                    });
-                    this.sortedArraylistModules = modules;
-                    this.arraylistOrderDirty = false;
-                }
-
-                float cursor = this.posY.getValue() == 0
-                        ? this.offsetY.getValue() * userScale
-                        : 1080.0F - this.offsetY.getValue() * userScale;
-                for (Module module : this.sortedArraylistModules) {
-                    float alpha = this.moduleAnimations.containsKey(module) ? this.moduleAnimations.get(module) : 1.0F;
-                    String name = this.getModuleName(module);
-                    String suffix = this.arraylistSuffix(module);
-                    float width = ArraylistLayout.cardWidth(baseFont.width(name), baseFont.width(suffix)) * userScale;
-                    float height = ArraylistLayout.CARD_HEIGHT * userScale;
-                    float x = this.posX.getValue() == 0
-                            ? this.offsetX.getValue() * userScale
-                            : 1920.0F - this.offsetX.getValue() * userScale - width;
-                    float y = this.posY.getValue() == 0 ? cursor : cursor - height;
-                    x += (1.0F - alpha) * (this.posX.getValue() == 0 ? -12.0F : 12.0F) * userScale;
-                    this.drawArraylistCard(name, suffix, x, y, width, height, userScale, alpha, font);
-                    cursor = this.posY.getValue() == 0
-                            ? ArraylistLayout.nextTopCursor(cursor, userScale, alpha)
-                            : ArraylistLayout.nextBottomCursor(cursor, userScale, alpha);
+                float designWidth = transform.getDesignWidth();
+                float designHeight = transform.getDesignHeight();
+                for (ArraylistRow row : this.buildArraylistRows(baseFont, userScale, designWidth, designHeight)) {
+                    this.drawArraylistCard(row.name, row.suffix, row.x, row.y, row.width, row.height,
+                            userScale, row.visibility, font);
                 }
             } finally {
                 renderer.endFrame();
@@ -289,6 +277,88 @@ public class HUD extends Module {
         return ArraylistLayout.cardWidth(font.width(this.getModuleName(module)), font.width(this.arraylistSuffix(module)));
     }
 
+    private void ensureArraylistOrder(UiFont baseFont) {
+        if (!this.arraylistOrderDirty) return;
+        List<Module> modules = new ArrayList<>(this.activeModules);
+        Collections.sort(modules, new Comparator<Module>() {
+            @Override
+            public int compare(Module left, Module right) {
+                return Float.compare(arraylistWidth(right, baseFont), arraylistWidth(left, baseFont));
+            }
+        });
+        this.sortedArraylistModules = modules;
+        this.arraylistOrderDirty = false;
+    }
+
+    private List<ArraylistRow> buildArraylistRows(UiFont baseFont, float userScale,
+                                                    float designWidth, float designHeight) {
+        this.ensureArraylistOrder(baseFont);
+        List<ArraylistRow> rows = new ArrayList<>();
+        float cursor = this.posY.getValue() == 0
+                ? this.offsetY.getValue() * userScale
+                : designHeight - this.offsetY.getValue() * userScale;
+        for (Module module : this.sortedArraylistModules) {
+            float alpha = this.moduleAnimations.containsKey(module) ? this.moduleAnimations.get(module) : 1.0F;
+            String name = this.getModuleName(module);
+            String suffix = this.arraylistSuffix(module);
+            float width = ArraylistLayout.cardWidth(baseFont.width(name), baseFont.width(suffix)) * userScale;
+            float height = ArraylistLayout.CARD_HEIGHT * userScale;
+            float x = HudPosition.edgeX(this.posX.getValue(), designWidth, width,
+                    this.offsetX.getValue() * userScale);
+            float y = this.posY.getValue() == 0 ? cursor : cursor - height;
+            x += (1.0F - alpha) * (this.posX.getValue() == 0 ? -12.0F : 12.0F) * userScale;
+            rows.add(new ArraylistRow(name, suffix, x, y, width, height, alpha));
+            cursor = this.posY.getValue() == 0
+                    ? ArraylistLayout.nextTopCursor(cursor, userScale, alpha, this.arraylistSpacing.getValue())
+                    : ArraylistLayout.nextBottomCursor(cursor, userScale, alpha, this.arraylistSpacing.getValue());
+        }
+        return rows;
+    }
+
+    /**
+     * Returns the current Arraylist geometry in the same design space used by the renderer.
+     * The editor uses this instead of estimating a fixed rectangle, so text widths, row count,
+     * bottom anchoring, and opening/closing animations remain aligned.
+     */
+    public ArraylistEditorLayout getArraylistEditorLayout() {
+        float userScale = this.scale.getValue();
+        UiTransform transform = new UiTransform(mc, 1920.0F, 1080.0F, 1.0F, 0.0F);
+        if (this.isEnabled() && Myau.uiRenderer != null && Myau.uiRenderer.isSupported()) {
+            UiFont baseFont = Myau.uiRenderer.fonts().snPro(ArraylistLayout.FONT_SIZE, UiFonts.BLACK);
+            List<ArraylistRow> rows = this.buildArraylistRows(baseFont, userScale,
+                    transform.getDesignWidth(), transform.getDesignHeight());
+            if (!rows.isEmpty()) {
+                float minX = Float.MAX_VALUE;
+                float minY = Float.MAX_VALUE;
+                float maxX = -Float.MAX_VALUE;
+                float maxY = -Float.MAX_VALUE;
+                float maxWidth = 0.0F;
+                for (ArraylistRow row : rows) {
+                    minX = Math.min(minX, row.x);
+                    minY = Math.min(minY, row.y);
+                    maxX = Math.max(maxX, row.x + row.width);
+                    maxY = Math.max(maxY, row.y + row.height);
+                    maxWidth = Math.max(maxWidth, row.width);
+                }
+                float componentX = HudPosition.edgeX(this.posX.getValue(), transform.getDesignWidth(),
+                        maxWidth, this.offsetX.getValue() * userScale);
+                float componentHeight = Math.max(ArraylistLayout.CARD_HEIGHT * userScale, maxY - minY);
+                float componentY = HudPosition.edgeY(this.posY.getValue(), transform.getDesignHeight(),
+                        componentHeight, this.offsetY.getValue() * userScale);
+                return new ArraylistEditorLayout(componentX, componentY, maxWidth, componentHeight,
+                        minX, minY, maxX - minX, maxY - minY, true);
+            }
+        }
+
+        float width = 300.0F * userScale;
+        float height = (ArraylistLayout.CARD_HEIGHT * 3.0F + this.arraylistSpacing.getValue() * 2.0F) * userScale;
+        float x = HudPosition.edgeX(this.posX.getValue(), transform.getDesignWidth(), width,
+                this.offsetX.getValue() * userScale);
+        float y = HudPosition.edgeY(this.posY.getValue(), transform.getDesignHeight(), height,
+                this.offsetY.getValue() * userScale);
+        return new ArraylistEditorLayout(x, y, width, height, x, y, width, height, false);
+    }
+
     private String arraylistSuffix(Module module) {
         if (!this.suffixes.getValue()) return "";
         String[] parts = this.getModuleSuffix(module);
@@ -299,6 +369,89 @@ public class HUD extends Module {
             result.append(part);
         }
         return result.toString();
+    }
+
+    private static final class ArraylistRow {
+        private final String name;
+        private final String suffix;
+        private final float x;
+        private final float y;
+        private final float width;
+        private final float height;
+        private final float visibility;
+
+        private ArraylistRow(String name, String suffix, float x, float y, float width, float height,
+                             float visibility) {
+            this.name = name;
+            this.suffix = suffix;
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.visibility = visibility;
+        }
+    }
+
+    public static final class ArraylistEditorLayout {
+        private final float x;
+        private final float y;
+        private final float width;
+        private final float height;
+        private final float visualX;
+        private final float visualY;
+        private final float visualWidth;
+        private final float visualHeight;
+        private final boolean live;
+
+        private ArraylistEditorLayout(float x, float y, float width, float height,
+                                      float visualX, float visualY, float visualWidth, float visualHeight,
+                                      boolean live) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.visualX = visualX;
+            this.visualY = visualY;
+            this.visualWidth = visualWidth;
+            this.visualHeight = visualHeight;
+            this.live = live;
+        }
+
+        public float getX() {
+            return this.x;
+        }
+
+        public float getY() {
+            return this.y;
+        }
+
+        public float getWidth() {
+            return this.width;
+        }
+
+        public float getHeight() {
+            return this.height;
+        }
+
+        public float getVisualX() {
+            return this.visualX;
+        }
+
+        public float getVisualY() {
+            return this.visualY;
+        }
+
+        public float getVisualWidth() {
+            return this.visualWidth;
+        }
+
+        public float getVisualHeight() {
+            return this.visualHeight;
+        }
+
+        public boolean isLive() {
+            return this.live;
+        }
     }
 
     private void drawArraylistCard(String name, String suffix, float x, float y, float width, float height,
@@ -357,18 +510,20 @@ public class HUD extends Module {
         if (!this.watermark.getValue() || Myau.uiRenderer == null) return;
 
         float scale = this.watermarkScale.getValue();
-        int x = this.watermarkOffsetX.getValue();
-        int y = this.watermarkOffsetY.getValue();
         UiRenderer renderer = Myau.uiRenderer;
         UiTransform transform = new UiTransform(mc, 1920.0F, 1080.0F, 1.0F, 0.0F);
         boolean frameStarted = false;
         try {
-            renderer.beginFrame("HUD Watermark", transform, 31.0F);
+            renderer.beginFrame("HUD Watermark", transform, this.blurRadius.getValue(),
+                    this.blurStrength.getValue(), this.blur.getValue());
             frameStarted = true;
-            float logicalScale = transform.getLogicalScale();
-            float designX = (x - transform.getLogicalX()) / logicalScale;
-            float designY = (y - transform.getLogicalY()) / logicalScale;
-            float designScale = scale / logicalScale;
+            float designScale = scale;
+            float componentWidth = 293.0F * designScale;
+            float componentHeight = 85.0F * designScale;
+            float designX = HudPosition.edgeX(this.watermarkPosX.getValue(), transform.getDesignWidth(),
+                    componentWidth, this.watermarkOffsetX.getValue());
+            float designY = HudPosition.edgeY(this.watermarkPosY.getValue(), transform.getDesignHeight(),
+                    componentHeight, this.watermarkOffsetY.getValue());
 
             renderer.roundedRect(designX, designY, 293.0F * designScale, 85.0F * designScale,
                     20.0F * designScale, 0x631A1A24);
@@ -412,6 +567,7 @@ public class HUD extends Module {
         drawWatermarkPath(new float[][]{{53.1F, 23.8F}, {50.8F, 18.7F}, {47.0F, 16.3F}, {43.7F, 20.2F}, {40.0F, 24.1F}});
         drawWatermarkPath(new float[][]{{47.8F, 41.0F}, {49.6F, 40.8F}, {51.0F, 42.7F}, {50.0F, 45.0F}, {48.0F, 44.7F}, {47.2F, 42.8F}});
         GL11.glDisable(GL11.GL_LINE_SMOOTH);
+        GL11.glDisable(GL11.GL_POLYGON_SMOOTH);
         GlStateManager.enableTexture2D();
         GlStateManager.disableBlend();
         GlStateManager.popMatrix();
@@ -420,6 +576,20 @@ public class HUD extends Module {
     private void drawWatermarkPath(float[][] points) {
         GL11.glBegin(GL11.GL_LINE_STRIP);
         for (float[] point : points) GL11.glVertex2f(point[0], point[1]);
+        GL11.glEnd();
+        GL11.glEnable(GL11.GL_POLYGON_SMOOTH);
+        GL11.glHint(GL11.GL_POLYGON_SMOOTH_HINT, GL11.GL_NICEST);
+        for (float[] point : points) this.drawWatermarkRoundPoint(point[0], point[1], 2.0F);
+    }
+
+    private void drawWatermarkRoundPoint(float x, float y, float radius) {
+        GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+        GL11.glVertex2f(x, y);
+        for (int segment = 0; segment <= 16; segment++) {
+            double angle = Math.PI * 2.0D * segment / 16.0D;
+            GL11.glVertex2f(x + (float) Math.cos(angle) * radius,
+                    y + (float) Math.sin(angle) * radius);
+        }
         GL11.glEnd();
     }
 

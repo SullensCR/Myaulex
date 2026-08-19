@@ -15,6 +15,7 @@ import myau.render.ui.ProgressbarRenderer;
 import myau.render.ui.ProgressbarSizes;
 import myau.render.ui.UiRenderer;
 import myau.render.ui.UiTransform;
+import myau.render.HudPosition;
 import myau.util.*;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockIce;
@@ -95,6 +96,14 @@ public class Scaffold extends Module {
     public final BooleanProperty swing = new BooleanProperty("swing", true);
     public final BooleanProperty itemSpoof = new BooleanProperty("item-spoof", false);
     public final BooleanProperty blockCounter = new BooleanProperty("block-counter", true);
+    public final ModeProperty positionX = new ModeProperty("block-counter-position-x", 1,
+            new String[]{"LEFT", "MIDDLE", "RIGHT"}, this.blockCounter::getValue);
+    public final ModeProperty positionY = new ModeProperty("block-counter-position-y", 1,
+            new String[]{"TOP", "MIDDLE", "BOTTOM"}, this.blockCounter::getValue);
+    public final IntProperty offsetX = new IntProperty("block-counter-offset-x", 0, -5000, 5000,
+            this.blockCounter::getValue);
+    public final IntProperty offsetY = new IntProperty("block-counter-offset-y", -10, -5000, 5000,
+            this.blockCounter::getValue);
     public final IntProperty switchAmount = new IntProperty("switch", 3, 0, 64);
     public final BooleanProperty avoidIceOnTower = new BooleanProperty("avoid-ice-on-tower", false);
 
@@ -109,6 +118,11 @@ public class Scaffold extends Module {
 
     public boolean blocksSprint() {
         return this.isEnabled() && this.shouldStopSprint();
+    }
+
+    public boolean isBlockCounterVisible() {
+        return this.isEnabled() && this.blockCounter.getValue()
+                && mc.thePlayer != null && this.blockCounterAlpha > 0.02F;
     }
 
     private boolean canPlace() {
@@ -854,10 +868,10 @@ public class Scaffold extends Module {
             progressbarRenderer.beginFrame("Scaffold progressbar", transform, ProgressbarSizes.BACKDROP_BLUR_RADIUS);
             frameStarted = true;
             try {
-                float x = (ProgressbarSizes.DESIGN_WIDTH - ProgressbarSizes.COMPONENT_WIDTH) * 0.5F
-                        + ProgressbarSizes.OFFSET_X;
-                float y = (ProgressbarSizes.DESIGN_HEIGHT - ProgressbarSizes.COMPONENT_HEIGHT) * 0.5F
-                        + ProgressbarSizes.OFFSET_Y;
+                float x = HudPosition.anchoredX(this.positionX.getValue(), transform.getDesignWidth(),
+                        ProgressbarSizes.COMPONENT_WIDTH, this.offsetX.getValue());
+                float y = HudPosition.anchoredY(this.positionY.getValue(), transform.getDesignHeight(),
+                        ProgressbarSizes.COMPONENT_HEIGHT, this.offsetY.getValue());
                 ProgressbarRenderer.render(
                         progressbarRenderer,
                         x,

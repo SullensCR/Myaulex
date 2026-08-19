@@ -4,6 +4,7 @@ import net.minecraft.network.play.server.S01PacketJoinGame;
 import net.minecraft.network.play.server.S07PacketRespawn;
 import net.minecraft.network.play.server.S08PacketPlayerPosLook;
 import net.minecraft.network.play.server.S38PacketPlayerListItem;
+import net.minecraft.network.play.server.S47PacketPlayerListHeaderFooter;
 import net.minecraft.network.play.server.S21PacketChunkData;
 import net.minecraft.network.play.server.S22PacketMultiBlockChange;
 import net.minecraft.network.play.server.S23PacketBlockChange;
@@ -20,6 +21,7 @@ public class PacketDelayTest {
         assertFalse(PacketDelay.shouldDelayInbound(new S07PacketRespawn()));
         assertFalse(PacketDelay.shouldDelayInbound(new S08PacketPlayerPosLook()));
         assertFalse(PacketDelay.shouldDelayInbound(new S38PacketPlayerListItem()));
+        assertFalse(PacketDelay.shouldDelayInbound(new S47PacketPlayerListHeaderFooter()));
         assertFalse(PacketDelay.shouldDelayInbound(new S21PacketChunkData()));
         assertFalse(PacketDelay.shouldDelayInbound(new S22PacketMultiBlockChange()));
         assertFalse(PacketDelay.shouldDelayInbound(new S23PacketBlockChange()));

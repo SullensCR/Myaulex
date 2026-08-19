@@ -1,5 +1,6 @@
 package myau.module.modules;
 
+import myau.Myau;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.event.types.Priority;
@@ -63,8 +64,10 @@ public class Wtap extends Module {
     @EventTarget
     public void onPacket(PacketEvent event) {
         if (this.isEnabled() && !event.isCancelled() && event.getType() == EventType.SEND) {
+            HitSelect hitSelect = (HitSelect) Myau.moduleManager.modules.get(HitSelect.class);
             if (event.getPacket() instanceof C02PacketUseEntity
                     && ((C02PacketUseEntity) event.getPacket()).getAction() == Action.ATTACK
+                    && (hitSelect == null || !hitSelect.isSendingManagedAuraAttack())
                     && !this.active
                     && this.timer.hasTimeElapsed(500L)
                     && mc.thePlayer.isSprinting()) {

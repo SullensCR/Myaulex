@@ -127,11 +127,9 @@ public class Stasis extends Module {
         this.observedPitch = pitch;
 
         if (rotationChanged) {
-            if (this.actionState.getMode() == StasisActionState.EXPERIMENTAL_3) {
-                this.sendLookIfNeeded();
-            } else if (this.actionState.requestRotationWake()) {
-                this.acquirePacketPriority();
-            }
+            // Camera movement is only staged locally. It must not wake Stasis
+            // or put a look packet on the wire until a real action consumes it.
+            this.actionState.recordRotation(yaw, pitch);
         }
 
         if (this.actionState.pollStrictReplayAtTickStart()) {
@@ -162,16 +160,19 @@ public class Stasis extends Module {
         }
 
         event.setCancelled(true);
+        this.initializeRotationSnapshot();
+        this.actionState.recordRotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch);
         if (!this.actionState.captureRawUse()) {
             return;
         }
 
         this.acquirePacketPriority();
         if (this.actionState.getMode() == StasisActionState.EXPERIMENTAL_3) {
-            this.initializeRotationSnapshot();
             this.observedYaw = mc.thePlayer.rotationYaw;
             this.observedPitch = mc.thePlayer.rotationPitch;
-            this.sendLookIfNeeded();
+            this.sendLookIfNeeded(this.actionState.consumeLatestRotation());
+        } else {
+            this.actionState.consumeLatestRotation();
         }
     }
 
@@ -230,12 +231,12 @@ public class Stasis extends Module {
         this.sentPitch = this.observedPitch;
     }
 
-    private void sendLookIfNeeded() {
+    private void sendLookIfNeeded(StasisActionState.RotationSample queuedRotation) {
         if (!this.hasValidGameState()) {
             return;
         }
-        float yaw = mc.thePlayer.rotationYaw;
-        float pitch = mc.thePlayer.rotationPitch;
+        float yaw = queuedRotation == null ? mc.thePlayer.rotationYaw : queuedRotation.yaw;
+        float pitch = queuedRotation == null ? mc.thePlayer.rotationPitch : queuedRotation.pitch;
         if (!differs(yaw, this.sentYaw) && !differs(pitch, this.sentPitch)) {
             return;
         }

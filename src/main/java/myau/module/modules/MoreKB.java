@@ -1,5 +1,6 @@
 package myau.module.modules;
 
+import myau.Myau;
 import myau.event.EventTarget;
 import myau.events.AttackEvent;
 import myau.events.TickEvent;
@@ -33,6 +34,11 @@ public class MoreKB extends Module {
             return;
         }
         Entity targetEntity = event.getTarget();
+        HitSelect hitSelect = (HitSelect) Myau.moduleManager.modules.get(HitSelect.class);
+        if (hitSelect != null && hitSelect.ownsAuraSprintReset(targetEntity)) {
+            this.target = null;
+            return;
+        }
         if (targetEntity != null && targetEntity instanceof EntityLivingBase) {
             this.target = (EntityLivingBase) targetEntity;
         }

@@ -1,5 +1,6 @@
 [
   {
+    "modid": "${modid}",
     "name": "Myaulex",
     "version": "${version}",
     "mcversion": "1.8.9",

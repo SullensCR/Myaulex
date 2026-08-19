@@ -75,6 +75,63 @@ public final class ModuleCard {
         return 47.0F + settingsHeight() * expansionProgress;
     }
 
+    /**
+     * Client-only cards with no visible properties do not need an expandable
+     * module panel. Keep those internal features as compact toggles instead.
+     */
+    public boolean isToggleOnly() {
+        for (Property<?> property : properties()) {
+            if (property.isVisible()) return false;
+        }
+        return true;
+    }
+
+    public float clientHeight() {
+        return isToggleOnly() ? 38.0F : height();
+    }
+
+    public void renderClient(UiRenderer renderer, float x, float y, float mouseX, float mouseY) {
+        if (!isToggleOnly()) {
+            render(renderer, x, y, mouseX, mouseY);
+            return;
+        }
+
+        updateAnimations();
+        this.x = x;
+        this.y = y;
+        int titleColor = mix(ClickGuiTheme.DISABLED, ClickGuiTheme.ACCENT, toggleProgress);
+        renderer.shadow(x, y, ClickGuiTheme.CONTENT_WIDTH, 38, 5, 0, 0, 4, 1, 0x59000000);
+        renderer.roundedRect(x, y, ClickGuiTheme.CONTENT_WIDTH, 38, 5, ClickGuiTheme.MODULE);
+        renderer.roundedRect(x, y, 5, 38, 5, 0, 0, 5, titleColor);
+        renderer.imageContained("module", x + 12, y + 9, 20, 20, titleColor);
+
+        UiFont title = renderer.fonts().google(18, UiFonts.SEMIBOLD);
+        UiFont description = renderer.fonts().google(14, UiFonts.REGULAR);
+        title.draw(trim(title, module.getName(), 235), x + 42, y + 3, titleColor, true);
+        if (module.getDescription() != null && !module.getDescription().isEmpty()) {
+            description.draw(trim(description, module.getDescription(), 235), x + 42, y + 21,
+                    ClickGuiTheme.MUTED, true);
+        }
+
+        float toggleX = x + 334;
+        float state = toggleProgress;
+        renderer.shadow(toggleX, y + 9, 38, 21, 10.5F, 0, 2, 4, 0, 0x40000000);
+        renderer.roundedRect(toggleX, y + 9, 38, 21, 10.5F,
+                mix(ClickGuiTheme.TRACK, ClickGuiTheme.TOGGLE_ON, state));
+        float thumbX = toggleX + 4 + 17 * state;
+        renderer.shadow(thumbX, y + 12, 15, 15, 7.5F, 0, 2, 3, 0, 0x59000000);
+        renderer.roundedRect(thumbX, y + 12, 15, 15, 7.5F, 0xFFD6D9E8);
+    }
+
+    public ClickResult mouseClickedClient(float mouseX, float mouseY, int button) {
+        if (!isToggleOnly()) return mouseClicked(mouseX, mouseY, button);
+        if (button == 0 && new UiBounds(x, y, ClickGuiTheme.CONTENT_WIDTH, 38).contains(mouseX, mouseY)) {
+            module.toggle();
+            return ClickResult.CONSUMED;
+        }
+        return ClickResult.NONE;
+    }
+
     public void setExpanded(boolean expanded) {
         this.expanded = expanded;
         if (!expanded) {

@@ -8,6 +8,9 @@ import myau.management.NotificationManager.NotificationEntry;
 import myau.management.NotificationManager.NotificationType;
 import myau.module.Module;
 import myau.property.properties.FloatProperty;
+import myau.property.properties.IntProperty;
+import myau.property.properties.ModeProperty;
+import myau.render.HudPosition;
 import myau.render.ui.ProgressbarRenderer;
 import myau.render.ui.UiFont;
 import myau.render.ui.UiFonts;
@@ -53,6 +56,10 @@ public final class Notifications extends Module {
     private final Map<NotificationEntry, LayoutCache> layoutCache = new HashMap<>();
 
     public final FloatProperty scale = new FloatProperty("scale", 1.0F, 0.5F, 1.5F);
+    public final ModeProperty positionX = new ModeProperty("position-x", 1, new String[]{"LEFT", "RIGHT"});
+    public final ModeProperty positionY = new ModeProperty("position-y", 1, new String[]{"TOP", "BOTTOM"});
+    public final IntProperty offsetX = new IntProperty("offset-x", 16, 0, 5000);
+    public final IntProperty offsetY = new IntProperty("offset-y", 16, 0, 5000);
 
     public Notifications() {
         super("Notifications", true, true, "Controls client notifications.");
@@ -96,14 +103,18 @@ public final class Notifications extends Module {
         try {
             renderer.beginFrame("Notifications", transform, 31.0F);
             frameStarted = true;
-            float bottom = DESIGN_HEIGHT - BOTTOM_MARGIN;
+            float cursor = this.positionY.getValue() == 0
+                    ? this.offsetY.getValue()
+                    : transform.getDesignHeight() - this.offsetY.getValue();
             Set<String> visibleSlots = new HashSet<>();
             for (int index = groups.size() - 1; index >= 0; index--) {
                 List<NotificationEntry> group = groups.get(index);
                 String slot = group.get(0).getSlotKey();
                 CardLayout layout = layouts.get(slot);
                 visibleSlots.add(slot);
-                float targetY = bottom - layout.totalHeight;
+                float targetY = this.positionY.getValue() == 0
+                        ? cursor
+                        : cursor - layout.totalHeight;
                 VerticalAnimation animation = this.animatedY.get(slot);
                 if (animation == null) {
                     animation = new VerticalAnimation(targetY, targetY, now);
@@ -113,8 +124,12 @@ public final class Notifications extends Module {
                     this.animatedY.put(slot, animation);
                 }
                 float y = animation.value(now);
-                for (NotificationEntry entry : group) this.renderEntry(entry, layout, y);
-                bottom = targetY - STACK_GAP;
+                for (NotificationEntry entry : group) {
+                    this.renderEntry(entry, layout, y, transform.getDesignWidth());
+                }
+                cursor = this.positionY.getValue() == 0
+                        ? targetY + layout.totalHeight + STACK_GAP
+                        : targetY - STACK_GAP;
             }
             this.animatedY.keySet().removeIf(slot -> !visibleSlots.contains(slot));
         } catch (Throwable ignored) {
@@ -168,14 +183,16 @@ public final class Notifications extends Module {
         return layout;
     }
 
-    private void renderEntry(NotificationEntry entry, CardLayout layout, float y) {
+    private void renderEntry(NotificationEntry entry, CardLayout layout, float y, float designWidth) {
         float alpha = this.alpha(entry);
         if (alpha <= 0.01F) return;
+        float baseX = HudPosition.edgeX(this.positionX.getValue(), designWidth, layout.width, this.offsetX.getValue());
         float slideDistance = layout.width + RIGHT_MARGIN;
+        float slideDirection = this.positionX.getValue() == 0 ? -1.0F : 1.0F;
         float slide = entry.isExiting()
-                ? this.motion(entry) * slideDistance
-                : (1.0F - this.motion(entry)) * slideDistance;
-        float x = DESIGN_WIDTH - RIGHT_MARGIN - layout.width + slide;
+                ? this.motion(entry) * slideDirection * slideDistance
+                : (1.0F - this.motion(entry)) * slideDirection * slideDistance;
+        float x = baseX + slide;
         int color = withAlpha(entry.getType().color, Math.round(255.0F * alpha));
         int white = withAlpha(0xFFFFFFFF, Math.round(255.0F * alpha));
         // Keep the Figma card tint at 50% opacity so UiRenderer's shared

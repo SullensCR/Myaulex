@@ -1,19 +1,29 @@
 package myau.module.modules;
 
+import net.minecraft.network.Packet;
 import net.minecraft.util.Vec3;
 import net.minecraft.network.play.server.S06PacketUpdateHealth;
 import net.minecraft.network.play.server.S01PacketJoinGame;
 import net.minecraft.network.play.server.S07PacketRespawn;
 import net.minecraft.network.play.server.S08PacketPlayerPosLook;
+import net.minecraft.network.play.server.S0CPacketSpawnPlayer;
+import net.minecraft.network.play.server.S0EPacketSpawnObject;
+import net.minecraft.network.play.server.S0FPacketSpawnMob;
+import net.minecraft.network.play.server.S13PacketDestroyEntities;
+import net.minecraft.network.play.server.S1CPacketEntityMetadata;
 import net.minecraft.network.play.server.S21PacketChunkData;
 import net.minecraft.network.play.server.S22PacketMultiBlockChange;
 import net.minecraft.network.play.server.S23PacketBlockChange;
 import net.minecraft.network.play.server.S26PacketMapChunkBulk;
+import net.minecraft.network.play.server.S2BPacketChangeGameState;
 import net.minecraft.network.play.server.S38PacketPlayerListItem;
+import net.minecraft.network.play.server.S47PacketPlayerListHeaderFooter;
 import net.minecraft.network.status.server.S01PacketPong;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static org.junit.Assert.*;
 
@@ -94,6 +104,7 @@ public class BacktrackTest {
         assertTrue(Backtrack.isImmediatePacket(new S07PacketRespawn(), null));
         assertTrue(Backtrack.isImmediatePacket(new S08PacketPlayerPosLook(), null));
         assertTrue(Backtrack.isImmediatePacket(new S38PacketPlayerListItem(), null));
+        assertTrue(Backtrack.isImmediatePacket(new S47PacketPlayerListHeaderFooter(), null));
         assertTrue(Backtrack.isImmediatePacket(new S21PacketChunkData(), null));
         assertTrue(Backtrack.isImmediatePacket(new S22PacketMultiBlockChange(), null));
         assertTrue(Backtrack.isImmediatePacket(new S23PacketBlockChange(), null));
@@ -105,5 +116,49 @@ public class BacktrackTest {
                 new S06PacketUpdateHealth(0.0F, 20, 5.0F), null));
         assertFalse(Backtrack.packetRequiresFlush(
                 new S06PacketUpdateHealth(20.0F, 20, 5.0F), null));
+    }
+
+    @Test
+    public void backtrackRequiresAnActionableAuraTarget() {
+        assertTrue(Backtrack.shouldUseAuraTarget(true, true, true));
+        assertFalse(Backtrack.shouldUseAuraTarget(false, true, true));
+        assertFalse(Backtrack.shouldUseAuraTarget(true, false, true));
+        assertFalse(Backtrack.shouldUseAuraTarget(true, true, false));
+    }
+
+    @Test
+    public void s08BoundaryPreservesAllQueuedEntityAndGameModeStateInOrder() {
+        ConcurrentLinkedQueue<Packet<?>> queue = new ConcurrentLinkedQueue<>();
+        Packet<?> playerSpawn = new S0CPacketSpawnPlayer();
+        Packet<?> armorStandSpawn = new S0FPacketSpawnMob();
+        Packet<?> shopkeeperSpawn = new S0FPacketSpawnMob();
+        Packet<?> objectSpawn = new S0EPacketSpawnObject();
+        Packet<?> entityMetadata = new S1CPacketEntityMetadata();
+        Packet<?> entityRemoval = new S13PacketDestroyEntities();
+        Packet<?> survival = new S2BPacketChangeGameState(3, 0.0F);
+        Packet<?> creative = new S2BPacketChangeGameState(3, 1.0F);
+        Packet<?> adventure = new S2BPacketChangeGameState(3, 2.0F);
+        Packet<?> spectator = new S2BPacketChangeGameState(3, 3.0F);
+
+        List<Packet<?>> beforeCorrection = Arrays.asList(
+                playerSpawn,
+                armorStandSpawn,
+                shopkeeperSpawn,
+                objectSpawn,
+                entityMetadata,
+                entityRemoval,
+                survival,
+                creative,
+                adventure,
+                spectator);
+        queue.addAll(beforeCorrection);
+
+        List<Packet<?>> detached = Backtrack.detachQueue(queue);
+        Packet<?> afterCorrection = new S1CPacketEntityMetadata();
+        queue.offer(afterCorrection);
+
+        assertEquals(beforeCorrection, detached);
+        assertEquals(1, queue.size());
+        assertSame(afterCorrection, queue.peek());
     }
 }

@@ -6,10 +6,12 @@ import static org.junit.Assert.*;
 
 public class ModuleCatalogTest {
     @Test
-    public void authoritativeCatalogContainsExactlyFortyOneModules() {
-        assertEquals(41, ModuleCatalog.ordinaryNames().size());
+    public void authoritativeCatalogContainsExactlyFortyThreeModules() {
+        assertEquals(43, ModuleCatalog.ordinaryNames().size());
         assertTrue(ModuleCatalog.ordinaryNames().contains("Aura"));
+        assertTrue(ModuleCatalog.ordinaryNames().contains("Hit Select"));
         assertTrue(ModuleCatalog.ordinaryNames().contains("Keep Sprint"));
+        assertTrue(ModuleCatalog.ordinaryNames().contains("MotionPath"));
         assertTrue(ModuleCatalog.ordinaryNames().contains("PacketDelay"));
         assertTrue(ModuleCatalog.ordinaryNames().contains("FastQueue"));
         assertTrue(ModuleCatalog.ordinaryNames().contains("FlagDetector"));

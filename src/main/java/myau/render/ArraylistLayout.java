@@ -29,11 +29,19 @@ public final class ArraylistLayout {
     }
 
     public static float nextTopCursor(float cursor, float scale, float visibility) {
-        return cursor + (CARD_HEIGHT + ROW_GAP) * scale * clamp01(visibility);
+        return nextTopCursor(cursor, scale, visibility, ROW_GAP);
+    }
+
+    public static float nextTopCursor(float cursor, float scale, float visibility, float rowGap) {
+        return cursor + (CARD_HEIGHT + Math.max(0.0F, rowGap)) * scale * clamp01(visibility);
     }
 
     public static float nextBottomCursor(float cursor, float scale, float visibility) {
-        return cursor - (CARD_HEIGHT + ROW_GAP) * scale * clamp01(visibility);
+        return nextBottomCursor(cursor, scale, visibility, ROW_GAP);
+    }
+
+    public static float nextBottomCursor(float cursor, float scale, float visibility, float rowGap) {
+        return cursor - (CARD_HEIGHT + Math.max(0.0F, rowGap)) * scale * clamp01(visibility);
     }
 
     public static float clamp01(float value) {

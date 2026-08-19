@@ -19,13 +19,13 @@ public final class ModuleCatalog {
     static {
         Map<String, ClickGuiCategory> categories = new HashMap<>();
         add(categories, ClickGuiCategory.COMBAT,
-                "AimAssist", "AutoClicker", "AntiFireball", "Aura", "Backtrack", "LagRange",
+                "AimAssist", "AutoClicker", "AntiFireball", "Aura", "Hit Select", "Backtrack", "LagRange",
                 "FastKB", "Velocity", "VeloDelay");
         add(categories, ClickGuiCategory.MOVEMENT,
                 "AntiVoid", "Blink", "Keep Sprint", "NoSlow", "InventoryMove", "Sprint", "Stasis");
         add(categories, ClickGuiCategory.VISUALS,
                 "Ambience", "Particles", "Indicators", "EntityESP", "BlockOverlay",
-                "Nametags", "Trajectories", "AntiDebuff", "Bedplates");
+                "Nametags", "Trajectories", "MotionPath", "AntiDebuff", "Bedplates");
         add(categories, ClickGuiCategory.PLAYER,
                 "AutoGapple", "AutoTool", "ChestStealer", "InventoryManager", "Scaffold",
                 "BridgeAssist", "FastBreak", "BedBreaker");

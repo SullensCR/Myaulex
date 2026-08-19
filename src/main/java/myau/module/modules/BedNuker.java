@@ -6,7 +6,6 @@ import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.event.types.Priority;
 import myau.events.*;
-import myau.management.NotificationManager;
 import myau.management.RotationState;
 import myau.mixin.IAccessorPlayerControllerMP;
 import myau.mixin.IAccessorRenderManager;
@@ -343,8 +342,9 @@ public class BedNuker extends Module {
             this.cancelBreaking();
         }
         if (Myau.notificationManager != null) {
-            Myau.notificationManager.add(NotificationManager.NotificationType.INFO, "bedbreaker-whitelist",
-                    "BedBreaker", "Bed whitelisted", false);
+            Myau.notificationManager.addBedWhitelist();
+        } else {
+            SoundUtil.playSound(SoundUtil.BED_WHITELIST_SOUND);
         }
     }
 

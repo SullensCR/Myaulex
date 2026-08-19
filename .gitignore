@@ -29,3 +29,10 @@ run
 *.iml
 out
 build
+
+# asdf
+Optifine/
+logs/
+Grim/
+Other-Clients/
+build/

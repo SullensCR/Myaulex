@@ -1,8 +1,11 @@
 package myau.management;
 
+import myau.util.SoundUtil;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
 /** Owns notification data and timing independently from the HUD renderer. */
@@ -14,15 +17,21 @@ public class NotificationManager {
 
     private static final int MAX_ENTRIES = 32;
     private final LongSupplier clock;
+    private final Consumer<String> soundPlayer;
     private final List<NotificationEntry> entries = new ArrayList<>();
     private boolean enabled = true;
 
     public NotificationManager() {
-        this(System::currentTimeMillis);
+        this(System::currentTimeMillis, SoundUtil::playSound);
     }
 
     NotificationManager(LongSupplier clock) {
+        this(clock, SoundUtil::playSound);
+    }
+
+    NotificationManager(LongSupplier clock, Consumer<String> soundPlayer) {
         this.clock = clock == null ? System::currentTimeMillis : clock;
+        this.soundPlayer = soundPlayer == null ? SoundUtil::playSound : soundPlayer;
     }
 
     public synchronized void setEnabled(boolean enabled) {
@@ -38,32 +47,47 @@ public class NotificationManager {
     public synchronized void add(String message, long durationMillis, int color) {
         if (!this.enabled) return;
         NotificationType type = NotificationType.fromColor(color);
-        this.addInternal(type, uniqueSlot(), "Notification", message,
-                DISPLAY_DURATION, false, false);
+        this.addWithSound(type, uniqueSlot(), "Notification", message,
+                DISPLAY_DURATION, false, false, SoundUtil.NOTIFICATION_SOUND);
     }
 
     /** Compatibility overload retaining the existing typed API. */
     public synchronized void add(NotificationType type, String title, String message,
                                  long durationMillis, boolean critical) {
         if (!this.enabled) return;
-        this.addInternal(type, uniqueSlot(), title, message,
-                DISPLAY_DURATION, critical, false);
+        this.addWithSound(type, uniqueSlot(), title, message,
+                DISPLAY_DURATION, critical, false, SoundUtil.NOTIFICATION_SOUND);
     }
 
     public synchronized NotificationEntry add(NotificationType type, String slotKey, String title,
                                               String message, boolean critical) {
         if (!this.enabled) return null;
-        return this.addInternal(type, slotKey, title, message,
-                DISPLAY_DURATION, critical, false);
+        return this.addWithSound(type, slotKey, title, message,
+                DISPLAY_DURATION, critical, false, SoundUtil.NOTIFICATION_SOUND);
     }
 
     public synchronized NotificationEntry addToggle(String moduleName, boolean enabled) {
         if (!this.enabled) return null;
-        return this.addInternal(
+        return this.addWithSound(
                 enabled ? NotificationType.ENABLED : NotificationType.DISABLED,
                 moduleName,
                 moduleName,
                 enabled ? "Enabled" : "Disabled",
+                DISPLAY_DURATION,
+                false,
+                false,
+                null
+        );
+    }
+
+    public synchronized NotificationEntry addBedWhitelist() {
+        this.playSound(SoundUtil.BED_WHITELIST_SOUND);
+        if (!this.enabled) return null;
+        return this.addInternal(
+                NotificationType.INFO,
+                "bedbreaker-whitelist",
+                "BedBreaker",
+                "Bed whitelisted",
                 DISPLAY_DURATION,
                 false,
                 false
@@ -72,14 +96,15 @@ public class NotificationManager {
 
     public synchronized NotificationEntry beginAnalysis() {
         if (!this.enabled) return null;
-        return this.addInternal(
+        return this.addWithSound(
                 NotificationType.ANALYSIS,
                 ANALYZER_SLOT,
                 "TransactionAnalyzer",
                 "Analyzing transactions",
                 3000L,
                 false,
-                true
+                true,
+                SoundUtil.NOTIFICATION_SOUND
         );
     }
 
@@ -103,6 +128,19 @@ public class NotificationManager {
 
     public synchronized void clear() {
         this.entries.clear();
+    }
+
+    private NotificationEntry addWithSound(NotificationType type, String slotKey, String title,
+                                            String message, long holdDuration, boolean critical,
+                                            boolean progressActive, String soundName) {
+        NotificationEntry entry = this.addInternal(type, slotKey, title, message,
+                holdDuration, critical, progressActive);
+        if (entry != null && soundName != null) this.playSound(soundName);
+        return entry;
+    }
+
+    private void playSound(String soundName) {
+        this.soundPlayer.accept(soundName);
     }
 
     private NotificationEntry addInternal(NotificationType type, String slotKey, String title,

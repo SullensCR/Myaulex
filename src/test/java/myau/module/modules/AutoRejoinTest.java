@@ -1,5 +1,6 @@
 package myau.module.modules;
 
+import net.minecraft.network.play.server.S3CPacketUpdateScore;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
@@ -30,5 +31,21 @@ public class AutoRejoinTest {
     @Test
     public void ignoresUnbanTextFoundOnlyInLore() {
         assertFalse(AutoRejoin.matchesTrigger(5, true, "Name Tag"));
+    }
+
+    @Test
+    public void antiCrashAcceptsOnlyColorStrippedCaseSensitiveEvento() {
+        assertTrue(AutoRejoin.matchesAntiCrashScoreboardText("§4§lEVENTO"));
+        assertTrue(AutoRejoin.matchesAntiCrashScoreboardText("§aEVENTO§r"));
+        assertFalse(AutoRejoin.matchesAntiCrashScoreboardText("evento"));
+        assertFalse(AutoRejoin.matchesAntiCrashScoreboardText("EVENTO!"));
+        assertFalse(AutoRejoin.matchesAntiCrashScoreboardText("Staff EVENTO"));
+        assertFalse(AutoRejoin.matchesAntiCrashScoreboardText(null));
+    }
+
+    @Test
+    public void antiCrashRecognizesEventoFromAScoreboardUpdatePacket() {
+        assertTrue(AutoRejoin.isAntiCrashScoreboardPacket(new S3CPacketUpdateScore("§bEVENTO")));
+        assertFalse(AutoRejoin.isAntiCrashScoreboardPacket(new S3CPacketUpdateScore("evento")));
     }
 }

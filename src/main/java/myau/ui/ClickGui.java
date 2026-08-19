@@ -35,11 +35,13 @@ public class ClickGui extends GuiScreen implements ClickGuiScreen {
         combatModules.add(Myau.moduleManager.getModule(AimAssist.class));
         combatModules.add(Myau.moduleManager.getModule(AutoClicker.class));
         combatModules.add(Myau.moduleManager.getModule(KillAura.class));
+        combatModules.add(Myau.moduleManager.getModule(HitSelect.class));
         combatModules.add(Myau.moduleManager.getModule(Wtap.class));
         combatModules.add(Myau.moduleManager.getModule(Velocity.class));
         combatModules.add(Myau.moduleManager.getModule(NoHitDelay.class));
         combatModules.add(Myau.moduleManager.getModule(AntiFireball.class));
         combatModules.add(Myau.moduleManager.getModule(LagRange.class));
+        combatModules.add(Myau.moduleManager.getModule(VeloDelay.class));
         combatModules.add(Myau.moduleManager.getModule(MoreKB.class));
 
         List<Module> movementModules = new ArrayList<>();
@@ -57,7 +59,6 @@ public class ClickGui extends GuiScreen implements ClickGuiScreen {
         renderModules.add(Myau.moduleManager.getModule(ESP.class));
         renderModules.add(Myau.moduleManager.getModule(Chams.class));
         renderModules.add(Myau.moduleManager.getModule(FullBright.class));
-        renderModules.add(Myau.moduleManager.getModule(FloatingIsland.class));
         renderModules.add(Myau.moduleManager.getModule(NameTags.class));
         renderModules.add(Myau.moduleManager.getModule(TargetHUD.class));
         renderModules.add(Myau.moduleManager.getModule(Indicators.class));
@@ -68,11 +69,11 @@ public class ClickGui extends GuiScreen implements ClickGuiScreen {
         renderModules.add(Myau.moduleManager.getModule(GuiModule.class));
         renderModules.add(Myau.moduleManager.getModule(ChestESP.class));
         renderModules.add(Myau.moduleManager.getModule(Trajectories.class));
+        renderModules.add(Myau.moduleManager.getModule(MotionPath.class));
         renderModules.add(Myau.moduleManager.getModule(BlockOverlay.class));
         renderModules.add(Myau.moduleManager.getModule(BreakProgress.class));
         renderModules.add(Myau.moduleManager.getModule(FPScounter.class));
         renderModules.add(Myau.moduleManager.getModule(HitParticleEffects.class));
-        renderModules.add(Myau.moduleManager.getModule(DynamicIsland.class));
         renderModules.add(Myau.moduleManager.getModule(ESP2D.class));
         renderModules.add(Myau.moduleManager.getModule(Capes.class));
         renderModules.add(Myau.moduleManager.getModule(Animations.class));

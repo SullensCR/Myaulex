@@ -103,8 +103,8 @@ public final class Bedplates extends Module {
             UiTransform transform = new UiTransform(mc, DESIGN_WIDTH, DESIGN_HEIGHT, 1.0F, 0.0F);
             long nowNanos = System.nanoTime();
             long nowMillis = System.currentTimeMillis();
-            float crosshairX = resolution.getScaledWidth() * 0.5F;
-            float crosshairY = resolution.getScaledHeight() * 0.5F;
+            float crosshairX = transform.getLogicalWidth() * 0.5F;
+            float crosshairY = transform.getLogicalHeight() * 0.5F;
 
             for (Map.Entry<Plate, Vector3d> entry : projected.entrySet()) {
                 Plate plate = entry.getKey();

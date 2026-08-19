@@ -2,14 +2,16 @@ package myau.ui.modern.component;
 
 import myau.Myau;
 import myau.module.Module;
+import myau.module.modules.HUD;
+import myau.property.properties.FloatProperty;
 import myau.render.ui.UiBounds;
 import myau.render.ui.UiFont;
 import myau.render.ui.UiFonts;
 import myau.render.ui.UiRenderer;
 import myau.ui.modern.ClickGuiTheme;
+import myau.ui.dataset.SliderStops;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -26,16 +28,24 @@ public final class ClientSettingsView {
     private static final float WIDTH = ClickGuiTheme.CONTENT_WIDTH;
     private static final float HEIGHT = ClickGuiTheme.MODULE_BOTTOM - ClickGuiTheme.MODULE_TOP;
     private static final String[] SECTIONS = {
-            "Interface", "HUD", "Visuals", "Gameplay", "Targeting", "Privacy"
+            "Interface", "Visuals", "Gameplay", "Targeting", "Privacy"
     };
     private static final String[][] MODULES = {
-            {"ClickGui"},
-            {"HUD", "TargetHUD", "Fpscounter", "FloatingIsland", "DynamicIsland"},
-            {"Animations", "Capes", "Fullbright", "NoHurtCam"},
-            {"NoHitDelay", "NoJumpDelay", "AntiObfuscate"},
+            {},
+            {"TargetHUD", "Animations", "Capes", "Fullbright", "NoHurtCam"},
+            {"NoHitDelay", "NoJumpDelay", "AntiObfuscate", "CrashGuard"},
             {},
             {"NickHider", "ServerHider"}
     };
+    private static final String ARRAYLIST_SLIDER = "arraylist-size";
+    private static final String ARRAYLIST_SPACING_SLIDER = "arraylist-spacing";
+    private static final String WATERMARK_SLIDER = "watermark-size";
+    private static final String BLUR_TOGGLE = "blur";
+    private static final String BLUR_RADIUS_SLIDER = "blur-radius";
+    private static final String BLUR_STRENGTH_SLIDER = "blur-strength";
+    private static final float DIRECT_SLIDER_X = X + 150.0F;
+    private static final float DIRECT_SLIDER_WIDTH = 178.0F;
+    private static final float DIRECT_VALUE_X = X + 333.0F;
 
     private final Map<String, ModuleCard> cards = new HashMap<>();
     private final Map<String, Float> toggleAnimations = new HashMap<>();
@@ -46,13 +56,17 @@ public final class ClientSettingsView {
     private float maxScroll;
     private long lastFrameNanos = System.nanoTime();
     private float frameDelta;
+    private String draggingInterfaceSlider;
 
     public ClientSettingsView() {
         if (Myau.moduleManager != null) {
-            for (Module module : Myau.moduleManager.modules.values()) {
-                if (Myau.clientSettings != null
-                        && myau.config.ClientSettings.isIntegratedModuleName(module.getName())) {
-                    cards.put(module.getName(), new ModuleCard(module));
+            for (String[] section : MODULES) {
+                for (String name : section) {
+                    Module module = Myau.moduleManager.getModule(name);
+                    if (module != null && Myau.clientSettings != null
+                            && myau.config.ClientSettings.isIntegratedModuleName(module.getName())) {
+                        cards.put(module.getName(), new ModuleCard(module));
+                    }
                 }
             }
         }
@@ -104,15 +118,33 @@ public final class ClientSettingsView {
             row += 43;
             label(text, "Renderer style", row);
             drawButton(renderer, X + 238, row - 3, 133, 30, Myau.clientSettings.getClickGuiStyle());
-        } else if (section == 3) {
+            HUD hud = hud();
+            if (hud != null) {
+                row += 43;
+                drawSlider(renderer, text, "Arraylist size", row, hud.scale);
+                row += 43;
+                drawSlider(renderer, text, "Arraylist spacing", row, hud.arraylistSpacing);
+                row += 43;
+                drawSlider(renderer, text, "Watermark size", row, hud.watermarkScale);
+                row += 43;
+                label(text, "Blur", row);
+                drawToggle(renderer, BLUR_TOGGLE, X + 333, row, hud.blur.getValue());
+                if (hud.blur.getValue()) {
+                    row += 43;
+                    drawSlider(renderer, text, "Blur radius", row, hud.blurRadius);
+                    row += 43;
+                    drawSlider(renderer, text, "Blur strength", row, hud.blurStrength);
+                }
+            }
+        } else if (section == 2) {
             float row = Y + 66;
             label(text, "Verify TCP_NODELAY", row);
             drawToggle(renderer, "tcp", X + 333, row, Myau.clientSettings.isVerifyTcpNoDelay());
-        } else if (section == 2) {
+        } else if (section == 1) {
             float row = Y + 66;
             label(text, "Indicator", row);
             drawToggle(renderer, "indicator", X + 333, row, Myau.clientSettings.isIndicatorEnabled());
-        } else if (section == 4) {
+        } else if (section == 3) {
             float row = Y + 66;
             modeRow(renderer, text, "Move correction", moveFixName(), row);
             row += 43;
@@ -133,7 +165,7 @@ public final class ClientSettingsView {
         if (visible.isEmpty()) return;
         float top = cardsTop();
         float contentHeight = 0;
-        for (ModuleCard card : visible) contentHeight += card.height() + 9;
+        for (ModuleCard card : visible) contentHeight += card.clientHeight() + 9;
         maxScroll = Math.max(0, contentHeight - (Y + HEIGHT - top));
         targetScroll = clamp(targetScroll, 0, maxScroll);
         float blend = ease(Math.min(1.0F, frameDelta / 0.18F));
@@ -142,9 +174,9 @@ public final class ClientSettingsView {
         renderer.pushClip(clip);
         float cardY = top - scroll;
         for (ModuleCard card : visible) {
-            float height = card.height();
+            float height = card.clientHeight();
             if (cardY + height >= top && cardY <= Y + HEIGHT) {
-                card.render(renderer, X, cardY, mouseX, mouseY);
+                card.renderClient(renderer, X, cardY, mouseX, mouseY);
             }
             cardY += height + 9;
         }
@@ -160,6 +192,7 @@ public final class ClientSettingsView {
                 if (new UiBounds(X + 12, sectionY, WIDTH - 24, 48).contains(mouseX, mouseY)) {
                     section = i;
                     scroll = targetScroll = 0;
+                    draggingInterfaceSlider = null;
                     collapseExpanded();
                     return true;
                 }
@@ -169,6 +202,7 @@ public final class ClientSettingsView {
         }
         if (new UiBounds(X + 8, Y + 7, 36, 38).contains(mouseX, mouseY) && button == 0) {
             section = -1;
+            draggingInterfaceSlider = null;
             collapseExpanded();
             return true;
         }
@@ -180,9 +214,9 @@ public final class ClientSettingsView {
         float top = cardsTop();
         float cardY = top - scroll;
         for (ModuleCard card : visibleCards()) {
-            float height = card.height();
+            float height = card.clientHeight();
             if (mouseY >= cardY && mouseY <= cardY + height) {
-                ModuleCard.ClickResult result = card.mouseClicked(mouseX, mouseY, button);
+                ModuleCard.ClickResult result = card.mouseClickedClient(mouseX, mouseY, button);
                 if (result == ModuleCard.ClickResult.EXPAND) {
                     if (expanded != null && expanded != card) expanded.setExpanded(false);
                     boolean next = !card.isExpanded();
@@ -214,17 +248,37 @@ public final class ClientSettingsView {
                         "MODERN".equals(Myau.clientSettings.getClickGuiStyle()) ? "OLD" : "MODERN");
                 return true;
             }
-        } else if (section == 2) {
+            HUD hud = hud();
+            if (hud != null) {
+                row += 43;
+                if (handleSliderClick(mouseX, mouseY, row, hud.scale, ARRAYLIST_SLIDER)) return true;
+                row += 43;
+                if (handleSliderClick(mouseX, mouseY, row, hud.arraylistSpacing, ARRAYLIST_SPACING_SLIDER)) return true;
+                row += 43;
+                if (handleSliderClick(mouseX, mouseY, row, hud.watermarkScale, WATERMARK_SLIDER)) return true;
+                row += 43;
+                if (toggleAt(row).contains(mouseX, mouseY)) {
+                    hud.blur.setValue(!hud.blur.getValue());
+                    return true;
+                }
+                if (hud.blur.getValue()) {
+                    row += 43;
+                    if (handleSliderClick(mouseX, mouseY, row, hud.blurRadius, BLUR_RADIUS_SLIDER)) return true;
+                    row += 43;
+                    if (handleSliderClick(mouseX, mouseY, row, hud.blurStrength, BLUR_STRENGTH_SLIDER)) return true;
+                }
+            }
+        } else if (section == 1) {
             if (toggleAt(Y + 66).contains(mouseX, mouseY)) {
                 Myau.clientSettings.setIndicatorEnabled(!Myau.clientSettings.isIndicatorEnabled());
                 return true;
             }
-        } else if (section == 3) {
+        } else if (section == 2) {
             if (new UiBounds(X + 325, Y + 59, 54, 35).contains(mouseX, mouseY)) {
                 Myau.clientSettings.setVerifyTcpNoDelay(!Myau.clientSettings.isVerifyTcpNoDelay());
                 return true;
             }
-        } else if (section == 4) {
+        } else if (section == 3) {
             float row = Y + 66;
             if (buttonAt(row).contains(mouseX, mouseY)) { Myau.clientSettings.cycleMoveFixMode(); return true; }
             row += 43;
@@ -248,10 +302,19 @@ public final class ClientSettingsView {
     }
 
     public boolean mouseDragged(float mouseX, float mouseY, int button) {
+        if (button == 0 && draggingInterfaceSlider != null) {
+            HUD hud = hud();
+            FloatProperty property = sliderProperty(hud, draggingInterfaceSlider);
+            if (property != null) {
+                setSliderFromMouse(property, mouseX);
+                return true;
+            }
+        }
         return expanded != null && expanded.mouseDragged(mouseX, mouseY, button);
     }
 
     public void mouseReleased() {
+        draggingInterfaceSlider = null;
         for (ModuleCard card : cards.values()) card.mouseReleased();
     }
 
@@ -281,6 +344,7 @@ public final class ClientSettingsView {
 
     public void close() {
         section = -1;
+        draggingInterfaceSlider = null;
         collapseExpanded();
         for (ModuleCard card : cards.values()) card.discardEditor();
     }
@@ -297,15 +361,77 @@ public final class ClientSettingsView {
 
     private float cardsTop() {
         if (section == 0) return Y + 161;
+        if (section == 1) return Y + 111;
         if (section == 2) return Y + 111;
-        if (section == 3) return Y + 111;
-        if (section == 4) return Y + HEIGHT;
+        if (section == 3) return Y + HEIGHT;
         return Y + 58;
     }
 
     private void collapseExpanded() {
         if (expanded != null) expanded.setExpanded(false);
         expanded = null;
+    }
+
+    private boolean handleSliderClick(float mouseX, float mouseY, float row, FloatProperty property, String key) {
+        if (!sliderBounds(row).contains(mouseX, mouseY)) return false;
+        setSliderFromMouse(property, mouseX);
+        draggingInterfaceSlider = key;
+        return true;
+    }
+
+    private void drawSlider(UiRenderer renderer, UiFont text, String label, float row, FloatProperty property) {
+        label(text, label, row);
+        float fraction = sliderFraction(property);
+        renderer.shadow(DIRECT_SLIDER_X, row + 8, DIRECT_SLIDER_WIDTH, 5, 2.5F,
+                0, 2, 4, 0, 0x40000000);
+        renderer.roundedRect(DIRECT_SLIDER_X, row + 8, DIRECT_SLIDER_WIDTH, 5, 2.5F, ClickGuiTheme.TRACK);
+        renderer.roundedRect(DIRECT_SLIDER_X, row + 8,
+                Math.max(3.0F, DIRECT_SLIDER_WIDTH * fraction), 5, 2.5F, ClickGuiTheme.CYAN);
+        float thumbX = DIRECT_SLIDER_X + DIRECT_SLIDER_WIDTH * fraction - 4.5F;
+        renderer.shadow(thumbX, row + 4, 9, 9, 4.5F, 0, 2, 3, 0, 0x59000000);
+        renderer.roundedRect(thumbX, row + 4, 9, 9, 4.5F, 0xFFF3F5FF);
+        drawButton(renderer, DIRECT_VALUE_X, row - 3, 46, 22, formatSliderValue(property));
+    }
+
+    private static UiBounds sliderBounds(float row) {
+        return new UiBounds(DIRECT_SLIDER_X - 8, row - 5, DIRECT_SLIDER_WIDTH + 16, 25);
+    }
+
+    private static float sliderFraction(FloatProperty property) {
+        float minimum = property.getMinimum();
+        float maximum = property.getMaximum();
+        if (maximum <= minimum) return 0.0F;
+        return clamp((property.getValue() - minimum) / (maximum - minimum), 0.0F, 1.0F);
+    }
+
+    private static String formatSliderValue(FloatProperty property) {
+        return String.format(Locale.ROOT, "%.2f", property.getValue())
+                .replaceAll("0+$", "").replaceAll("\\.$", "");
+    }
+
+    private static void setSliderFromMouse(FloatProperty property, float mouseX) {
+        float fraction = clamp((mouseX - DIRECT_SLIDER_X) / DIRECT_SLIDER_WIDTH, 0.0F, 1.0F);
+        double minimum = property.getMinimum();
+        double maximum = property.getMaximum();
+        double value = minimum + (maximum - minimum) * fraction;
+        double step = property.getStep() > 0.0D ? property.getStep() : 0.1D;
+        property.setValue((float) SliderStops.snap(value, minimum, maximum, step));
+    }
+
+    private static FloatProperty sliderProperty(HUD hud, String key) {
+        if (hud == null) return null;
+        if (ARRAYLIST_SLIDER.equals(key)) return hud.scale;
+        if (ARRAYLIST_SPACING_SLIDER.equals(key)) return hud.arraylistSpacing;
+        if (WATERMARK_SLIDER.equals(key)) return hud.watermarkScale;
+        if (BLUR_RADIUS_SLIDER.equals(key)) return hud.blurRadius;
+        if (BLUR_STRENGTH_SLIDER.equals(key)) return hud.blurStrength;
+        return null;
+    }
+
+    private HUD hud() {
+        if (Myau.moduleManager == null) return null;
+        Module module = Myau.moduleManager.getModule(HUD.class);
+        return module instanceof HUD ? (HUD) module : null;
     }
 
     private void modeRow(UiRenderer renderer, UiFont text, String label, String value, float y) {

@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 import myau.ui.modern.ModuleCatalog;
 
 public class ModuleManager {
-    private boolean sound = false;
+    private String sound;
     public final LinkedHashMap<Class<?>, Module> modules = new LinkedHashMap<>();
 
     public Module getModule(String string) {
@@ -37,8 +37,8 @@ public class ModuleManager {
                 .collect(Collectors.toList());
     }
 
-    public void playSound() {
-        this.sound = true;
+    public void playSound(boolean enabled) {
+        this.sound = enabled ? SoundUtil.TOGGLE_ON_SOUND : SoundUtil.TOGGLE_OFF_SOUND;
     }
 
     @EventTarget
@@ -57,9 +57,10 @@ public class ModuleManager {
     @EventTarget
     public void onTick(TickEvent event) {
         if (event.getType() == EventType.PRE) {
-            if (this.sound) {
-                this.sound = false;
-                SoundUtil.playSound("random.click");
+            if (this.sound != null) {
+                String sound = this.sound;
+                this.sound = null;
+                SoundUtil.playSound(sound);
             }
         }
     }

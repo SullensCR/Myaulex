@@ -1,0 +1,18 @@
+{
+  "toggle-on": {
+    "category": "master",
+    "sounds": ["toggle-on"]
+  },
+  "toggle-off": {
+    "category": "master",
+    "sounds": ["toggle-off"]
+  },
+  "bed-whitelist": {
+    "category": "master",
+    "sounds": ["bed-whitelist"]
+  },
+  "notification": {
+    "category": "master",
+    "sounds": ["notification"]
+  }
+}

@@ -102,6 +102,10 @@ public class KillAura extends Module {
                 : 1000L / this.targetCPS.getValue();
     }
 
+    public long getScheduledAttackDelayMs() {
+        return this.getAttackDelay();
+    }
+
     private boolean performAttack(float yaw, float pitch) {
         if (!Myau.playerStateManager.digging && !Myau.playerStateManager.placing) {
             if (this.isPlayerBlocking() && this.autoBlock.getValue() != 1) {
@@ -110,24 +114,51 @@ public class KillAura extends Module {
                 return false;
             } else {
                 this.attackDelayMS = this.attackDelayMS + this.getAttackDelay();
-                mc.thePlayer.swingItem();
-                if ((this.rotations.getValue() != 0 || !this.isBoxInAttackRange(this.target.getBox()))
-                        && RotationUtil.rayTrace(this.target.getBox(), yaw, pitch, this.attackRange.getValue()) == null) {
+                boolean strictRayHit = RotationUtil.rayTrace(
+                        this.target.getBox(), yaw, pitch, this.attackRange.getValue()) != null;
+                HitSelect hitSelect = (HitSelect) Myau.moduleManager.modules.get(HitSelect.class);
+                boolean rayHit = hitSelect != null && hitSelect.isEnabled()
+                        ? strictRayHit
+                        : strictRayHit || this.rotations.getValue() == 0 && this.isBoxInAttackRange(this.target.getBox());
+                HitSelect.AttackDecision decision = hitSelect == null
+                        ? (rayHit ? HitSelect.AttackDecision.ATTACK : HitSelect.AttackDecision.NORMAL_MISS)
+                        : hitSelect.selectAuraAttempt(this.target.getEntity(), rayHit, System.nanoTime());
+                if (decision.shouldNormalSwing()) {
+                    mc.thePlayer.swingItem();
+                } else if (decision.shouldLocalSwing()) {
+                    this.swingLocally();
+                }
+                if (!decision.shouldAttack()) {
                     return false;
                 } else {
-                    AttackEvent event = new AttackEvent(this.target.getEntity());
-                    EventManager.call(event);
-                    ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
-                    PacketUtil.sendPacket(new C02PacketUseEntity(this.target.getEntity(), Action.ATTACK));
-                    if (mc.playerController.getCurrentGameType() != GameType.SPECTATOR) {
-                        PlayerUtil.attackEntity(this.target.getEntity());
+                    if (hitSelect != null) hitSelect.beginManagedAuraAttack();
+                    try {
+                        AttackEvent event = new AttackEvent(this.target.getEntity());
+                        EventManager.call(event);
+                        ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
+                        PacketUtil.sendPacket(new C02PacketUseEntity(this.target.getEntity(), Action.ATTACK));
+                        if (mc.playerController.getCurrentGameType() != GameType.SPECTATOR) {
+                            PlayerUtil.attackEntity(this.target.getEntity());
+                        }
+                    } finally {
+                        if (hitSelect != null) hitSelect.endManagedAuraAttack();
                     }
+                    if (hitSelect != null) hitSelect.recordAuraAttack(this.target.getEntity(), System.nanoTime());
                     this.hitRegistered = true;
                     return true;
                 }
             }
         } else {
             return false;
+        }
+    }
+
+    private void swingLocally() {
+        if (!mc.thePlayer.isSwingInProgress
+                || mc.thePlayer.swingProgressInt >= 3
+                || mc.thePlayer.swingProgressInt < 0) {
+            mc.thePlayer.swingProgressInt = -1;
+            mc.thePlayer.isSwingInProgress = true;
         }
     }
 

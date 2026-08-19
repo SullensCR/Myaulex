@@ -58,17 +58,15 @@ public class StasisActionStateTest {
     }
 
     @Test
-    public void newRotationRestartsStrictPreparationBeforeUseReplay() {
+    public void cameraRotationOnlyBuffersAndDoesNotWakeStrictMode() {
         StasisActionState state = state(StasisActionState.EXPERIMENTAL_1);
-        state.armRawUse();
-        assertTrue(state.captureRawUse());
-        state.onPlayerUpdateCompleted();
 
-        assertTrue(state.requestRotationWake());
-        assertFalse(state.pollStrictReplayAtTickStart());
-        state.onPlayerUpdateCompleted();
+        state.recordRotation(10.0F, 20.0F);
+        state.recordRotation(20.0F, 20.0F);
 
-        assertTrue(state.pollStrictReplayAtTickStart());
+        assertTrue(state.isFreezing());
+        assertFalse(state.hasPendingUse());
+        assertTrue(state.getBufferedRotationCount() == 2);
     }
 
     @Test
@@ -88,22 +86,22 @@ public class StasisActionStateTest {
     public void fastRotationOnlyWindowCompletesWithoutUseReplay() {
         StasisActionState state = state(StasisActionState.EXPERIMENTAL_2);
 
-        assertTrue(state.requestRotationWake());
-        assertFalse(state.isFreezing());
-
-        assertFalse(state.onPlayerUpdateCompleted());
+        state.recordRotation(10.0F, 20.0F);
         assertTrue(state.isFreezing());
+        assertFalse(state.hasPendingUse());
+
+        assertTrue(state.getBufferedRotationCount() == 1);
     }
 
     @Test
     public void lookModeNeverUnfreezesAndReplaysAtTickEnd() {
         StasisActionState state = state(StasisActionState.EXPERIMENTAL_3);
 
-        assertFalse(state.requestRotationWake());
         assertTrue(state.isFreezing());
         state.armRawUse();
         assertTrue(state.captureRawUse());
         assertTrue(state.isFreezing());
+        assertTrue(state.getBufferedRotationCount() == 0);
 
         assertTrue(state.pollLookReplayAtTickEnd());
         assertFalse(state.pollLookReplayAtTickEnd());
@@ -119,6 +117,23 @@ public class StasisActionStateTest {
 
         assertFalse(state.captureRawUse());
         assertFalse(state.hasPendingUse());
+    }
+
+    @Test
+    public void rotationBufferKeepsOnlyTheLatestFewSamples() {
+        StasisActionState state = state(StasisActionState.EXPERIMENTAL_3);
+
+        state.recordRotation(1.0F, 1.0F);
+        state.recordRotation(2.0F, 2.0F);
+        state.recordRotation(3.0F, 3.0F);
+        state.recordRotation(4.0F, 4.0F);
+
+        assertTrue(state.getBufferedRotationCount() == StasisActionState.MAX_BUFFERED_ROTATIONS);
+        StasisActionState.RotationSample latest = state.consumeLatestRotation();
+        assertTrue(latest != null);
+        assertTrue(latest.yaw == 4.0F);
+        assertTrue(latest.pitch == 4.0F);
+        assertTrue(state.getBufferedRotationCount() == 0);
     }
 
     @Test

@@ -75,7 +75,7 @@ public abstract class Module {
         this.setEnabled(enabled);
         if (this.enabled == enabled) {
             if (((HUD) Myau.moduleManager.modules.get(HUD.class)).toggleSound.getValue()) {
-                Myau.moduleManager.playSound();
+                Myau.moduleManager.playSound(this.enabled);
             }
             if (Myau.notificationManager != null
                     && !(this instanceof GuiModule)
