@@ -50,14 +50,7 @@ public abstract class MixinEntityRenderer {
     private void updateCameraAndRender(float float1, long long2, CallbackInfo callbackInfo) {
         RenderFrame.begin();
         if (this.mc.thePlayer != null) {
-            Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
-            if (scaffold.isEnabled() && scaffold.itemSpoof.getValue()) {
-                int slot = scaffold.getSlot();
-                if (slot >= 0) {
-                    this.slot = new Box<>(this.mc.thePlayer.inventory.currentItem);
-                    this.mc.thePlayer.inventory.currentItem = slot;
-                }
-            }
+            this.applyVisualSlotSpoof();
             KillAura killAura = (KillAura) Myau.moduleManager.modules.get(KillAura.class);
             if (killAura.isEnabled() && killAura.isBlocking()) {
                 this.using = new Box<>(((IAccessorEntityPlayer) this.mc.thePlayer).getItemInUse());
@@ -92,14 +85,7 @@ public abstract class MixinEntityRenderer {
             at = {@At("HEAD")}
     )
     private void updateRenderer(CallbackInfo callbackInfo) {
-        Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
-        if (scaffold.isEnabled() && scaffold.itemSpoof.getValue()) {
-            int slot = scaffold.getSlot();
-            if (slot >= 0) {
-                this.slot = new Box<>(this.mc.thePlayer.inventory.currentItem);
-                this.mc.thePlayer.inventory.currentItem = slot;
-            }
-        }
+        this.applyVisualSlotSpoof();
 
     }
 
@@ -111,6 +97,22 @@ public abstract class MixinEntityRenderer {
         if (this.slot != null) {
             this.mc.thePlayer.inventory.currentItem = this.slot.value;
             this.slot = null;
+        }
+    }
+
+    @Unique
+    private void applyVisualSlotSpoof() {
+        if (this.mc == null || this.mc.thePlayer == null || Myau.moduleManager == null) return;
+        int visualSlot = -1;
+        Disabler disabler = (Disabler) Myau.moduleManager.getModule(Disabler.class);
+        if (disabler != null && disabler.isSlotSpoofActive()) {
+            visualSlot = disabler.getVisualSlot();
+        } else {
+            visualSlot = ScaffoldActivity.visualSlot();
+        }
+        if (visualSlot >= 0 && visualSlot <= 8) {
+            this.slot = new Box<>(this.mc.thePlayer.inventory.currentItem);
+            this.mc.thePlayer.inventory.currentItem = visualSlot;
         }
     }
 

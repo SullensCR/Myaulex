@@ -73,16 +73,17 @@ public final class ClientSettingsView {
     }
 
     public void renderGear(UiRenderer renderer, boolean open) {
-        renderer.shadow(GEAR.x, GEAR.y, GEAR.width, GEAR.height, 10, 0, 2, 4, 0, 0x4D000000);
+        renderer.shadow(GEAR.x, GEAR.y, GEAR.width, GEAR.height, 10, 0, 2, 6, 0, 0x4D000000);
         renderer.roundedRect(GEAR.x, GEAR.y, GEAR.width, GEAR.height, 10,
                 open ? ClickGuiTheme.TOGGLE_ON : ClickGuiTheme.SEARCH);
-        UiFont font = renderer.fonts().google(18, UiFonts.SEMIBOLD);
-        font.draw("⚙", GEAR.x + (GEAR.width - font.width("⚙")) / 2.0F, GEAR.y + 5, 0xFFFFFFFF, true);
+        renderer.imageResource("ui/icons/settings-gear.svg",
+                GEAR.x + (GEAR.width - 18.0F) / 2.0F, GEAR.y + (GEAR.height - 18.0F) / 2.0F,
+                18.0F, 18.0F, 0xFFFFFFFF);
     }
 
     public void render(UiRenderer renderer, float mouseX, float mouseY) {
         updateTime();
-        renderer.shadow(X, Y, WIDTH, HEIGHT, 8, 0, 2, 6, 1, 0x70000000);
+        renderer.shadow(X, Y, WIDTH, HEIGHT, 8, 0, 3, 8, 1, 0x70000000);
         renderer.roundedRect(X, Y, WIDTH, HEIGHT, 8, ClickGuiTheme.MODULE_SETTINGS);
         UiFont title = renderer.fonts().google(24, UiFonts.SEMIBOLD);
         UiFont text = renderer.fonts().google(18, UiFonts.REGULAR);
@@ -140,6 +141,10 @@ public final class ClientSettingsView {
             float row = Y + 66;
             label(text, "Verify TCP_NODELAY", row);
             drawToggle(renderer, "tcp", X + 333, row, Myau.clientSettings.isVerifyTcpNoDelay());
+            row += 43;
+            label(text, "Unsafe module override", row);
+            drawToggle(renderer, "unsafe-module-override", X + 333, row,
+                    Myau.clientSettings.isUnsafeModuleOverride());
         } else if (section == 1) {
             float row = Y + 66;
             label(text, "Indicator", row);
@@ -278,6 +283,10 @@ public final class ClientSettingsView {
                 Myau.clientSettings.setVerifyTcpNoDelay(!Myau.clientSettings.isVerifyTcpNoDelay());
                 return true;
             }
+            if (toggleAt(Y + 109).contains(mouseX, mouseY)) {
+                Myau.clientSettings.setUnsafeModuleOverride(!Myau.clientSettings.isUnsafeModuleOverride());
+                return true;
+            }
         } else if (section == 3) {
             float row = Y + 66;
             if (buttonAt(row).contains(mouseX, mouseY)) { Myau.clientSettings.cycleMoveFixMode(); return true; }
@@ -362,7 +371,7 @@ public final class ClientSettingsView {
     private float cardsTop() {
         if (section == 0) return Y + 161;
         if (section == 1) return Y + 111;
-        if (section == 2) return Y + 111;
+        if (section == 2) return Y + 154;
         if (section == 3) return Y + HEIGHT;
         return Y + 58;
     }

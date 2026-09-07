@@ -35,8 +35,8 @@ public final class FlagDetector extends Module {
             this.notifyDisabled(aura);
         }
 
-        Scaffold scaffold = (Scaffold) Myau.moduleManager.getModule(Scaffold.class);
-        if (scaffold != null && scaffold.isEnabled()) {
+        Module scaffold = ScaffoldActivity.activeModule();
+        if (scaffold != null) {
             scaffold.setEnabled(false);
             Stasis stasis = (Stasis) Myau.moduleManager.getModule(Stasis.class);
             if (stasis != null) stasis.setEnabled(true);

@@ -47,8 +47,8 @@ categories:
     - ChestStealer
     - InventoryManager (Renamed from InvManager)
     - Scaffold
-    - BridgeAssist (New)
-    # Create this new module using this: `https://docs.slinky.gg/modules/block/bridge-assist/` as reference
+    - Legit Scaffold # Straight-only speed bridging; tower and diagonal deferred.
+    # Stable fixed-angle speed bridging with vanilla movement correction and an ascending tower.
     - FastBreak (Renamed from SpeedMine)
     - BedBreaker (Renamed from BedNuker and moved from Utilities)
   utilities:

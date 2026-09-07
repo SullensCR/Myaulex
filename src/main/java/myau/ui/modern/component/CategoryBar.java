@@ -34,7 +34,7 @@ public final class CategoryBar implements UiComponent {
         visibleProgress = approach(visibleProgress, selectionVisible ? 1.0F : 0.0F, delta / 0.18F);
         float change = selectionChangedAt == 0L ? 1.0F
                 : Math.min(1.0F, (System.currentTimeMillis() - selectionChangedAt) / 180.0F);
-        renderer.shadow(BAR.x, BAR.y, BAR.width, BAR.height, 10, 0, 3, 4, 0, 0x80000000);
+        renderer.shadow(BAR.x, BAR.y, BAR.width, BAR.height, 10, 0, 4, 8, 0, 0x80000000);
         renderer.backdrop(BAR.x, BAR.y, BAR.width, BAR.height, 10, ClickGuiTheme.PANEL);
         renderer.roundedRect(BAR.x, BAR.y + 56, BAR.width, 10, 0, 0, 10, 10, ClickGuiTheme.UNFOCUSED);
 
@@ -60,7 +60,29 @@ public final class CategoryBar implements UiComponent {
             float iconEntrance = Math.max(0.0F, Math.min(1.0F,
                     (System.currentTimeMillis() - entranceStartedAt - i * 30L) / 320.0F));
             iconEntrance = 1.0F - (1.0F - iconEntrance) * (1.0F - iconEntrance) * (1.0F - iconEntrance);
-            float baseAlpha = category == hovered ? 1.0F : 0.70F + 0.30F * selectedAmount;
+            //Top indicator: full-cell vertical gradient behind the selected icon.
+            //It is whitish at the bar's top edge and gently fades downward across
+            //the whole cell, crossfading between the previous and selected
+            //category using the same change / visibleProgress state as the
+            //bottom indicator.
+            if (selectedAmount > 0.01F) {
+                renderer.gradientRoundedRectVertical(
+                        x,
+                        BAR.y,
+                        60,
+                        66,
+                        0,
+                        0,
+                        0,
+                        0,
+                        withAlpha(0xFFFFFFFF, 0.17F * selectedAmount),
+                        withAlpha(0xFFFFFFFF, 0.05F * selectedAmount)
+                );
+            }
+            //Icons stay near-white like the mockup; the highlight square carries the
+            //selected state, with a small brightness lift on the active icon.
+            float emphasis = Math.max(selectedAmount, category == hovered ? 1.0F : 0.0F);
+            float baseAlpha = 0.82F + 0.18F * emphasis;
             int alpha = withAlpha(0xFFFFFFFF, baseAlpha * iconEntrance);
             renderer.imageContained(
                     category.icon(),

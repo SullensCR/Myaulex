@@ -34,6 +34,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
 import net.minecraft.network.play.client.C02PacketUseEntity;
 import net.minecraft.network.play.client.C02PacketUseEntity.Action;
+import net.minecraft.network.play.client.C03PacketPlayer;
 import net.minecraft.network.play.client.C07PacketPlayerDigging;
 import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement;
 import net.minecraft.network.play.client.C09PacketHeldItemChange;
@@ -61,14 +62,18 @@ public class KillAura extends Module {
     private boolean isBlocking = false;
     private boolean fakeBlockState = false;
     private boolean blinkReset = false;
+    private boolean expoSpoofedSlot = false;
     private long attackDelayMS = 0L;
     int blockTick = 0;
     private int lastTickProcessed;
+    private final ExpoAutoBlockState expoAutoBlockState = new ExpoAutoBlockState();
+    private final ExpoAutoBlockReblock expoReblock = new ExpoAutoBlockReblock();
     public final ModeProperty mode;
     public final ModeProperty sort;
     public final ModeProperty autoBlock;
     public final BooleanProperty autoBlockRequirePress;
     public final IntProperty autoBlockTargetCPS;
+    public final ModeProperty expoAutoBlockAPS;
     public final FloatProperty autoBlockRange;
     public final FloatProperty swingRange;
     public final FloatProperty attackRange;
@@ -97,6 +102,9 @@ public class KillAura extends Module {
     public final ModeProperty debugLog;
 
     private long getAttackDelay() {
+        if (this.isExpoAutoBlockMode()) {
+            return 1000L / ExpoAutoBlockState.apsForIndex(this.expoAutoBlockAPS.getValue());
+        }
         return this.isBlocking
                 ? 1000L / this.autoBlockTargetCPS.getValue()
                 : 1000L / this.targetCPS.getValue();
@@ -107,13 +115,23 @@ public class KillAura extends Module {
     }
 
     private boolean performAttack(float yaw, float pitch) {
+        return this.performAttack(yaw, pitch, false);
+    }
+
+    private boolean performExpoAttack(float yaw, float pitch) {
+        return this.performAttack(yaw, pitch, true);
+    }
+
+    private boolean performAttack(float yaw, float pitch, boolean expoScheduled) {
         if (!Myau.playerStateManager.digging && !Myau.playerStateManager.placing) {
-            if (this.isPlayerBlocking() && this.autoBlock.getValue() != 1) {
+            if (!expoScheduled && this.isPlayerBlocking() && this.autoBlock.getValue() != 1) {
                 return false;
-            } else if (this.attackDelayMS > 0L) {
+            } else if (!expoScheduled && this.attackDelayMS > 0L) {
                 return false;
             } else {
-                this.attackDelayMS = this.attackDelayMS + this.getAttackDelay();
+                if (!expoScheduled) {
+                    this.attackDelayMS = this.attackDelayMS + this.getAttackDelay();
+                }
                 boolean strictRayHit = RotationUtil.rayTrace(
                         this.target.getBox(), yaw, pitch, this.attackRange.getValue()) != null;
                 HitSelect hitSelect = (HitSelect) Myau.moduleManager.modules.get(HitSelect.class);
@@ -225,7 +243,7 @@ public class KillAura extends Module {
                     BedNuker bedNuker = (BedNuker) Myau.moduleManager.modules.get(BedNuker.class);
                     if (bedNuker.isEnabled() && bedNuker.isReady()) {
                         return false;
-                    } else if (Myau.moduleManager.modules.get(Scaffold.class).isEnabled()) {
+                    } else if (ScaffoldActivity.isAnyEnabled()) {
                         return false;
                     } else if (this.requirePress.getValue()) {
                         return PlayerUtil.isAttacking();
@@ -364,11 +382,20 @@ public class KillAura extends Module {
         this.mode = new ModeProperty("mode", 0, new String[]{"SINGLE", "SWITCH"});
         this.sort = new ModeProperty("sort", 0, new String[]{"DISTANCE", "HEALTH", "HURT_TIME", "FOV"});
         this.autoBlock = new ModeProperty(
-                "auto-block", 2, new String[]{"NONE", "VANILLA", "SPOOF", "HYPIXEL", "BLINK", "INTERACT", "SWAP", "LEGIT", "FAKE"}
+                "auto-block", 2, new String[]{
+                        "NONE", "VANILLA", "SPOOF", "HYPIXEL", "BLINK", "INTERACT", "SWAP", "LEGIT", "FAKE",
+                        "LAG_LEGIT", "LAG", "LAG_NEW"
+                }
         );
         this.autoBlockRequirePress = new BooleanProperty("auto-block-require-press", false);
-        this.autoBlockTargetCPS = new IntProperty("auto-block-target-cps", 10, 1, 10);
+        this.autoBlockTargetCPS = new IntProperty(
+                "auto-block-target-cps", 10, 1, 10, () -> !this.isExpoAutoBlockMode()
+        );
         this.autoBlockTargetCPS.setDisplayName("Target CPS");
+        this.expoAutoBlockAPS = new ModeProperty(
+                "expo-aps", 0, new String[]{"3APS", "5APS", "7APS", "10APS", "14APS"}, this::isExpoAutoBlockMode
+        );
+        this.expoAutoBlockAPS.setDisplayName("Expo APS");
         this.autoBlockRange = new FloatProperty("auto-block-range", 6.0F, 3.0F, 8.0F);
         this.swingRange = new FloatProperty("swing-range", 3.5F, 3.0F, 6.0F);
         this.attackRange = new FloatProperty("attack-range", 3.0F, 3.0F, 6.0F);
@@ -434,8 +461,7 @@ public class KillAura extends Module {
     }
 
     public boolean isAttackAllowed() {
-        Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
-        if (scaffold.isEnabled()) {
+        if (ScaffoldActivity.isAnyEnabled()) {
             return false;
         } else if (!this.weaponsOnly.getValue()
                 || ItemUtil.hasRawUnbreakingEnchant()
@@ -452,10 +478,141 @@ public class KillAura extends Module {
                     || this.autoBlock.getValue() == 4 // BLINK
                     || this.autoBlock.getValue() == 5 // INTERACT
                     || this.autoBlock.getValue() == 6 // SWAP
-                    || this.autoBlock.getValue() == 7); // LEGIT
+                    || this.autoBlock.getValue() == ExpoAutoBlockState.LEGIT
+                    || this.autoBlock.getValue() == ExpoAutoBlockState.LAG_LEGIT
+                    || this.autoBlock.getValue() == ExpoAutoBlockState.LAG
+                    || this.autoBlock.getValue() == ExpoAutoBlockState.LAG_NEW);
         } else {
             return false;
         }
+    }
+
+    private boolean isExpoAutoBlockMode() {
+        return ExpoAutoBlockState.isExpoMode(this.autoBlock.getValue());
+    }
+
+    private boolean isExpoLagMode() {
+        return ExpoAutoBlockState.isLagMode(this.autoBlock.getValue());
+    }
+
+    private boolean isExpoNoSlowLive() {
+        Module noSlowModule = Myau.moduleManager == null ? null : Myau.moduleManager.modules.get(NoSlow.class);
+        if (!(noSlowModule instanceof NoSlow) || !noSlowModule.isEnabled() || this.target == null) {
+            return false;
+        }
+        NoSlow noSlow = (NoSlow) noSlowModule;
+        return noSlow.swordMode.getValue() == 1
+                && noSlow.swordMotion.getValue() < 100
+                && RotationUtil.distanceToEntity(this.target.getEntity()) > 3.5D;
+    }
+
+    private boolean acquireExpoBuffer() {
+        if (!this.isExpoLagMode() || Myau.blinkManager == null) {
+            return !this.isExpoLagMode();
+        }
+        if (Myau.blinkManager.isBlinking()
+                && Myau.blinkManager.getBlinkingModule() != BlinkModules.AUTO_BLOCK) {
+            return false;
+        }
+        return Myau.blinkManager.setBlinkState(true, BlinkModules.AUTO_BLOCK);
+    }
+
+    private void executeExpoStep(ExpoAutoBlockState.Step step, float yaw, float pitch) {
+        for (ExpoAutoBlockState.Action action : step.getActions()) {
+            switch (action) {
+                case RELEASE:
+                    if (this.isPlayerBlocking()) {
+                        this.stopBlock();
+                    }
+                    break;
+                case SPOOF_AWAY:
+                    if (!this.expoSpoofedSlot) {
+                        int currentSlot = mc.thePlayer.inventory.currentItem;
+                        PacketUtil.sendPacket(new C09PacketHeldItemChange(this.findEmptySlot(currentSlot)));
+                        this.expoSpoofedSlot = true;
+                    }
+                    break;
+                case SPOOF_BACK:
+                    if (this.expoSpoofedSlot) {
+                        PacketUtil.sendPacket(new C09PacketHeldItemChange(mc.thePlayer.inventory.currentItem));
+                        this.expoSpoofedSlot = false;
+                    }
+                    break;
+                case ATTACK:
+                    this.expoReblock.reset();
+                    if (this.target != null && this.isBoxInSwingRange(this.target.getBox())) {
+                        AttackData attackTarget = this.target;
+                        MovingObjectPosition hit = RotationUtil.rayTrace(attackTarget.getBox(), yaw, pitch, 8.0D);
+                        Vec3 relativeHit = hit == null ? null : new Vec3(
+                                hit.hitVec.xCoord - attackTarget.getX(),
+                                hit.hitVec.yCoord - attackTarget.getY(),
+                                hit.hitVec.zCoord - attackTarget.getZ()
+                        );
+                        this.expoReblock.recordAttackResult(
+                                this.performExpoAttack(yaw, pitch), attackTarget.getEntity(), relativeHit
+                        );
+                    }
+                    break;
+                case BLOCK:
+                    this.sendExpoBlock();
+                    break;
+                case FLUSH_BUFFER:
+                    if (Myau.blinkManager != null
+                            && Myau.blinkManager.getBlinkingModule() == BlinkModules.AUTO_BLOCK) {
+                        Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
+                    }
+                    break;
+                case START_BUFFER:
+                    if (!this.acquireExpoBuffer()) {
+                        this.resetExpoAutoBlock(false);
+                    }
+                    break;
+            }
+        }
+    }
+
+    private void sendExpoBlock() {
+        if (this.target == null || !this.hasValidTarget() || !ItemUtil.isHoldingSword()
+                || Myau.playerStateManager.digging || Myau.playerStateManager.placing
+                || Stasis.blocksAutomatedUse()) {
+            return;
+        }
+        Entity attackedTarget = this.expoReblock.getAttackedTarget();
+        boolean targetStillValid = attackedTarget != null && !attackedTarget.isDead
+                && mc.theWorld.loadedEntityList.contains(attackedTarget);
+        ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
+        ItemStack heldItem = mc.thePlayer.getHeldItem();
+        if (this.expoReblock.sendBlock(heldItem, targetStillValid, PacketUtil::sendPacket)) {
+            mc.thePlayer.setItemInUse(heldItem, heldItem.getMaxItemUseDuration());
+            this.blockingState = true;
+        }
+    }
+
+    private void resetExpoAutoBlock(boolean releaseBlock) {
+        this.expoAutoBlockState.reset();
+        this.expoReblock.reset();
+        boolean foreignBuffer = Myau.blinkManager != null
+                && Myau.blinkManager.isBlinking()
+                && Myau.blinkManager.getBlinkingModule() != BlinkModules.AUTO_BLOCK;
+        if (!foreignBuffer && mc.thePlayer != null) {
+            if (this.expoSpoofedSlot) {
+                PacketUtil.sendPacket(new C09PacketHeldItemChange(mc.thePlayer.inventory.currentItem));
+            }
+            if (releaseBlock && this.isPlayerBlocking()) {
+                this.stopBlock();
+            }
+        } else if (mc.thePlayer != null && releaseBlock) {
+            mc.thePlayer.stopUsingItem();
+            this.blockingState = false;
+        }
+        this.expoSpoofedSlot = false;
+        if (Myau.blinkManager != null
+                && Myau.blinkManager.getBlinkingModule() == BlinkModules.AUTO_BLOCK) {
+            Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
+        }
+        this.isBlocking = false;
+        this.fakeBlockState = false;
+        this.blockTick = 0;
     }
 
     public boolean isBlocking() {
@@ -477,12 +634,23 @@ public class KillAura extends Module {
             Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
             Myau.blinkManager.setBlinkState(true, BlinkModules.AUTO_BLOCK);
         }
+        if (event.getType() == EventType.POST && this.isEnabled() && this.isExpoAutoBlockMode()) {
+            if (this.target != null && this.canAttack() && this.canAutoBlock()) {
+                this.executeExpoStep(this.expoAutoBlockState.post(), event.getNewYaw(), event.getNewPitch());
+                if (this.expoReblock.isDeferred()) {
+                    this.sendExpoBlock();
+                }
+            } else {
+                this.resetExpoAutoBlock(true);
+            }
+        }
         if (this.isEnabled() && event.getType() == EventType.PRE) {
             if (this.attackDelayMS > 0L) {
                 this.attackDelayMS -= 50L;
             }
             boolean attack = this.target != null && this.canAttack();
             if (attack
+                    && !this.isExpoAutoBlockMode()
                     && shouldReleaseHeldBlock(this.isPlayerBlocking(), this.blockingState, this.autoBlock.getValue())
                     && !Myau.playerStateManager.digging
                     && !Myau.playerStateManager.placing) {
@@ -492,14 +660,19 @@ public class KillAura extends Module {
             }
             boolean block = attack && this.canAutoBlock();
             if (!block) {
-                Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
-                this.isBlocking = false;
-                this.fakeBlockState = false;
-                this.blockTick = 0;
+                if (this.isExpoAutoBlockMode()) {
+                    this.resetExpoAutoBlock(true);
+                } else {
+                    Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
+                    this.isBlocking = false;
+                    this.fakeBlockState = false;
+                    this.blockTick = 0;
+                }
             }
             if (attack) {
                 boolean swap = false;
                 boolean blocked = false;
+                ExpoAutoBlockState.Step expoStep = null;
                 if (block) {
                     switch (this.autoBlock.getValue()) {
                         case 0: // NONE
@@ -704,37 +877,31 @@ public class KillAura extends Module {
                             this.isBlocking = false;
                             this.fakeBlockState = false;
                             break;
-                        case 7: // LEGIT
+                        case ExpoAutoBlockState.LEGIT:
+                        case ExpoAutoBlockState.LAG_LEGIT:
+                        case ExpoAutoBlockState.LAG:
+                        case ExpoAutoBlockState.LAG_NEW:
                             if (this.hasValidTarget()) {
                                 if (!Myau.playerStateManager.digging && !Myau.playerStateManager.placing) {
-                                    switch (this.blockTick) {
-                                        case 0:
-                                            if (!this.isPlayerBlocking()) {
-                                                swap = true;
-                                            }
-                                            this.blockTick = 1;
-                                            break;
-                                        case 1:
-                                            if (this.isPlayerBlocking()) {
-                                                this.stopBlock();
-                                                attack = false;
-                                            }
-                                            if (this.attackDelayMS <= 50L) {
-                                                this.blockTick = 0;
-                                            }
-                                            break;
-                                        default:
-                                            this.blockTick = 0;
+                                    if (!this.isExpoLagMode() || this.acquireExpoBuffer()) {
+                                        this.isBlocking = true;
+                                        this.fakeBlockState = true;
+                                        if (!this.expoReblock.isDeferred()) {
+                                            expoStep = this.expoAutoBlockState.pre(
+                                                    this.autoBlock.getValue(),
+                                                    ExpoAutoBlockState.apsForIndex(this.expoAutoBlockAPS.getValue()),
+                                                    this.isPlayerBlocking(),
+                                                    this.isExpoNoSlowLive()
+                                            );
+                                        }
+                                    } else {
+                                        this.resetExpoAutoBlock(false);
                                     }
                                 }
-                                Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
-                                this.isBlocking = true;
-                                this.fakeBlockState = false;
                             } else {
-                                Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
-                                this.isBlocking = false;
-                                this.fakeBlockState = false;
+                                this.resetExpoAutoBlock(true);
                             }
+                            attack = false;
                             break;
                         case 8: // FAKE
                             Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
@@ -766,7 +933,9 @@ public class KillAura extends Module {
                             event.setPervRotation(rotations[0], 1);
                         }
                     }
-                    if (attack) {
+                    if (expoStep != null) {
+                        this.executeExpoStep(expoStep, event.getNewYaw(), event.getNewPitch());
+                    } else if (attack) {
                         attacked = this.performAttack(event.getNewYaw(), event.getNewPitch());
                     }
                 }
@@ -788,6 +957,14 @@ public class KillAura extends Module {
     @EventTarget
     public void onTick(TickEvent event) {
         if (this.isEnabled()) {
+            if (mc.thePlayer == null || mc.theWorld == null) {
+                this.resetExpoAutoBlock(false);
+                return;
+            }
+            if (mc.thePlayer.isDead) {
+                this.resetExpoAutoBlock(true);
+                return;
+            }
             switch (event.getType()) {
                 case PRE:
                     if (this.target == null
@@ -862,6 +1039,9 @@ public class KillAura extends Module {
     @EventTarget(Priority.LOWEST)
     public void onPacket(PacketEvent event) {
         if (this.isEnabled() && !event.isCancelled() && mc.thePlayer != null && mc.theWorld != null) {
+            if (event.getType() == EventType.SEND && event.getPacket() instanceof C03PacketPlayer) {
+                this.expoReblock.onMovement();
+            }
             if (event.getPacket() instanceof C07PacketPlayerDigging) {
                 C07PacketPlayerDigging packet = (C07PacketPlayerDigging) event.getPacket();
                 if (packet.getStatus() == C07PacketPlayerDigging.Action.RELEASE_USE_ITEM) {
@@ -1004,19 +1184,39 @@ public class KillAura extends Module {
         this.hitRegistered = false;
         this.attackDelayMS = 0L;
         this.blockTick = 0;
+        this.expoSpoofedSlot = false;
+        this.expoAutoBlockState.reset();
+        this.expoReblock.reset();
     }
 
     @Override
     public void onDisabled() {
-        Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
+        this.resetExpoAutoBlock(true);
         this.blockingState = false;
         this.isBlocking = false;
         this.fakeBlockState = false;
     }
 
+    @EventTarget
+    public void onLoadWorld(LoadWorldEvent event) {
+        this.target = null;
+        this.expoAutoBlockState.reset();
+        this.expoReblock.reset();
+        this.expoSpoofedSlot = false;
+        if (Myau.blinkManager != null) {
+            Myau.blinkManager.discardBlinkState(BlinkModules.AUTO_BLOCK);
+        }
+        this.blockingState = false;
+        this.isBlocking = false;
+        this.fakeBlockState = false;
+        this.blockTick = 0;
+    }
+
     @Override
     public void verifyValue(String value) {
-        if (!this.autoBlock.getName().equals(value)) {
+        if (this.autoBlock.getName().equals(value)) {
+            this.resetExpoAutoBlock(true);
+        } else {
             if (this.swingRange.getName().equals(value)) {
                 if (this.swingRange.getValue() < this.attackRange.getValue()) {
                     this.attackRange.setValue(this.swingRange.getValue());

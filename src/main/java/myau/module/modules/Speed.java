@@ -19,8 +19,7 @@ public class Speed extends Module {
     public final PercentProperty strafe = new PercentProperty("strafe", 0);
 
     private boolean canBoost() {
-        Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
-        return !scaffold.isEnabled() && MoveUtil.isForwardPressed()
+        return !ScaffoldActivity.isAnyEnabled() && MoveUtil.isForwardPressed()
                 && mc.thePlayer.getFoodStats().getFoodLevel() > 6
                 && !mc.thePlayer.isSneaking()
                 && !mc.thePlayer.isInWater()
@@ -30,11 +29,12 @@ public class Speed extends Module {
 
     public Speed() {
         super("Speed", false);
+        this.markUnsafe();
     }
 
     @EventTarget(Priority.LOW)
     public void onStrafe(StrafeEvent event) {
-        if (this.isEnabled() && this.canBoost()) {
+        if (this.isOperational() && this.canBoost()) {
             if (mc.thePlayer.onGround) {
                 mc.thePlayer.motionY = 0.42F;
                 MoveUtil.setSpeed(
@@ -59,7 +59,7 @@ public class Speed extends Module {
 
     @EventTarget(Priority.LOW)
     public void onLivingUpdate(LivingUpdateEvent event) {
-        if (this.isEnabled() && this.canBoost()) {
+        if (this.isOperational() && this.canBoost()) {
             mc.thePlayer.movementInput.jump = false;
         }
     }

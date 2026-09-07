@@ -73,6 +73,13 @@ final class UiShapeRenderer {
                 leftColor, rightColor, -1.0F, true);
     }
 
+    boolean verticalFill(float x, float y, float width, float height,
+                         float topLeft, float topRight, float bottomRight, float bottomLeft,
+                         int topColor, int bottomColor) {
+        return draw(x, y, width, height, topLeft, topRight, bottomRight, bottomLeft,
+                topColor, bottomColor, -1.0F, false);
+    }
+
     boolean outline(float x, float y, float width, float height, float radius, float thickness, int color) {
         return draw(x, y, width, height, radius, radius, radius, radius,
                 color, color, thickness, false);

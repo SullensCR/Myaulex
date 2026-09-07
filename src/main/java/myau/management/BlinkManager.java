@@ -51,6 +51,11 @@ public class BlinkManager {
             if (Stasis.ownsOutgoingPackets()) {
                 return false;
             }
+            // Packet queues are shared, so changing owners while a queue is live
+            // would let the new owner flush packets that belong to another module.
+            if (this.blinking && this.blinkModule != module) {
+                return false;
+            }
             this.blinkModule = module;
             this.blinking = true;
             if (module == BlinkModules.BLINK) {
@@ -62,6 +67,7 @@ public class BlinkManager {
             }
             this.blinking = false;
             if (Minecraft.getMinecraft().getNetHandler() != null && this.blinkedPackets.isEmpty()) {
+                this.blinkModule = BlinkModules.NONE;
                 if (module == BlinkModules.BLINK) {
                     this.blinkStartedAtMillis = 0L;
                 }
@@ -87,6 +93,20 @@ public class BlinkManager {
         this.blinkedPackets.clear();
         this.blinkModule = BlinkModules.NONE;
         this.blinkStartedAtMillis = 0L;
+    }
+
+    /** Clears one owner's queue without replaying it, for world/network teardown. */
+    public boolean discardBlinkState(BlinkModules module) {
+        if (module == BlinkModules.NONE || this.blinkModule != module) {
+            return false;
+        }
+        this.blinking = false;
+        this.blinkedPackets.clear();
+        this.blinkModule = BlinkModules.NONE;
+        if (module == BlinkModules.BLINK) {
+            this.blinkStartedAtMillis = 0L;
+        }
+        return true;
     }
 
     public BlinkModules getBlinkingModule() {

@@ -59,8 +59,7 @@ public class Sprint extends Module {
     }
 
     private boolean isBlockedByScaffold() {
-        Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
-        return scaffold != null && scaffold.blocksSprint();
+        return ScaffoldActivity.blocksSprint();
     }
 
     private boolean isBlockedByHitSelect() {

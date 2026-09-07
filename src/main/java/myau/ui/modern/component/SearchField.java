@@ -15,7 +15,7 @@ public final class SearchField implements UiComponent {
 
     @Override
     public void render(UiRenderer renderer, float mouseX, float mouseY) {
-        renderer.shadow(BOUNDS.x, BOUNDS.y, BOUNDS.width, BOUNDS.height, 17, 0, 3, 6, 1, 0x4D000000);
+        renderer.shadow(BOUNDS.x, BOUNDS.y, BOUNDS.width, BOUNDS.height, 17, 0, 3, 8, 1, 0x59000000);
         renderer.roundedRect(BOUNDS.x, BOUNDS.y, BOUNDS.width, BOUNDS.height, 17, ClickGuiTheme.SEARCH);
         renderer.imageContained("search", BOUNDS.x + 13, BOUNDS.y + 8, 18, 18, 0xFFFFFFFF);
 

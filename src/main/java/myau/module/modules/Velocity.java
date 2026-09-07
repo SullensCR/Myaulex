@@ -176,8 +176,7 @@ public class Velocity extends Module {
     private void handleJumpReset() {
         if (!this.ShouldJump) return;
 
-        Scaffold scaffold = (Scaffold) Myau.moduleManager.getModule(Scaffold.class);
-        if (mc.thePlayer == null || mc.currentScreen instanceof GuiInventory || scaffold.isEnabled()) return;
+        if (mc.thePlayer == null || mc.currentScreen instanceof GuiInventory || ScaffoldActivity.isAnyEnabled()) return;
         if (this.ticksSinceVelocity >= 0) {
             if (this.ticksSinceVelocity == 0) {
                 this.pressed = mc.gameSettings.keyBindJump.isPressed();

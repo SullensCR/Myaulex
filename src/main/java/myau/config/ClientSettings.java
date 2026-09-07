@@ -29,6 +29,7 @@ public final class ClientSettings {
     private String clickGuiStyle = "MODERN";
     private String clickGuiCategory = "COMBAT";
     private boolean verifyTcpNoDelay = true;
+    private boolean unsafeModuleOverride;
     private boolean indicator = true;
     private int moveFixMode = 1;
     private int botFilterMode = 0;
@@ -98,6 +99,17 @@ public final class ClientSettings {
 
     public boolean isVerifyTcpNoDelay() {
         return verifyTcpNoDelay;
+    }
+
+    public boolean isUnsafeModuleOverride() {
+        return unsafeModuleOverride;
+    }
+
+    public void setUnsafeModuleOverride(boolean value) {
+        if (unsafeModuleOverride != value) {
+            unsafeModuleOverride = value;
+            Config.markClientDirty();
+        }
     }
 
     public static boolean isIntegratedModuleName(String name) {
@@ -192,6 +204,12 @@ public final class ClientSettings {
                 verifyTcpNoDelay = network.get("verify-tcp-no-delay").getAsBoolean();
             }
         }
+        if (client.has("gameplay") && client.get("gameplay").isJsonObject()) {
+            JsonObject gameplay = client.getAsJsonObject("gameplay");
+            if (gameplay.has("unsafe-module-override")) {
+                unsafeModuleOverride = gameplay.get("unsafe-module-override").getAsBoolean();
+            }
+        }
         if (client.has("visuals") && client.get("visuals").isJsonObject()) {
             JsonObject visuals = client.getAsJsonObject("visuals");
             if (visuals.has("indicator")) indicator = visuals.get("indicator").getAsBoolean();
@@ -223,6 +241,9 @@ public final class ClientSettings {
         JsonObject network = new JsonObject();
         network.addProperty("verify-tcp-no-delay", verifyTcpNoDelay);
         client.add("network", network);
+        JsonObject gameplay = new JsonObject();
+        gameplay.addProperty("unsafe-module-override", unsafeModuleOverride);
+        client.add("gameplay", gameplay);
         JsonObject visuals = new JsonObject();
         visuals.addProperty("indicator", indicator);
         client.add("visuals", visuals);

@@ -112,8 +112,7 @@ public class BedNuker extends Module {
     }
 
     private boolean isScaffoldEnabled() {
-        Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
-        return scaffold != null && scaffold.isEnabled();
+        return ScaffoldActivity.isAnyEnabled();
     }
 
     /** Stops an already-started server-side dig before clearing BedBreaker's local state. */

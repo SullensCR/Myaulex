@@ -12,6 +12,7 @@ import myau.property.properties.DragProperty;
 import myau.property.properties.FileProperty;
 import myau.property.properties.FloatProperty;
 import myau.property.properties.IntProperty;
+import myau.property.properties.TickDurationProperty;
 import myau.property.properties.KeyBindProperty;
 import myau.property.properties.LongProperty;
 import myau.property.properties.ModeProperty;
@@ -100,7 +101,7 @@ public final class ModuleCard {
         this.x = x;
         this.y = y;
         int titleColor = mix(ClickGuiTheme.DISABLED, ClickGuiTheme.ACCENT, toggleProgress);
-        renderer.shadow(x, y, ClickGuiTheme.CONTENT_WIDTH, 38, 5, 0, 0, 4, 1, 0x59000000);
+        renderer.shadow(x, y, ClickGuiTheme.CONTENT_WIDTH, 38, 5, 0, 3, 8, 0, 0x66000000);
         renderer.roundedRect(x, y, ClickGuiTheme.CONTENT_WIDTH, 38, 5, ClickGuiTheme.MODULE);
         renderer.roundedRect(x, y, 5, 38, 5, 0, 0, 5, titleColor);
         renderer.imageContained("module", x + 12, y + 9, 20, 20, titleColor);
@@ -115,12 +116,12 @@ public final class ModuleCard {
 
         float toggleX = x + 334;
         float state = toggleProgress;
-        renderer.shadow(toggleX, y + 9, 38, 21, 10.5F, 0, 2, 4, 0, 0x40000000);
-        renderer.roundedRect(toggleX, y + 9, 38, 21, 10.5F,
+        renderer.shadow(toggleX, y + 8.5F, 38, 21, 10.5F, 0, 2, 4, 0, 0x40000000);
+        renderer.roundedRect(toggleX, y + 8.5F, 38, 21, 10.5F,
                 mix(ClickGuiTheme.TRACK, ClickGuiTheme.TOGGLE_ON, state));
         float thumbX = toggleX + 4 + 17 * state;
-        renderer.shadow(thumbX, y + 12, 15, 15, 7.5F, 0, 2, 3, 0, 0x59000000);
-        renderer.roundedRect(thumbX, y + 12, 15, 15, 7.5F, 0xFFD6D9E8);
+        renderer.shadow(thumbX, y + 11.5F, 15, 15, 7.5F, 0, 2, 3, 0, 0x59000000);
+        renderer.roundedRect(thumbX, y + 11.5F, 15, 15, 7.5F, 0xFFD6D9E8);
     }
 
     public ClickResult mouseClickedClient(float mouseX, float mouseY, int button) {
@@ -171,11 +172,11 @@ public final class ModuleCard {
         int indicator = mix(0xFF2F3244, ClickGuiTheme.ACCENT, toggleProgress);
         int titleColor = mix(ClickGuiTheme.DISABLED, ClickGuiTheme.ACCENT, toggleProgress);
 
-        renderer.shadow(x, y, ClickGuiTheme.CONTENT_WIDTH, 47, 5, 0, 0, 4, 1, 0x59000000);
+        renderer.shadow(x, y, ClickGuiTheme.CONTENT_WIDTH, 47, 5, 0, 3, 8, 0, 0x66000000);
         renderer.roundedRect(x, y, ClickGuiTheme.CONTENT_WIDTH, 47,
                 5, 5, expanded ? 0 : 5, expanded ? 0 : 5, ClickGuiTheme.MODULE);
         renderer.roundedRect(x, y, 5, 47, 5, 0, expanded ? 0 : 0, expanded ? 0 : 5, indicator);
-        renderer.imageContained("module", x + 15, y + 12, 20, 20, titleColor);
+        renderer.imageContained("module", x + 14, y + 12.5F, 22, 22, titleColor);
 
         UiFont title = renderer.fonts().google(20, UiFonts.SEMIBOLD);
         UiFont description = renderer.fonts().google(15, UiFonts.REGULAR);
@@ -185,22 +186,22 @@ public final class ModuleCard {
         }
 
         float keyX = x + 283;
-        renderer.shadow(keyX, y + 9, 45, 26, 2, 0, 2, 2, 0, 0x4D000000);
-        renderer.roundedRect(keyX, y + 9, 45, 26, 2, 0xFF2B2E3D);
+        renderer.shadow(keyX, y + 10.5F, 45, 26, 2, 0, 2, 2, 0, 0x4D000000);
+        renderer.roundedRect(keyX, y + 10.5F, 45, 26, 2, 0xFF2B2E3D);
         String key = binding ? "..." : module.getKey() == 0 ? "" : KeyBindUtil.getKeyName(module.getKey());
         UiFont keyFont = renderer.fonts().google(20, UiFonts.BLACK);
-        keyFont.draw(key, keyX + (45 - keyFont.width(key)) / 2, y + 8, 0xFFFFFFFF);
+        keyFont.draw(key, keyX + (45 - keyFont.width(key)) / 2, y + 9.5F, 0xFFFFFFFF);
 
         boolean visible = !module.isHidden();
-        renderer.imageContained(visible ? "eye-on-bg" : "eye-off-bg", x + 343, y + 4, 41, 40, 0xFFFFFFFF);
-        if (visible) renderer.imageContained("eye-on", x + 349, y + 13, 27, 19, 0xFFFFFFFF);
-        else renderer.imageContained("eye-off", x + 350, y + 12, 23, 20, 0xFFFFFFFF);
+        renderer.imageContained(visible ? "eye-on-bg" : "eye-off-bg", x + 344, y + 3.5F, 42, 40, 0xFFFFFFFF);
+        if (visible) renderer.imageContained("eye-on", x + 350, y + 13, 27, 19, 0xFFFFFFFF);
+        else renderer.imageContained("eye-off", x + 351, y + 12, 23, 20, 0xFFFFFFFF);
     }
 
     private void renderSettings(UiRenderer renderer) {
         float settingsY = y + 47;
         float height = settingsHeight() * expansionProgress;
-        renderer.shadow(x + 3, settingsY, 382, height, 5, 0, 0, 4, 1, 0x59000000);
+        renderer.shadow(x + 3, settingsY, 382, height, 5, 0, 3, 8, 0, 0x66000000);
         renderer.roundedRect(x + 3, settingsY, 382, height, 0, 0, 5, 5, ClickGuiTheme.MODULE_SETTINGS);
         renderer.pushClip(new UiBounds(x + 3, settingsY, 382, height));
 
@@ -268,7 +269,8 @@ public final class ModuleCard {
         }
 
         if (isNumeric(property)) {
-            float valueX = x + 333;
+            float valueWidth = property instanceof TickDurationProperty ? 104 : 46;
+            float valueX = x + 379 - valueWidth;
             float trackX = Math.min(x + 214, Math.max(x + 56, labelEnd + 10));
             float trackWidth = Math.max(30, valueX - trackX - 12);
             numericTracks.put(property, new UiBounds(trackX, rowY + 2, trackWidth, 17));
@@ -280,7 +282,7 @@ public final class ModuleCard {
             float thumbX = trackX + trackWidth * fraction - 4.5F;
             renderer.shadow(thumbX, rowY + 4, 9, 9, 4.5F, 0, 2, 3, 0, 0x59000000);
             renderer.roundedRect(thumbX, rowY + 4, 9, 9, 4.5F, 0xFFF3F5FF);
-            drawField(renderer, valueX, rowY, 46, 22, displayValue(property), valueFont, editing == property);
+            drawField(renderer, valueX, rowY, valueWidth, 22, displayValue(property), valueFont, editing == property);
             return;
         }
 
@@ -310,7 +312,7 @@ public final class ModuleCard {
         UiFont font = renderer.fonts().google(14, UiFonts.REGULAR);
         int visibleEntries = visiblePopupEntries(mode);
         float height = popupHeight(mode);
-        renderer.shadow(popupX, popupY, popupWidth, height, 2, 0, 2, 4, 0, 0x66000000);
+        renderer.shadow(popupX, popupY, popupWidth, height, 2, 0, 3, 6, 0, 0x66000000);
         renderer.roundedRect(popupX, popupY, popupWidth, height, 2, 0xFF20222E);
         for (int row = 0; row < visibleEntries; row++) {
             int index = popupScroll + row;
@@ -352,11 +354,11 @@ public final class ModuleCard {
 
         UiBounds header = new UiBounds(x, y, ClickGuiTheme.CONTENT_WIDTH, 47);
         if (header.contains(mouseX, mouseY)) {
-            if (button == 0 && new UiBounds(x + 339, y + 3, 49, 41).contains(mouseX, mouseY)) {
+            if (button == 0 && new UiBounds(x + 341, y + 2, 47, 42).contains(mouseX, mouseY)) {
                 module.setHidden(!module.isHidden());
                 return ClickResult.CONSUMED;
             }
-            if (button == 0 && new UiBounds(x + 278, y + 5, 55, 34).contains(mouseX, mouseY)) {
+            if (button == 0 && new UiBounds(x + 278, y + 7, 55, 34).contains(mouseX, mouseY)) {
                 binding = true;
                 return ClickResult.CONSUMED;
             }
@@ -396,7 +398,9 @@ public final class ModuleCard {
                 popupScroll = Math.min(Math.max(0, mode.getValue() - MAX_VISIBLE_POPUP_ENTRIES + 1), maxPopupScroll(mode));
             }
         } else if (isNumeric(property)) {
-            if (mouseX >= x + 327) startEditing(property, EditKind.NUMBER, displayValue(property));
+            if (mouseX >= x + (property instanceof TickDurationProperty ? 269 : 327))
+                startEditing(property, EditKind.NUMBER, property instanceof TickDurationProperty
+                        ? String.valueOf(((TickDurationProperty) property).getValue()) : displayValue(property));
             else {
                 UiBounds track = numericTracks.get(property);
                 if (track == null) return;
@@ -644,6 +648,7 @@ public final class ModuleCard {
     }
 
     private static String displayValue(Property<?> property) {
+        if (property instanceof TickDurationProperty) return ((TickDurationProperty) property).displayDuration();
         if (property instanceof FloatProperty) return String.format(Locale.ROOT, "%.2f", numericValue(property)).replaceAll("0+$", "").replaceAll("\\.$", "");
         if (property instanceof PercentProperty) return Math.round(numericValue(property)) + "%";
         return String.valueOf(Math.round(numericValue(property)));

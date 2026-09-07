@@ -60,7 +60,7 @@ public final class ClickGuiView {
         boolean searching = !search.value().trim().isEmpty();
         categories.setSelectionVisible(!searching);
         renderer.shadow(0, 0, ClickGuiTheme.DESIGN_WIDTH, ClickGuiTheme.PANEL_HEIGHT,
-                10, 0, 0, 6, 2, ClickGuiTheme.SHADOW);
+                10, 0, 4, 10, 2, 0x73000000);
         renderer.backdrop(0, 0, ClickGuiTheme.DESIGN_WIDTH, ClickGuiTheme.PANEL_HEIGHT, 10, ClickGuiTheme.PANEL);
 
         GL11.glPushMatrix();

@@ -4,7 +4,12 @@ import myau.event.events.Event;
 import myau.event.events.EventStoppable;
 import myau.event.types.Priority;
 import myau.render.ClientPerformanceMetrics;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -22,6 +27,7 @@ public final class EventManager {
      * HashMap containing all the registered MethodData sorted on the event parameters of the methods.
      */
     private static final HashMap<Class<? extends Event>, List<MethodData>> REGISTRY_MAP = new HashMap<>();
+    private static final Logger LOGGER = LogManager.getLogger("Myaulex-Events");
 
     /**
      * All methods in this class are static so there would be no reason to create an object of the EventManager class.
@@ -64,9 +70,12 @@ public final class EventManager {
      */
     public static void unregister(Object object) {
         for (final List<MethodData> dataList : REGISTRY_MAP.values()) {
-            for (final MethodData data : dataList) {
-                if (data.getSource().equals(object)) {
-                    dataList.remove(data);
+            //Iterator-based removal: removing from a CopyOnWriteArrayList while
+            //iterating it with for-each would skip elements / throw CME.
+            Iterator<MethodData> iterator = dataList.iterator();
+            while (iterator.hasNext()) {
+                if (iterator.next().getSource().equals(object)) {
+                    iterator.remove();
                 }
             }
         }
@@ -81,9 +90,10 @@ public final class EventManager {
      */
     public static void unregister(Object object, Class<? extends Event> eventClass) {
         if (REGISTRY_MAP.containsKey(eventClass)) {
-            for (final MethodData data : REGISTRY_MAP.get(eventClass)) {
-                if (data.getSource().equals(object)) {
-                    REGISTRY_MAP.get(eventClass).remove(data);
+            Iterator<MethodData> iterator = REGISTRY_MAP.get(eventClass).iterator();
+            while (iterator.hasNext()) {
+                if (iterator.next().getSource().equals(object)) {
+                    iterator.remove();
                 }
             }
             cleanMap(true);
@@ -103,11 +113,8 @@ public final class EventManager {
     private static void register(Method method, Object object) {
         Class<? extends Event> indexClass = (Class<? extends Event>) method.getParameterTypes()[0];
         //New MethodData from the Method we are registering.
+        //(Accessibility is handled inside MethodData, which links a direct MethodHandle.)
         final MethodData data = new MethodData(object, method, method.getAnnotation(EventTarget.class).value());
-        //Set's the method to accessible so that we can also invoke it if it's protected or private.
-        if (!data.getTarget().isAccessible()) {
-            data.getTarget().setAccessible(true);
-        }
         if (REGISTRY_MAP.containsKey(indexClass)) {
             if (!REGISTRY_MAP.get(indexClass).contains(data)) {
                 REGISTRY_MAP.get(indexClass).add(data);
@@ -199,6 +206,20 @@ public final class EventManager {
     }
 
     /**
+     * Fast check used by hot-path callers (packet mixins) to skip event
+     * allocation when nothing is listening. Semantically identical to
+     * dispatching an event to an empty listener list: no handler runs either
+     * way, and cancellation cannot occur without listeners.
+     *
+     * @param eventClass The event class to check listeners for.
+     * @return True if at least one handler is registered for the event class.
+     */
+    public static boolean hasListeners(Class<? extends Event> eventClass) {
+        List<MethodData> dataList = REGISTRY_MAP.get(eventClass);
+        return dataList != null && !dataList.isEmpty();
+    }
+
+    /**
      * Call's an event and invokes the right methods that are listening to the event call.
      * First get's the matching list from the registry map based on the class of the event.
      * Then it checks if the list is not null. After that it will check if the event is an instance of
@@ -234,16 +255,23 @@ public final class EventManager {
     }
 
     /**
-     * Invokes a MethodData when an Event call is made.
+     * Invokes a MethodData when an Event call is made. Each handler stays isolated:
+     * a failure in one handler is logged and never prevents later handlers from
+     * running, nor the event from completing.
      *
      * @param data     The data of which the targeted Method should be invoked.
      * @param argument The called Event which should be used as an argument for the targeted Method.
      */
     private static void invoke(MethodData data, Event argument) {
         try {
-            data.getTarget().invoke(data.getSource(), argument);
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            e.printStackTrace();
+            data.invoke(argument);
+        } catch (Throwable error) {
+            LOGGER.warn(
+                    "Event handler in {} failed while handling {}",
+                    data.getSource().getClass().getName(),
+                    argument.getClass().getName(),
+                    error
+            );
         }
     }
 
@@ -254,6 +282,8 @@ public final class EventManager {
     private static final class MethodData {
         private final Object source;
         private final Method target;
+        /** Direct dispatch handle adapted to exactly {@code (Event)void}; null when linking fell back to reflection. */
+        private final MethodHandle handle;
         private final byte priority;
 
         /**
@@ -269,6 +299,43 @@ public final class EventManager {
             this.source = source;
             this.target = target;
             this.priority = priority;
+            this.handle = link(target, source);
+        }
+
+        /**
+         * Links a direct {@link MethodHandle} bound to its receiver, pre-adapted to the
+         * exact static type {@code (Event)void} so the hot path can use {@code invokeExact}.
+         * Falls back to {@code null} (reflective dispatch) on any linking failure so that
+         * registration can never break startup. Dispatch order, EventStoppable
+         * short-circuiting, cancellation and per-handler exception isolation are preserved
+         * identically versus reflective invocation.
+         */
+        private static MethodHandle link(Method method, Object receiver) {
+            try {
+                if (!method.isAccessible()) {
+                    // Allows unreflect to bypass access checks on private/package handlers.
+                    method.setAccessible(true);
+                }
+                MethodHandle bound = MethodHandles.lookup().unreflect(method).bindTo(receiver);
+                return bound.asType(MethodType.methodType(void.class, Event.class));
+            } catch (Throwable error) {
+                LOGGER.warn(
+                        "Falling back to reflective dispatch for {}.{}",
+                        method.getDeclaringClass().getName(),
+                        method.getName(),
+                        error
+                );
+                return null;
+            }
+        }
+
+        public void invoke(Event argument) throws Throwable {
+            MethodHandle direct = this.handle;
+            if (direct != null) {
+                direct.invokeExact(argument);
+            } else {
+                this.target.invoke(this.source, argument);
+            }
         }
 
         /**

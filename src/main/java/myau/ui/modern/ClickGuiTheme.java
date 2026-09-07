@@ -9,7 +9,7 @@ public final class ClickGuiTheme {
     public static final float PANEL_HEIGHT = 770.0F;
     public static final float CONTENT_X = 15.0F;
     public static final float CONTENT_WIDTH = 388.0F;
-    public static final float MODULE_TOP = 79.0F;
+    public static final float MODULE_TOP = 71.0F;
     public static final float MODULE_BOTTOM = 754.0F;
 
     public static final int PANEL = 0xCC181926;

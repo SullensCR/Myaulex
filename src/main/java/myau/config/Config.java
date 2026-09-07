@@ -41,6 +41,8 @@ public class Config {
     private static boolean latestDirty;
     private static boolean keybindsDirty;
     private static boolean clientDirty;
+    private static final long AUTOSAVE_INTERVAL_NANOS = 30_000_000_000L; // ~30 seconds
+    private static long lastAutosaveNanos;
 
     public final String name;
     public final File file;
@@ -170,6 +172,25 @@ public class Config {
         if (latestDirty) writeLatest();
         if (keybindsDirty) writeKeybinds();
         if (clientDirty) writeClient();
+    }
+
+    /**
+     * Called once per game tick (from ModuleManager). Flushes dirty persistent state
+     * at most every ~30 seconds so a hard crash loses at most that window of changes.
+     * Near-zero cost when clean: savePersistent() only writes files whose dirty flag
+     * is set, and writes are atomic temp-file renames.
+     */
+    public static synchronized void autosaveTick() {
+        long now = System.nanoTime();
+        if (lastAutosaveNanos == 0L) {
+            lastAutosaveNanos = now;
+            return;
+        }
+        if (now - lastAutosaveNanos < AUTOSAVE_INTERVAL_NANOS) {
+            return;
+        }
+        lastAutosaveNanos = now;
+        savePersistent();
     }
 
     private static void writeLatest() {

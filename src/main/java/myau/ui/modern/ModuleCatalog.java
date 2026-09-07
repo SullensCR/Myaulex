@@ -20,18 +20,19 @@ public final class ModuleCatalog {
         Map<String, ClickGuiCategory> categories = new HashMap<>();
         add(categories, ClickGuiCategory.COMBAT,
                 "AimAssist", "AutoClicker", "AntiFireball", "Aura", "Hit Select", "Backtrack", "LagRange",
-                "FastKB", "Velocity", "VeloDelay");
+                "FastKB", "Velocity", "VeloDelay", "Criticals");
         add(categories, ClickGuiCategory.MOVEMENT,
-                "AntiVoid", "Blink", "Keep Sprint", "NoSlow", "InventoryMove", "Sprint", "Stasis");
+                "AntiVoid", "Blink", "Keep Sprint", "NoSlow", "InventoryMove", "Sprint", "Stasis",
+                "NoFall", "Fly", "LongJump", "Speed");
         add(categories, ClickGuiCategory.VISUALS,
                 "Ambience", "Particles", "Indicators", "EntityESP", "BlockOverlay",
                 "Nametags", "Trajectories", "MotionPath", "AntiDebuff", "Bedplates");
         add(categories, ClickGuiCategory.PLAYER,
-                "AutoGapple", "AutoTool", "ChestStealer", "InventoryManager", "Scaffold",
-                "BridgeAssist", "FastBreak", "BedBreaker");
+                "AutoGapple", "AutoTool", "ChestStealer", "InventoryManager", "Scaffold", "Legit Scaffold",
+                "FastBreak", "BedBreaker", "Regen");
         add(categories, ClickGuiCategory.UTILITIES,
                 "AutoCaptcha", "AutoAuthentication", "AutoRejoin", "TransactionAnalyzer", "Notifications", "PacketDelay",
-                "FastQueue", "FlagDetector");
+                "FastQueue", "FlagDetector", "Disabler");
         CATEGORIES = Collections.unmodifiableMap(categories);
     }
 

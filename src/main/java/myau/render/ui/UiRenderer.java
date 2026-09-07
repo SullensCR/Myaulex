@@ -48,7 +48,8 @@ public final class UiRenderer {
             "ui/icons/eye-on-bg.png",
             "ui/icons/eye-on.png",
             "ui/icons/eye-off-bg.png",
-            "ui/icons/eye-off.png"
+            "ui/icons/eye-off.png",
+            "ui/icons/settings-gear.svg"
     };
 
     private final Minecraft mc = Minecraft.getMinecraft();
@@ -293,6 +294,14 @@ public final class UiRenderer {
                                     float radius, int leftColor, int rightColor) {
         if (shapes.horizontalFill(x, y, width, height, radius, leftColor, rightColor)) return;
         gradientRectHorizontal(x, y, width, height, leftColor, rightColor);
+    }
+
+    public void gradientRoundedRectVertical(float x, float y, float width, float height,
+                                            float topLeft, float topRight, float bottomRight, float bottomLeft,
+                                            int topColor, int bottomColor) {
+        if (shapes.verticalFill(x, y, width, height, topLeft, topRight, bottomRight, bottomLeft,
+                topColor, bottomColor)) return;
+        gradientRect(x, y, width, height, topColor, bottomColor);
     }
 
     public void roundedRect(float x, float y, float width, float height,

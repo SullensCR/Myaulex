@@ -5,6 +5,7 @@ import myau.event.EventManager;
 import myau.events.AppliedMotionEvent;
 import myau.events.KnockbackEvent;
 import myau.events.SafeWalkEvent;
+import myau.management.RotationState;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
@@ -120,7 +121,10 @@ public abstract class MixinEntity {
             at = {@At("HEAD")},
             cancellable = true
     )
-    private void setAngles(CallbackInfo callbackInfo) {
+    private void setAngles(float yawDelta, float pitchDelta, CallbackInfo callbackInfo) {
+        if ((Entity) ((Object) this) instanceof EntityPlayerSP) {
+            RotationState.captureCameraInput((EntityPlayerSP) (Object) this, yawDelta, pitchDelta);
+        }
         if ((Entity) ((Object) this) instanceof EntityPlayerSP && Myau.rotationManager != null && Myau.rotationManager.isRotated()) {
             callbackInfo.cancel();
         }

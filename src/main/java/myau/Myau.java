@@ -94,7 +94,6 @@ public class Myau {
         moduleManager.modules.put(BedNuker.class, new BedNuker());
         moduleManager.modules.put(Bedplates.class, new Bedplates());
         moduleManager.modules.put(Blink.class, new Blink());
-        moduleManager.modules.put(BridgeAssist.class, new BridgeAssist());
         moduleManager.modules.put(Chams.class, new Chams());
         moduleManager.modules.put(ChestESP.class, new ChestESP());
         moduleManager.modules.put(ChestStealer.class, new ChestStealer());
@@ -122,11 +121,18 @@ public class Myau {
         moduleManager.modules.put(NameTags.class, new NameTags());
         moduleManager.modules.put(NickHider.class, new NickHider());
         moduleManager.modules.put(NoHitDelay.class, new NoHitDelay());
+        moduleManager.modules.put(NoFall.class, new NoFall());
         moduleManager.modules.put(NoHurtCam.class, new NoHurtCam());
         moduleManager.modules.put(NoJumpDelay.class, new NoJumpDelay());
         moduleManager.modules.put(NoRotate.class, new NoRotate());
         moduleManager.modules.put(NoSlow.class, new NoSlow());
         moduleManager.modules.put(Scaffold.class, new Scaffold());
+        moduleManager.modules.put(LegitScaffold.class, new LegitScaffold());
+        moduleManager.modules.put(Fly.class, new Fly());
+        moduleManager.modules.put(LongJump.class, new LongJump());
+        moduleManager.modules.put(Criticals.class, new Criticals());
+        moduleManager.modules.put(Regen.class, new Regen());
+        moduleManager.modules.put(Disabler.class, new Disabler());
         moduleManager.modules.put(ServerHider.class, new ServerHider());
         moduleManager.modules.put(Speed.class, new Speed());
         moduleManager.modules.put(SpeedMine.class, new SpeedMine());

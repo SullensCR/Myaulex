@@ -1,6 +1,7 @@
 package myau.module;
 
 import myau.Myau;
+import myau.config.Config;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.events.KeyEvent;
@@ -8,23 +9,40 @@ import myau.events.TickEvent;
 import myau.module.modules.GuiModule;
 import myau.util.SoundUtil;
 
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.stream.Collectors;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 import myau.ui.modern.ModuleCatalog;
 
 public class ModuleManager {
     private String sound;
     public final LinkedHashMap<Class<?>, Module> modules = new LinkedHashMap<>();
+    /**
+     * Lazily-built lookup caches. The module set is fixed once {@code Myau.init()}
+     * finishes registering modules, so caching lookups here is behavior-identical
+     * to streaming over the registry on every call. Index maps use
+     * {@code putIfAbsent} to preserve the original "first match wins" ordering.
+     */
+    private Map<String, Module> nameIndex;
+    private Map<String, Module> ordinaryNameIndex;
+    private Collection<Module> ordinaryModulesCache;
 
     public Module getModule(String string) {
-        return this.modules.values().stream().filter(mD -> mD.getName().equalsIgnoreCase(string)).findFirst().orElse(null);
+        if (string == null) {
+            return null;
+        }
+        return this.nameIndex().get(string.toLowerCase(Locale.ROOT));
     }
 
     public Module getOrdinaryModule(String name) {
-        return ordinaryModules().stream()
-                .filter(module -> module.getName().equalsIgnoreCase(name))
-                .findFirst().orElse(null);
+        if (name == null) {
+            return null;
+        }
+        return this.ordinaryNameIndex().get(name.toLowerCase(Locale.ROOT));
     }
 
     public Module getModule(Class<?> clazz){
@@ -32,9 +50,42 @@ public class ModuleManager {
     }
 
     public Collection<Module> ordinaryModules() {
-        return this.modules.values().stream()
-                .filter(ModuleCatalog::isOrdinary)
-                .collect(Collectors.toList());
+        Collection<Module> cache = this.ordinaryModulesCache;
+        if (cache == null) {
+            ArrayList<Module> list = new ArrayList<>();
+            for (Module module : this.modules.values()) {
+                if (ModuleCatalog.isOrdinary(module)) {
+                    list.add(module);
+                }
+            }
+            cache = Collections.unmodifiableList(list);
+            this.ordinaryModulesCache = cache;
+        }
+        return cache;
+    }
+
+    private Map<String, Module> nameIndex() {
+        Map<String, Module> index = this.nameIndex;
+        if (index == null) {
+            index = new HashMap<>();
+            for (Module module : this.modules.values()) {
+                index.putIfAbsent(module.getName().toLowerCase(Locale.ROOT), module);
+            }
+            this.nameIndex = index;
+        }
+        return index;
+    }
+
+    private Map<String, Module> ordinaryNameIndex() {
+        Map<String, Module> index = this.ordinaryNameIndex;
+        if (index == null) {
+            index = new HashMap<>();
+            for (Module module : this.ordinaryModules()) {
+                index.putIfAbsent(module.getName().toLowerCase(Locale.ROOT), module);
+            }
+            this.ordinaryNameIndex = index;
+        }
+        return index;
     }
 
     public void playSound(boolean enabled) {
@@ -57,6 +108,10 @@ public class ModuleManager {
     @EventTarget
     public void onTick(TickEvent event) {
         if (event.getType() == EventType.PRE) {
+            for (Module module : this.modules.values()) {
+                module.refreshUnsafeOperationalState();
+            }
+            Config.autosaveTick();
             if (this.sound != null) {
                 String sound = this.sound;
                 this.sound = null;

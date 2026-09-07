@@ -147,7 +147,16 @@ public class MoveUtil {
     }
 
     public static void fixStrafe(float targetYaw) {
-        float angle = MathHelper.wrapAngleTo180_float(MoveUtil.adjustYaw(MoveUtil.mc.thePlayer.rotationYaw, MoveUtil.getForwardValue(), MoveUtil.getLeftValue()) - targetYaw + 22.5f);
+        fixStrafe(targetYaw, MoveUtil.mc.thePlayer.rotationYaw);
+    }
+
+    /**
+     * Corrects movement from an explicitly supplied camera yaw.  Silent-rotation
+     * modules use this overload so the original physical W/A/S/D intent is not
+     * reconstructed from the already-overridden player yaw.
+     */
+    public static void fixStrafe(float targetYaw, float sourceYaw) {
+        float angle = MathHelper.wrapAngleTo180_float(MoveUtil.adjustYaw(sourceYaw, MoveUtil.getForwardValue(), MoveUtil.getLeftValue()) - targetYaw + 22.5f);
         switch ((int) (angle + 180.0f) / 45 % 8) {
             case 0: {
                 MoveUtil.mc.thePlayer.movementInput.moveForward = -1.0f;

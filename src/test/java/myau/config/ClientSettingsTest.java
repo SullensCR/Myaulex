@@ -22,6 +22,7 @@ public class ClientSettingsTest {
         source.setTargetMobs(true);
         source.setTargetAnimals(true);
         source.setVerifyTcpNoDelay(false);
+        source.setUnsafeModuleOverride(true);
         source.setIndicatorEnabled(false);
 
         JsonObject root = new JsonObject();
@@ -36,6 +37,7 @@ public class ClientSettingsTest {
         assertTrue(restored.isTargetMobs());
         assertTrue(restored.isTargetAnimals());
         assertFalse(restored.isVerifyTcpNoDelay());
+        assertTrue(restored.isUnsafeModuleOverride());
         assertFalse(restored.isIndicatorEnabled());
     }
 }

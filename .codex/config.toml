@@ -1,2 +1,4 @@
-model_reasoning_summary = "concise"
+model_reasoning_summary = "none"
 model_verbosity = "low"
+web_search = "live"
+sandbox_mode = "danger-full-access"

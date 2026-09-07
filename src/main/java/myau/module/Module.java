@@ -5,6 +5,7 @@ import myau.config.Config;
 import myau.module.modules.GuiModule;
 import myau.module.modules.HUD;
 import myau.module.modules.Notifications;
+import myau.management.UnsafeModuleAccess;
 import myau.util.KeyBindUtil;
 
 public abstract class Module {
@@ -16,6 +17,8 @@ public abstract class Module {
     protected boolean enabled;
     protected int key;
     protected boolean hidden;
+    private boolean unsafe;
+    private boolean unsafeOperational;
 
     public Module(String name, boolean enabled) {
         this(name, enabled, false, "");
@@ -58,15 +61,46 @@ public abstract class Module {
         return this.enabled;
     }
 
+    /** True only while this module is both requested and permitted to act. */
+    public final boolean isOperational() {
+        return this.unsafe ? this.unsafeOperational : this.enabled;
+    }
+
+    public final boolean isUnsafe() {
+        return this.unsafe;
+    }
+
+    /** Marks a module whose effects are controlled by Disabler or the Client override. */
+    protected final void markUnsafe() {
+        this.unsafe = true;
+    }
+
     public void setEnabled(boolean enabled) {
         if (this.enabled != enabled) {
             this.enabled = enabled;
-            if (enabled) {
-                this.onEnabled();
+            if (this.unsafe) {
+                this.refreshUnsafeOperationalState();
             } else {
-                this.onDisabled();
+                if (enabled) {
+                    this.onEnabled();
+                } else {
+                    this.onDisabled();
+                }
             }
             Config.markDirty(this);
+        }
+    }
+
+    /** Called by ModuleManager before module tick handlers run. */
+    public final void refreshUnsafeOperationalState() {
+        if (!this.unsafe) return;
+        boolean next = this.enabled && UnsafeModuleAccess.isAllowed();
+        if (next == this.unsafeOperational) return;
+        this.unsafeOperational = next;
+        if (next) {
+            this.onEnabled();
+        } else {
+            this.onDisabled();
         }
     }
 

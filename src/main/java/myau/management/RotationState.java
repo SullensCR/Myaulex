@@ -1,6 +1,7 @@
 package myau.management;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.util.MathHelper;
 
 public class RotationState {
@@ -14,6 +15,43 @@ public class RotationState {
     private static float rotationPitch;
     private static float smoothYaw;
     private static int priority;
+    /*
+     * EntityPlayerSP.rotationYaw is temporarily replaced by silent rotations.
+     * Keep the real mouse-controlled camera separately so movement intent never
+     * gets classified from the last server-facing angle.
+     */
+    private static EntityPlayerSP cameraPlayer;
+    private static float cameraYaw;
+    private static float cameraPitch;
+    private static boolean cameraInitialized;
+
+    public static void captureCameraInput(EntityPlayerSP player, float yawDelta, float pitchDelta) {
+        if (player == null) return;
+        ensureCamera(player);
+        cameraYaw = MathHelper.wrapAngleTo180_float(cameraYaw + yawDelta * 0.15F);
+        cameraPitch = MathHelper.clamp_float(cameraPitch - pitchDelta * 0.15F, -90.0F, 90.0F);
+    }
+
+    public static float getCameraYaw(EntityPlayerSP player) {
+        if (player == null) return 0.0F;
+        ensureCamera(player);
+        return cameraYaw;
+    }
+
+    public static float getCameraPitch(EntityPlayerSP player) {
+        if (player == null) return 0.0F;
+        ensureCamera(player);
+        return cameraPitch;
+    }
+
+    private static void ensureCamera(EntityPlayerSP player) {
+        if (!cameraInitialized || cameraPlayer != player) {
+            cameraPlayer = player;
+            cameraYaw = player.rotationYaw;
+            cameraPitch = player.rotationPitch;
+            cameraInitialized = true;
+        }
+    }
 
     private static float calculateRenderYawOffset(float targetYaw, float currentYawOffset) {
         float newYawOffset = currentYawOffset;

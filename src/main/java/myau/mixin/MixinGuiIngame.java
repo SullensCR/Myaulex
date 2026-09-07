@@ -1,7 +1,7 @@
 package myau.mixin;
 
 import myau.Myau;
-import myau.module.modules.Scaffold;
+import myau.module.modules.ScaffoldActivity;
 import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
@@ -22,12 +22,9 @@ public abstract class MixinGuiIngame {
             )
     )
     private ItemStack updateTick(InventoryPlayer inventoryPlayer) {
-        Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
-        if (scaffold.isEnabled() && scaffold.itemSpoof.getValue()) {
-            int slot = scaffold.getSlot();
-            if (slot >= 0) {
-                return inventoryPlayer.getStackInSlot(slot);
-            }
+        int slot = ScaffoldActivity.visualSlot();
+        if (slot >= 0) {
+            return inventoryPlayer.getStackInSlot(slot);
         }
         return inventoryPlayer.getCurrentItem();
     }

@@ -943,14 +943,15 @@ public class Scaffold extends Module {
 
     @Override
     public void onEnabled() {
-        if (mc.thePlayer != null) {
+        ScaffoldActivity.disableOther(this);
+        if (mc != null && mc.thePlayer != null) {
             this.lastSlot = mc.thePlayer.inventory.currentItem;
         } else {
             this.lastSlot = -1;
         }
-        this.placementSlot = mc.thePlayer != null ? mc.thePlayer.inventory.currentItem : -1;
+        this.placementSlot = mc != null && mc.thePlayer != null ? mc.thePlayer.inventory.currentItem : -1;
         this.blockCount = -1;
-        this.blockCounterInitialCount = ProgressbarRenderer.countableBlockCount(mc.thePlayer);
+        this.blockCounterInitialCount = ProgressbarRenderer.countableBlockCount(mc == null ? null : mc.thePlayer);
         this.animatedBlockCounterProgress = -1.0F;
         this.blockCounterLastRenderNanos = 0L;
         this.rotationTick = 3;
@@ -967,7 +968,7 @@ public class Scaffold extends Module {
 
     @Override
     public void onDisabled() {
-        if (mc.thePlayer != null && this.lastSlot != -1) {
+        if (mc != null && mc.thePlayer != null && this.lastSlot != -1) {
             mc.thePlayer.inventory.currentItem = this.lastSlot;
         }
         this.towerSelectionActive = false;
